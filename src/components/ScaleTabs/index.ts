@@ -1,0 +1,1 @@
+export {ScaleTabs} from './ScaleTabs';

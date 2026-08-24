@@ -1,0 +1,37 @@
+.scale-tabs {
+    padding: 40px 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+
+    &__title {
+        font-size: 32px;
+        font-weight: 700;
+        margin-bottom: 32px;
+        color: var(--g-color-text-primary);
+    }
+
+    &__content {
+        margin-top: 24px;
+        padding: 32px;
+        background-color: var(--g-color-base-background);
+        border-radius: 12px;
+        border: 1px solid var(--g-color-line-generic);
+        min-height: 200px;
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+
+        h2 {
+            margin-top: 0;
+            margin-bottom: 16px;
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--g-color-text-primary);
+        }
+
+        p {
+            margin: 0;
+            color: var(--g-color-text-secondary);
+            font-size: 16px;
+            line-height: 1.6;
+        }
+    }
+}

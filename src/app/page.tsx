@@ -1,5 +1,5 @@
-import {InfoButtons} from '../components/InfoButtons';
+import {ScaleTabs} from '../components/ScaleTabs';
 
 export default function Home() {
-    return <InfoButtons />;
+    return <ScaleTabs />;
 }
