@@ -1,3 +1,5 @@
+@use '../../styles/variables.scss' as variables;
+
 .g-tab {
     border: none;
     margin-top: var(--g-spacing-8);
@@ -12,7 +14,7 @@
     }
 
     &__content {
-        background: rgba(0,0,0,0.05);
+        background: variables.$g-color-base-generic-light;
         border-radius: var(--g-border-radius-xl);
 
         .g-tab_active & {
