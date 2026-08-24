@@ -13,14 +13,12 @@ export const ScaleTabs: React.FC = () => {
 
     return (
         <div className={b()}>
-            <h1 className={b('title')}>Масштабируйтесь безопасно</h1>
-            
             <TabProvider value={activeTab} onUpdate={setActiveTab}>
-                <TabList size="l" contentOverflow="wrap">
-                    <Tab value="client">Клиентские приложения</Tab>
-                    <Tab value="managed">Управляемые сервисы / платформы</Tab>
-                    <Tab value="virtualization">Виртуализация + контейнеризация</Tab>
-                    <Tab value="hardware">Аппаратный слой</Tab>
+                <TabList size="m" contentOverflow="wrap">
+                    <Tab value="client">Масштабирование</Tab>
+                    <Tab value="managed">Инфраструктура для ИИ</Tab>
+                    <Tab value="virtualization">Ускорение time-to-market</Tab>
+                    <Tab value="hardware">Стабильная работа сервисов</Tab>
                 </TabList>
                 
                 <div className={b('content')}>
