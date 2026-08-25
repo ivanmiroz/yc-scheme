@@ -18,18 +18,22 @@
         border-radius: var(--g-border-radius-xl);
 
         .g-tab_active & {
-            background: var(--g-color-text-primary);
+            background: none;
         }
     }
 
     &__title {
-        font-size: var(--g-text-body-1-font-size);
         color: var(--g-color-text-primary);
+        font-size: var(--g-text-body-1-font-size);
+        overflow: visible;
         padding: var(--g-spacing-2) var(--g-spacing-4);
 
         .g-tab_active & {
-            color: var(--g-color-text-light-primary) !important;
             cursor: default;
+            font-size: variables.$g-text-display-4-font-size;
+            font-weight: variables.$g-text-ultra-bold;
+            text-transform: uppercase;
+            transform: translateY(-6px);
         }
     }
 }
