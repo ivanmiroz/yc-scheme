@@ -24,14 +24,11 @@
         }
     }
 
-    // Стили для панели табов Gravity UI (класс .g-tab-panel добавляется автоматически)
-    .g-tab-panel {
+    &__panel {
         flex: 1 1 auto;
         display: flex;
         flex-direction: column;
         min-height: 0;
-        overflow: hidden;
-        height: auto;
     }
 }
 
