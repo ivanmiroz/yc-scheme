@@ -16,7 +16,7 @@ export const ScaleTabs: React.FC = () => {
     return (
         <div className={b()}>
             <TabProvider value={activeTab} onUpdate={setActiveTab}>
-                <TabList size="m" contentOverflow="wrap">
+                <TabList size="m">
                     <Tab value="client">Масштабирование</Tab>
                     <Tab value="managed">Инфраструктура для ИИ</Tab>
                     <Tab value="virtualization">Ускорение time-to-market</Tab>
@@ -25,39 +25,49 @@ export const ScaleTabs: React.FC = () => {
 
                 <div className={b('content')}>
                     <TabPanel value="client">
-                        <h2>Клиентские приложения</h2>
-                        <p>
-                            Здесь размещается информация о клиентских приложениях, их особенностях и
-                            преимуществах безопасного масштабирования на стороне пользователя.
-                        </p>
-                        <NetworkSingularity />
+                        <div className="scale-tabs__panel">
+                            <h2>Клиентские приложения</h2>
+                            <p>
+                                Здесь размещается информация о клиентских приложениях, их
+                                особенностях и преимуществах безопасного масштабирования на стороне
+                                пользователя.
+                            </p>
+                            <NetworkSingularity />
+                        </div>
                     </TabPanel>
 
                     <TabPanel value="managed">
-                        <h2>Управляемые сервисы / платформы</h2>
-                        <p>
-                            Описание управляемых сервисов и PaaS-решений, обеспечивающих надежность,
-                            безопасность и автоматизацию вашей инфраструктуры.
-                        </p>
-                        <NetworkSingularity />
+                        <div className="scale-tabs__panel">
+                            <h2>Управляемые сервисы / платформы</h2>
+                            <p>
+                                Описание управляемых сервисов и PaaS-решений, обеспечивающих
+                                надежность, безопасность и автоматизацию вашей инфраструктуры.
+                            </p>
+                            <NetworkSingularity />
+                        </div>
                     </TabPanel>
 
                     <TabPanel value="virtualization">
-                        <h2>Виртуализация + контейнеризация</h2>
-                        <p>
-                            Решения для виртуализации и контейнеризации, позволяющие гибко управлять
-                            вычислительными ресурсами и изолировать рабочие нагрузки.
-                        </p>
-                        <NetworkSingularity />
+                        <div className="scale-tabs__panel">
+                            <h2>Виртуализация + контейнеризация</h2>
+                            <p>
+                                Решения для виртуализации и контейнеризации, позволяющие гибко
+                                управлять вычислительными ресурсами и изолировать рабочие нагрузки.
+                            </p>
+                            <NetworkSingularity />
+                        </div>
                     </TabPanel>
 
                     <TabPanel value="hardware">
-                        <h2>Аппаратный слой</h2>
-                        <p>
-                            Информация о физическом аппаратном обеспечении, его отказоустойчивости,
-                            возможностях горизонтального масштабирования и дата-центрах.
-                        </p>
-                        <NetworkSingularity />
+                        <div className="scale-tabs__panel">
+                            <h2>Аппаратный слой</h2>
+                            <p>
+                                Информация о физическом аппаратном обеспечении, его
+                                отказоустойчивости, возможностях горизонтального масштабирования и
+                                дата-центрах.
+                            </p>
+                            <NetworkSingularity />
+                        </div>
                     </TabPanel>
                 </div>
             </TabProvider>
