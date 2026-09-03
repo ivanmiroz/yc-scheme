@@ -1,7 +1,13 @@
+// src/styles/globals.scss
+
 html,
 body,
 #__next {
     height: 100%;
-    min-width: 320px;
     margin: 0;
+    padding: 0;
+}
+
+body {
+    overflow: hidden;
 }

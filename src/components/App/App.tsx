@@ -1,3 +1,4 @@
+// src/components/App/App.tsx
 'use client';
 
 import React from 'react';
@@ -10,7 +11,7 @@ interface AppProps {
 export const App: React.FC<AppProps> = ({children}) => {
     return (
         <ThemeProvider theme="light">
-            {children}
+            <div style={{height: '100%', display: 'flex', flexDirection: 'column'}}>{children}</div>
         </ThemeProvider>
     );
 };
