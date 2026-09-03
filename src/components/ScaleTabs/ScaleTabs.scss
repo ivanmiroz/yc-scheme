@@ -1,68 +1,74 @@
-// src/components/NetworkSingularity/NetworkSingularity.scss
-.network-singularity {
-    position: relative;
+@use '../../styles/variables.scss' as variables;
+
+.scale-tabs {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
     width: 100%;
-    height: 620px;
-    border-radius: var(--g-border-radius-xl);
+    box-sizing: border-box;
     overflow: hidden;
-    margin-top: var(--g-spacing-4);
-    background: #05070f;
 
-    &__canvas {
-        width: 100%;
-        height: 100%;
-        display: block;
-        cursor: grab;
-        touch-action: none;
+    &__content {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        background: variables.$g-color-base-generic-light;
+        border-radius: var(--g-border-radius-xl);
+        margin-top: var(--g-spacing-4);
+        padding: var(--g-spacing-5);
+        box-sizing: border-box;
 
-        &:active {
-            cursor: grabbing;
+        .g-tab_active & {
+            background: none;
         }
     }
 
-    &__overlay {
-        position: absolute;
-        top: var(--g-spacing-5);
-        left: var(--g-spacing-5);
-        color: #fff;
-        pointer-events: none;
-        user-select: none;
+    // Стили для панели табов Gravity UI (класс .g-tab-panel добавляется автоматически)
+    .g-tab-panel {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+        height: auto;
+    }
+}
+
+.g-tab {
+    border: none;
+    margin-top: var(--g-spacing-8);
+
+    &-list &:not(:last-child) {
+        margin-inline-end: var(--g-spacing-2);
+    }
+
+    &-list {
+        box-shadow: none;
+        justify-content: center;
+    }
+
+    &__content {
+        background: variables.$g-color-base-generic-light;
+        border-radius: var(--g-border-radius-xl);
+
+        .g-tab_active & {
+            background: none;
+        }
     }
 
     &__title {
-        font-size: 22px;
-        font-weight: 700;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        margin-bottom: var(--g-spacing-1);
-        text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
-    }
+        color: var(--g-color-text-primary);
+        font-size: var(--g-text-body-1-font-size);
+        overflow: visible;
+        padding: var(--g-spacing-2) var(--g-spacing-4);
 
-    &__subtitle {
-        font-size: 13px;
-        opacity: 0.6;
-        margin-bottom: var(--g-spacing-3);
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-    }
-
-    &__stats {
-        font-size: 14px;
-        font-variant-numeric: tabular-nums;
-        margin-bottom: var(--g-spacing-2);
-    }
-
-    &__num {
-        color: #7ab8ff;
-        font-weight: 600;
-    }
-
-    &__label {
-        opacity: 0.7;
-    }
-
-    &__hint {
-        font-size: 12px;
-        opacity: 0.45;
+        .g-tab_active & {
+            cursor: default;
+            font-size: variables.$g-text-display-4-font-size;
+            font-weight: variables.$g-text-ultra-bold;
+            text-transform: uppercase;
+            transform: translateY(-6px);
+        }
     }
 }

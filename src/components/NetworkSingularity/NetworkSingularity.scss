@@ -1,8 +1,9 @@
-// src/components/NetworkSingularity/NetworkSingularity.scss
+@use '../../styles/variables.scss' as variables;
+
 .network-singularity {
     position: relative;
     width: 100%;
-    height: 460px; /* было 420px — чуть больше для читаемости меток */
+    height: 460px;
     border-radius: var(--g-border-radius-xl);
     overflow: hidden;
     margin-top: var(--g-spacing-4);

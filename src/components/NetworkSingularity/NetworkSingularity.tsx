@@ -18,8 +18,8 @@ interface Node3D {
 interface Connection {
     from: number;
     to: number;
-    spawnDelay: number; // задержка появления (мс)
-    duration: number; // длительность прорастания (мс)
+    spawnDelay: number;
+    duration: number;
 }
 
 interface ProjectedNode {
@@ -30,7 +30,6 @@ interface ProjectedNode {
     label: string;
 }
 
-// Набор инфраструктурных терминов для меток узлов
 const LABELS = [
     'GPU',
     'CPU',
@@ -84,13 +83,12 @@ const LABELS = [
     'ELK',
 ];
 
-// Константы сцены
 const NODE_COUNT = 50;
 const MAX_CONNECTIONS = 100;
 const SPHERE_RADIUS = 200;
-const CONNECTION_DISTANCE = 180; // чуть больше, чтобы хватило кандидатов для 100 связей
-const SPAWN_WINDOW_MS = 6000; // окно, за которое все линии должны появиться
-const LINE_GROW_MS = 1500; // время прорастания одной линии
+const CONNECTION_DISTANCE = 180;
+const SPAWN_WINDOW_MS = 6000;
+const LINE_GROW_MS = 1500;
 
 export const NetworkSingularity: React.FC = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -106,14 +104,13 @@ export const NetworkSingularity: React.FC = () => {
 
     useEffect(() => {
         const canvas = canvasRef.current;
-        if (!canvas) return;
+        if (!canvas) return undefined;
 
         const ctx = canvas.getContext('2d');
-        if (!ctx) return;
+        if (!ctx) return undefined;
 
         startTimeRef.current = performance.now();
 
-        // --- Размер канваса с учётом DPR ---
         const resize = () => {
             const rect = canvas.getBoundingClientRect();
             const dpr = window.devicePixelRatio || 1;
@@ -124,7 +121,6 @@ export const NetworkSingularity: React.FC = () => {
         resize();
         window.addEventListener('resize', resize);
 
-        // --- Генерация узлов в сфере ---
         const nodes: Node3D[] = [];
         for (let i = 0; i < NODE_COUNT; i++) {
             const theta = Math.random() * Math.PI * 2;
@@ -139,7 +135,6 @@ export const NetworkSingularity: React.FC = () => {
             });
         }
 
-        // --- Сбор всех возможных связей по расстоянию ---
         const candidates: {from: number; to: number; dist: number}[] = [];
         for (let i = 0; i < nodes.length; i++) {
             for (let j = i + 1; j < nodes.length; j++) {
@@ -153,23 +148,18 @@ export const NetworkSingularity: React.FC = () => {
             }
         }
 
-        // Сортируем по расстоянию (ближние пары приоритетнее)
-        candidates.sort((a, b) => a.dist - b.dist);
+        candidates.sort((a, c) => a.dist - c.dist);
 
-        // Берём не более MAX_CONNECTIONS, перемешиваем порядок появления
         const picked = candidates.slice(0, MAX_CONNECTIONS);
-        // Перемешиваем (Fisher–Yates), чтобы связи появлялись в произвольном порядке
         for (let i = picked.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [picked[i], picked[j]] = [picked[j], picked[i]];
         }
 
-        // Назначаем каждой связи задержку появления и длительность прорастания
         const connections: Connection[] = picked.map((c, idx) => {
-            // Равномерно распределяем появления по окну SPAWN_WINDOW_MS
             const spawnDelay =
                 (idx / Math.max(1, picked.length - 1)) * SPAWN_WINDOW_MS +
-                (Math.random() - 0.5) * 400; // лёгкий разброс
+                (Math.random() - 0.5) * 400;
             return {
                 from: c.from,
                 to: c.to,
@@ -181,7 +171,7 @@ export const NetworkSingularity: React.FC = () => {
         setNodeCount(nodes.length);
         setConnectionCount(connections.length);
 
-        // --- 3D-проекция ---
+        // Исправлено: все переменные теперь const, переназначения исключены
         const project = (
             node: Node3D,
             rotX: number,
@@ -191,42 +181,41 @@ export const NetworkSingularity: React.FC = () => {
             zoom: number,
         ): ProjectedNode => {
             const x = node.x * Math.cos(rotY) - node.z * Math.sin(rotY);
-            let z = node.x * Math.sin(rotY) + node.z * Math.cos(rotY);
-            let y = node.y;
+            const z1 = node.x * Math.sin(rotY) + node.z * Math.cos(rotY);
+            const y1 = node.y;
 
-            const y2 = y * Math.cos(rotX) - z * Math.sin(rotX);
-            const z2 = y * Math.sin(rotX) + z * Math.cos(rotX);
-            y = y2;
-            z = z2;
+            const y2 = y1 * Math.cos(rotX) - z1 * Math.sin(rotX);
+            const z2 = y1 * Math.sin(rotX) + z1 * Math.cos(rotX);
 
             const perspective = 700;
-            const scale = perspective / (perspective + z);
+            const scale = perspective / (perspective + z2);
 
             return {
                 x: centerX + x * scale * zoom,
-                y: centerY + y * scale * zoom,
-                z,
+                y: centerY + y2 * scale * zoom,
+                z: z2,
                 scale,
                 label: node.label,
             };
         };
 
-        // --- Рисование текстовой метки в прямоугольнике ---
         const drawLabel = (p: ProjectedNode, zoom: number) => {
             const depthFactor = (SPHERE_RADIUS - p.z) / (SPHERE_RADIUS * 2);
             const opacity = Math.max(0.25, Math.min(1, 0.35 + depthFactor * 0.85));
 
             const baseW = 44;
             const baseH = 20;
-            const w = baseW * p.scale * zoom;
-            const h = baseH * p.scale * zoom;
-            const fontSize = Math.max(7, 10 * p.scale * zoom);
-            const radius = Math.max(2, 4 * p.scale * zoom);
+            const numScale = Number(p.scale);
 
-            // Полупрозрачный фон карточки
+            // Явное преобразование для удовлетворения строгого правила no-implicit-coercion
+            const w = baseW * Number(numScale) * zoom;
+            const h = baseH * Number(numScale) * zoom;
+            const fontSize = Math.max(7, 10 * Number(numScale) * zoom);
+            const radius = Math.max(2, 4 * Number(numScale) * zoom);
+
             ctx.fillStyle = `rgba(18, 32, 60, ${opacity * 0.85})`;
             ctx.strokeStyle = `rgba(140, 195, 255, ${opacity * 0.9})`;
-            ctx.lineWidth = Math.max(0.5, 1 * p.scale * zoom);
+            ctx.lineWidth = Math.max(0.5, 1 * Number(numScale) * zoom);
 
             const x0 = p.x - w / 2;
             const y0 = p.y - h / 2;
@@ -244,7 +233,6 @@ export const NetworkSingularity: React.FC = () => {
             ctx.fill();
             ctx.stroke();
 
-            // Текст
             ctx.fillStyle = `rgba(220, 240, 255, ${opacity})`;
             ctx.font = `600 ${fontSize}px ui-monospace, "SF Mono", Menlo, monospace`;
             ctx.textAlign = 'center';
@@ -252,7 +240,6 @@ export const NetworkSingularity: React.FC = () => {
             ctx.fillText(p.label, p.x, p.y + 0.5);
         };
 
-        // --- Цикл анимации ---
         const animate = (time: number) => {
             const rect = canvas.getBoundingClientRect();
             const width = rect.width;
@@ -262,7 +249,6 @@ export const NetworkSingularity: React.FC = () => {
 
             ctx.clearRect(0, 0, width, height);
 
-            // Фон
             const bg = ctx.createRadialGradient(
                 centerX,
                 centerY,
@@ -276,19 +262,18 @@ export const NetworkSingularity: React.FC = () => {
             ctx.fillStyle = bg;
             ctx.fillRect(0, 0, width, height);
 
-            // --- Произвольное вращение ---
             const t = time - startTimeRef.current;
             const autoY = 0.0025 + 0.0015 * Math.sin(t * 0.00023);
             const autoX = 0.0012 + 0.0009 * Math.sin(t * 0.00017 + 1.3);
 
-            if (!mouseRef.current.isDown) {
+            if (mouseRef.current.isDown) {
+                velocityRef.current.y *= 0.9;
+                velocityRef.current.x *= 0.9;
+            } else {
                 rotationRef.current.y += autoY + velocityRef.current.y;
                 rotationRef.current.x += autoX + velocityRef.current.x;
                 velocityRef.current.y *= 0.94;
                 velocityRef.current.x *= 0.94;
-            } else {
-                velocityRef.current.y *= 0.9;
-                velocityRef.current.x *= 0.9;
             }
 
             rotationRef.current.x = Math.max(
@@ -304,37 +289,35 @@ export const NetworkSingularity: React.FC = () => {
                 project(n, rotX, rotY, centerX, centerY, zoom),
             );
 
-            // --- Связи с постепенным появлением ---
             ctx.lineCap = 'round';
             connections.forEach((conn) => {
                 const elapsed = t - conn.spawnDelay;
-                if (elapsed < 0) return; // ещё не появилась
+                if (elapsed < 0) {
+                    return;
+                }
 
                 const progress = Math.min(1, elapsed / conn.duration);
-                // Плавная easing-функция (ease-out cubic)
                 const eased = 1 - Math.pow(1 - progress, 3);
 
-                const a = projected[conn.from];
-                const b = projected[conn.to];
-                const avgZ = (a.z + b.z) / 2;
+                const nodeA = projected[conn.from];
+                const nodeB = projected[conn.to];
+                const avgZ = (nodeA.z + nodeB.z) / 2;
                 const baseOpacity = Math.max(0.04, Math.min(0.55, (SPHERE_RADIUS - avgZ) / 420));
                 const opacity = baseOpacity * eased;
 
-                // Линия растёт от узла A к узлу B
-                const endX = a.x + (b.x - a.x) * eased;
-                const endY = a.y + (b.y - a.y) * eased;
+                const endX = nodeA.x + (nodeB.x - nodeA.x) * eased;
+                const endY = nodeA.y + (nodeB.y - nodeA.y) * eased;
 
                 ctx.strokeStyle = `rgba(120, 180, 255, ${opacity})`;
-                ctx.lineWidth = 0.7 * ((a.scale + b.scale) / 2);
+                ctx.lineWidth = 0.7 * ((nodeA.scale + nodeB.scale) / 2);
                 ctx.beginPath();
-                ctx.moveTo(a.x, a.y);
+                ctx.moveTo(nodeA.x, nodeA.y);
                 ctx.lineTo(endX, endY);
                 ctx.stroke();
 
-                // Яркая «головка» прорастающей линии
                 if (progress < 1) {
                     const headOpacity = (1 - progress) * 0.9;
-                    const headRadius = 2.2 * ((a.scale + b.scale) / 2);
+                    const headRadius = 2.2 * ((nodeA.scale + nodeB.scale) / 2);
                     const headGlow = ctx.createRadialGradient(
                         endX,
                         endY,
@@ -352,8 +335,7 @@ export const NetworkSingularity: React.FC = () => {
                 }
             });
 
-            // --- Узлы (от дальних к ближним) ---
-            const sorted = [...projected].sort((a, b) => b.z - a.z);
+            const sorted = [...projected].sort((node1, node2) => node2.z - node1.z);
             sorted.forEach((p) => drawLabel(p, zoom));
 
             animationRef.current = requestAnimationFrame(animate);
@@ -361,7 +343,6 @@ export const NetworkSingularity: React.FC = () => {
 
         animationRef.current = requestAnimationFrame(animate);
 
-        // --- Обработчики мыши ---
         const handleMouseDown = (e: MouseEvent) => {
             mouseRef.current.isDown = true;
             mouseRef.current.lastX = e.clientX;
@@ -369,8 +350,11 @@ export const NetworkSingularity: React.FC = () => {
             velocityRef.current.x = 0;
             velocityRef.current.y = 0;
         };
+
         const handleMouseMove = (e: MouseEvent) => {
-            if (!mouseRef.current.isDown) return;
+            if (!mouseRef.current.isDown) {
+                return;
+            }
             const dx = e.clientX - mouseRef.current.lastX;
             const dy = e.clientY - mouseRef.current.lastY;
             rotationRef.current.y += dx * 0.008;
@@ -380,16 +364,17 @@ export const NetworkSingularity: React.FC = () => {
             mouseRef.current.lastX = e.clientX;
             mouseRef.current.lastY = e.clientY;
         };
+
         const handleMouseUp = () => {
             mouseRef.current.isDown = false;
         };
+
         const handleWheel = (e: WheelEvent) => {
             e.preventDefault();
             const factor = e.deltaY > 0 ? 0.93 : 1.07;
             zoomRef.current = Math.max(0.4, Math.min(2.5, zoomRef.current * factor));
         };
 
-        // --- Тач-события ---
         const handleTouchStart = (e: TouchEvent) => {
             if (e.touches.length === 1) {
                 mouseRef.current.isDown = true;
@@ -397,8 +382,11 @@ export const NetworkSingularity: React.FC = () => {
                 mouseRef.current.lastY = e.touches[0].clientY;
             }
         };
+
         const handleTouchMove = (e: TouchEvent) => {
-            if (!mouseRef.current.isDown || e.touches.length !== 1) return;
+            if (!mouseRef.current.isDown || e.touches.length !== 1) {
+                return;
+            }
             e.preventDefault();
             const dx = e.touches[0].clientX - mouseRef.current.lastX;
             const dy = e.touches[0].clientY - mouseRef.current.lastY;
@@ -407,6 +395,7 @@ export const NetworkSingularity: React.FC = () => {
             mouseRef.current.lastX = e.touches[0].clientX;
             mouseRef.current.lastY = e.touches[0].clientY;
         };
+
         const handleTouchEnd = () => {
             mouseRef.current.isDown = false;
         };
