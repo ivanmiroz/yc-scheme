@@ -38,10 +38,12 @@ export const useNetworkAnimation = (
     const zoomRef = useRef(1);
     const velocityRef = useRef({x: 0, y: 0});
 
-    // Кэш для градиента фона, чтобы не создавать его 60 раз в секунду
+    // Кэш для градиента фона
     const bgGradientRef = useRef<CanvasGradient | null>(null);
-    // Троттлинг для обновления стейта, чтобы не вызывать ре-рендеры React 60 раз в секунду
+    // Троттлинг для обновления стейта
     const lastStatsUpdateRef = useRef(0);
+    // Кэш DPR для производительности
+    const dprRef = useRef(1);
 
     const updateSubtitle = (text: string, isCritical: boolean) => {
         const subtitleEl = subtitleRef.current;
@@ -78,18 +80,16 @@ export const useNetworkAnimation = (
 
         const resize = () => {
             const rect = canvas.getBoundingClientRect();
-            // КРИТИЧЕСКАЯ ОПТИМИЗАЦИЯ ДЛЯ 4K: Ограничиваем внутреннее разрешение.
-            // Рендеринг в 8K (при DPR=2) убьёт производительность. Аппаратный апскейл
-            // браузером до 4K выглядит идентично, но работает в разы быстрее.
+            // Ограничиваем внутреннее разрешение для производительности на 4K
             const MAX_DIMENSION = 2560;
             const dpr = Math.min(
                 window.devicePixelRatio || 1,
                 MAX_DIMENSION / Math.max(rect.width, rect.height),
             );
 
-            canvas.width = rect.width * dpr;
-            canvas.height = rect.height * dpr;
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            dprRef.current = dpr;
+            canvas.width = Math.floor(rect.width * dpr);
+            canvas.height = Math.floor(rect.height * dpr);
 
             // Инвалидируем кэш градиента при изменении размера
             bgGradientRef.current = null;
@@ -120,6 +120,15 @@ export const useNetworkAnimation = (
             const centerX = width / 2;
             const centerY = height / 2;
 
+            // ПОЛНАЯ очистка canvas для предотвращения артефактов
+            ctx.setTransform(1, 0, 0, 1, 0, 0); // Сброс трансформации
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Явная заливка фоном для гарантии отсутствия артефактов
+            ctx.fillStyle = '#05070f';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.setTransform(dprRef.current, 0, 0, dprRef.current, 0, 0); // Восстановление
             ctx.clearRect(0, 0, width, height);
 
             const t = time - startTimeRef.current;
@@ -143,9 +152,9 @@ export const useNetworkAnimation = (
 
             if (fadeOpacity <= 0 && t >= COLLAPSE_END_MS) {
                 if (t < COLLAPSE_END_MS + PAUSE_BETWEEN_CYCLES_MS) {
-                    ctx.globalAlpha = 1;
+                    ctx.setTransform(1, 0, 0, 1, 0, 0);
                     ctx.fillStyle = '#05070f';
-                    ctx.fillRect(0, 0, width, height);
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
                     animationRef.current = requestAnimationFrame(animate);
                     return undefined;
                 }
@@ -163,7 +172,7 @@ export const useNetworkAnimation = (
 
             ctx.globalAlpha = fadeOpacity;
 
-            // Используем кэшированный градиент вместо создания нового каждый кадр
+            // Используем кэшированный градиент
             if (!bgGradientRef.current) {
                 const bg = ctx.createRadialGradient(
                     centerX,
@@ -202,7 +211,7 @@ export const useNetworkAnimation = (
             const rotY = rotationRef.current.y;
             const zoom = zoomRef.current;
 
-            // Добавляем исходный индекс для детерминированного шейка без Math.random
+            // Добавляем исходный индекс для детерминированного шейка
             const projected: ProjectedNodeWithIndex[] = nodes.map((n, i) => ({
                 ...project(n, rotX, rotY, centerX, centerY, zoom),
                 index: i,
@@ -251,7 +260,7 @@ export const useNetworkAnimation = (
                 ctx.stroke();
 
                 if (progress < 1 && !isRed) {
-                    // ОПТИМИЗАЦИЯ: shadowBlur работает на GPU и в разы быстрее createRadialGradient
+                    // Используем shadowBlur вместо createRadialGradient
                     const headOpacity = (1 - progress) * 0.9;
                     const headRadius = 2.2 * ((projectedA.scale + projectedB.scale) / 2);
 
@@ -266,10 +275,15 @@ export const useNetworkAnimation = (
                 }
             });
 
-            // Сортируем in-place, чтобы избежать аллокации памяти через [...projected]
+            // Сортируем in-place
             projected.sort((node1, node2) => node2.z - node1.z);
 
             projected.forEach((p) => {
+                // ПРОВЕРКА ГРАНИЦ - пропускаем узлы за пределами canvas
+                if (p.y < -100 || p.y > height + 100 || p.x < -100 || p.x > width + 100) {
+                    return;
+                }
+
                 const isRed = isColoring && t >= p.colorDelay;
                 const appeared = drawLabel(
                     ctx,
@@ -286,7 +300,7 @@ export const useNetworkAnimation = (
                 }
             });
 
-            // ОПТИМИЗАЦИЯ: Обновляем стейт не чаще 100мс, чтобы не нагружать React ре-рендерами
+            // Обновляем стейт не чаще 100мс
             if (time - lastStatsUpdateRef.current > 100) {
                 setNodeCount(visibleNodes);
                 setConnectionCount(visibleConnections);

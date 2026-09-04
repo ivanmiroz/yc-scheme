@@ -1,3 +1,5 @@
+// src/components/ScaleTabs/ScaleTabs.scss
+
 @use '../../styles/variables.scss' as variables;
 
 .scale-tabs {
@@ -6,7 +8,7 @@
     height: 100%;
     width: 100%;
     box-sizing: border-box;
-    overflow: hidden;
+    overflow: visible; // ИЗМЕНЕНО: было hidden, теперь visible чтобы текст не обрезался
 
     &__content {
         flex: 1 1 auto;
@@ -44,6 +46,7 @@
     &-list {
         box-shadow: none;
         justify-content: center;
+        overflow: visible; // ДОБАВЛЕНО: чтобы активный таб не обрезался
     }
 
     &__content {
@@ -60,6 +63,7 @@
         font-size: var(--g-text-body-1-font-size);
         overflow: visible;
         padding: var(--g-spacing-2) var(--g-spacing-4);
+        line-height: 1.2; // ДОБАВЛЕНО: для корректного отображения текста
 
         .g-tab_active & {
             cursor: default;
@@ -67,6 +71,7 @@
             font-weight: variables.$g-text-ultra-bold;
             text-transform: uppercase;
             transform: translateY(-6px);
+            line-height: 1.1; // ДОБАВЛЕНО: уменьшаем для крупного текста
         }
     }
 }
