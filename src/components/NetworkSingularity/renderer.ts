@@ -1,3 +1,4 @@
+// src/components/NetworkSingularity/renderer.ts
 /* eslint-disable no-param-reassign */
 import type {ProjectedNode} from './types';
 import {
@@ -14,14 +15,17 @@ import {
     SPHERE_RADIUS,
 } from './constants';
 
+type ProjectedNodeWithIndex = ProjectedNode & {index: number};
+
 export const drawLabel = (
     ctx: CanvasRenderingContext2D,
-    p: ProjectedNode,
+    p: ProjectedNodeWithIndex,
     zoom: number,
     currentTime: number,
     shakeIntensity: number,
     isRed: boolean,
     fadeOpacity: number,
+    index: number,
 ): boolean => {
     const elapsed = currentTime - p.spawnDelay;
     if (elapsed < 0) {
@@ -36,8 +40,11 @@ export const drawLabel = (
     const baseOpacity = Math.max(0.25, Math.min(1, 0.35 + depthFactor * 0.85));
     const opacity = baseOpacity * eased * fadeOpacity;
 
-    const shakeX = shakeIntensity > 0 ? (Math.random() - 0.5) * shakeIntensity : 0;
-    const shakeY = shakeIntensity > 0 ? (Math.random() - 0.5) * shakeIntensity : 0;
+    // ОПТИМИЗАЦИЯ: Детерминированный шейк вместо Math.random() каждый кадр
+    const shakeX =
+        shakeIntensity > 0 ? Math.sin(currentTime * 0.005 + index * 13.7) * shakeIntensity : 0;
+    const shakeY =
+        shakeIntensity > 0 ? Math.cos(currentTime * 0.007 + index * 7.3) * shakeIntensity : 0;
 
     const numScale = Number(p.scale);
 
@@ -63,19 +70,29 @@ export const drawLabel = (
 
     const x0 = drawX - w / 2;
     const y0 = drawY - h / 2;
-    ctx.beginPath();
-    ctx.moveTo(x0 + radius, y0);
-    ctx.lineTo(x0 + w - radius, y0);
-    ctx.quadraticCurveTo(x0 + w, y0, x0 + w, y0 + radius);
-    ctx.lineTo(x0 + w, y0 + h - radius);
-    ctx.quadraticCurveTo(x0 + w, y0 + h, x0 + w - radius, y0 + h);
-    ctx.lineTo(x0 + radius, y0 + h);
-    ctx.quadraticCurveTo(x0, y0 + h, x0, y0 + h - radius);
-    ctx.lineTo(x0, y0 + radius);
-    ctx.quadraticCurveTo(x0, y0, x0 + radius, y0);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+
+    // ОПТИМИЗАЦИЯ: Нативный roundRect работает на уровне браузера и гораздо быстрее ручных кривых
+    if (typeof ctx.roundRect === 'function') {
+        ctx.beginPath();
+        ctx.roundRect(x0, y0, w, h, radius);
+        ctx.fill();
+        ctx.stroke();
+    } else {
+        // Fallback для очень старых браузеров
+        ctx.beginPath();
+        ctx.moveTo(x0 + radius, y0);
+        ctx.lineTo(x0 + w - radius, y0);
+        ctx.quadraticCurveTo(x0 + w, y0, x0 + w, y0 + radius);
+        ctx.lineTo(x0 + w, y0 + h - radius);
+        ctx.quadraticCurveTo(x0 + w, y0 + h, x0 + w - radius, y0 + h);
+        ctx.lineTo(x0 + radius, y0 + h);
+        ctx.quadraticCurveTo(x0, y0 + h, x0, y0 + h - radius);
+        ctx.lineTo(x0, y0 + radius);
+        ctx.quadraticCurveTo(x0, y0, x0 + radius, y0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+    }
 
     ctx.fillStyle = textColor;
     ctx.font = `600 ${fontSize}px ui-monospace, "SF Mono", Menlo, monospace`;

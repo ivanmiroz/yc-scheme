@@ -21,6 +21,8 @@ interface AnimationState {
     connectionCount: number;
 }
 
+type ProjectedNodeWithIndex = ProjectedNode & {index: number};
+
 export const useNetworkAnimation = (
     canvasRef: React.RefObject<HTMLCanvasElement | null>,
     subtitleRef: React.RefObject<HTMLDivElement | null>,
@@ -36,6 +38,11 @@ export const useNetworkAnimation = (
     const zoomRef = useRef(1);
     const velocityRef = useRef({x: 0, y: 0});
 
+    // Кэш для градиента фона, чтобы не создавать его 60 раз в секунду
+    const bgGradientRef = useRef<CanvasGradient | null>(null);
+    // Троттлинг для обновления стейта, чтобы не вызывать ре-рендеры React 60 раз в секунду
+    const lastStatsUpdateRef = useRef(0);
+
     const updateSubtitle = (text: string, isCritical: boolean) => {
         const subtitleEl = subtitleRef.current;
         const indicatorEl = indicatorRef.current;
@@ -47,7 +54,6 @@ export const useNetworkAnimation = (
             subtitleEl.style.color = '#ff5050';
             subtitleEl.style.opacity = '1';
             subtitleEl.style.textShadow = '0 0 10px rgba(255, 80, 80, 0.5)';
-
             indicatorEl.style.background = '#ff5050';
             indicatorEl.style.boxShadow = '0 0 8px rgba(255, 80, 80, 0.8)';
             indicatorEl.style.animation = 'pulse-dot 1s ease-in-out infinite';
@@ -55,7 +61,6 @@ export const useNetworkAnimation = (
             subtitleEl.style.color = '#fff';
             subtitleEl.style.opacity = '0.6';
             subtitleEl.style.textShadow = 'none';
-
             indicatorEl.style.background = '#7ab8ff';
             indicatorEl.style.boxShadow = 'none';
             indicatorEl.style.animation = 'none';
@@ -73,11 +78,23 @@ export const useNetworkAnimation = (
 
         const resize = () => {
             const rect = canvas.getBoundingClientRect();
-            const dpr = window.devicePixelRatio || 1;
+            // КРИТИЧЕСКАЯ ОПТИМИЗАЦИЯ ДЛЯ 4K: Ограничиваем внутреннее разрешение.
+            // Рендеринг в 8K (при DPR=2) убьёт производительность. Аппаратный апскейл
+            // браузером до 4K выглядит идентично, но работает в разы быстрее.
+            const MAX_DIMENSION = 2560;
+            const dpr = Math.min(
+                window.devicePixelRatio || 1,
+                MAX_DIMENSION / Math.max(rect.width, rect.height),
+            );
+
             canvas.width = rect.width * dpr;
             canvas.height = rect.height * dpr;
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            // Инвалидируем кэш градиента при изменении размера
+            bgGradientRef.current = null;
         };
+
         resize();
         window.addEventListener('resize', resize);
 
@@ -146,17 +163,21 @@ export const useNetworkAnimation = (
 
             ctx.globalAlpha = fadeOpacity;
 
-            const bg = ctx.createRadialGradient(
-                centerX,
-                centerY,
-                0,
-                centerX,
-                centerY,
-                Math.max(width, height) / 1.2,
-            );
-            bg.addColorStop(0, '#0f1a35');
-            bg.addColorStop(1, '#05070f');
-            ctx.fillStyle = bg;
+            // Используем кэшированный градиент вместо создания нового каждый кадр
+            if (!bgGradientRef.current) {
+                const bg = ctx.createRadialGradient(
+                    centerX,
+                    centerY,
+                    0,
+                    centerX,
+                    centerY,
+                    Math.max(width, height) / 1.2,
+                );
+                bg.addColorStop(0, '#0f1a35');
+                bg.addColorStop(1, '#05070f');
+                bgGradientRef.current = bg;
+            }
+            ctx.fillStyle = bgGradientRef.current;
             ctx.fillRect(0, 0, width, height);
 
             const autoY = 0.00125 + 0.00075 * Math.sin(t * 0.00023);
@@ -181,9 +202,11 @@ export const useNetworkAnimation = (
             const rotY = rotationRef.current.y;
             const zoom = zoomRef.current;
 
-            const projected: ProjectedNode[] = nodes.map((n) =>
-                project(n, rotX, rotY, centerX, centerY, zoom),
-            );
+            // Добавляем исходный индекс для детерминированного шейка без Math.random
+            const projected: ProjectedNodeWithIndex[] = nodes.map((n, i) => ({
+                ...project(n, rotX, rotY, centerX, centerY, zoom),
+                index: i,
+            }));
 
             const shakeIntensity = isShaking
                 ? Math.sin(((t - shakeStart) / SHAKE_DURATION_MS) * Math.PI) * 10
@@ -197,14 +220,10 @@ export const useNetworkAnimation = (
                 const nodeA = nodes[conn.from];
                 const nodeB = nodes[conn.to];
 
-                if (t < nodeA.spawnDelay || t < nodeB.spawnDelay) {
-                    return;
-                }
+                if (t < nodeA.spawnDelay || t < nodeB.spawnDelay) return;
 
                 const elapsed = t - conn.spawnDelay;
-                if (elapsed < 0) {
-                    return;
-                }
+                if (elapsed < 0) return;
 
                 visibleConnections++;
 
@@ -232,36 +251,47 @@ export const useNetworkAnimation = (
                 ctx.stroke();
 
                 if (progress < 1 && !isRed) {
+                    // ОПТИМИЗАЦИЯ: shadowBlur работает на GPU и в разы быстрее createRadialGradient
                     const headOpacity = (1 - progress) * 0.9;
                     const headRadius = 2.2 * ((projectedA.scale + projectedB.scale) / 2);
-                    const headGlow = ctx.createRadialGradient(
-                        endX,
-                        endY,
-                        0,
-                        endX,
-                        endY,
-                        headRadius * 4,
-                    );
-                    headGlow.addColorStop(0, `rgba(200, 230, 255, ${headOpacity})`);
-                    headGlow.addColorStop(1, 'rgba(200, 230, 255, 0)');
-                    ctx.fillStyle = headGlow;
+
+                    ctx.save();
+                    ctx.shadowBlur = headRadius * 4;
+                    ctx.shadowColor = `rgba(200, 230, 255, ${headOpacity})`;
+                    ctx.fillStyle = `rgba(200, 230, 255, ${headOpacity})`;
                     ctx.beginPath();
-                    ctx.arc(endX, endY, headRadius * 4, 0, Math.PI * 2);
+                    ctx.arc(endX, endY, headRadius, 0, Math.PI * 2);
                     ctx.fill();
+                    ctx.restore();
                 }
             });
 
-            const sorted = [...projected].sort((node1, node2) => node2.z - node1.z);
-            sorted.forEach((p) => {
+            // Сортируем in-place, чтобы избежать аллокации памяти через [...projected]
+            projected.sort((node1, node2) => node2.z - node1.z);
+
+            projected.forEach((p) => {
                 const isRed = isColoring && t >= p.colorDelay;
-                const appeared = drawLabel(ctx, p, zoom, t, shakeIntensity, isRed, fadeOpacity);
+                const appeared = drawLabel(
+                    ctx,
+                    p,
+                    zoom,
+                    t,
+                    shakeIntensity,
+                    isRed,
+                    fadeOpacity,
+                    p.index,
+                );
                 if (appeared) {
                     visibleNodes++;
                 }
             });
 
-            setNodeCount((prev) => (prev === visibleNodes ? prev : visibleNodes));
-            setConnectionCount((prev) => (prev === visibleConnections ? prev : visibleConnections));
+            // ОПТИМИЗАЦИЯ: Обновляем стейт не чаще 100мс, чтобы не нагружать React ре-рендерами
+            if (time - lastStatsUpdateRef.current > 100) {
+                setNodeCount(visibleNodes);
+                setConnectionCount(visibleConnections);
+                lastStatsUpdateRef.current = time;
+            }
 
             ctx.globalAlpha = 1;
             animationRef.current = requestAnimationFrame(animate);
@@ -279,9 +309,7 @@ export const useNetworkAnimation = (
         };
 
         const handleMouseMove = (e: MouseEvent) => {
-            if (!mouseRef.current.isDown) {
-                return;
-            }
+            if (!mouseRef.current.isDown) return;
             const dx = e.clientX - mouseRef.current.lastX;
             const dy = e.clientY - mouseRef.current.lastY;
             rotationRef.current.y += dx * 0.008;
@@ -311,9 +339,7 @@ export const useNetworkAnimation = (
         };
 
         const handleTouchMove = (e: TouchEvent) => {
-            if (!mouseRef.current.isDown || e.touches.length !== 1) {
-                return;
-            }
+            if (!mouseRef.current.isDown || e.touches.length !== 1) return;
             e.preventDefault();
             const dx = e.touches[0].clientX - mouseRef.current.lastX;
             const dy = e.touches[0].clientY - mouseRef.current.lastY;
@@ -331,12 +357,8 @@ export const useNetworkAnimation = (
         window.addEventListener('mousemove', handleMouseMove);
         window.addEventListener('mouseup', handleMouseUp);
         canvas.addEventListener('wheel', handleWheel, {passive: false});
-        canvas.addEventListener('touchstart', handleTouchStart, {
-            passive: true,
-        });
-        canvas.addEventListener('touchmove', handleTouchMove, {
-            passive: false,
-        });
+        canvas.addEventListener('touchstart', handleTouchStart, {passive: true});
+        canvas.addEventListener('touchmove', handleTouchMove, {passive: false});
         canvas.addEventListener('touchend', handleTouchEnd);
 
         return () => {
