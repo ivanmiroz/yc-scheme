@@ -28,6 +28,7 @@
         flex: 1 1 auto;
         display: flex;
         flex-direction: column;
+        height: 100%;
         min-height: 0;
     }
 }
@@ -68,4 +69,8 @@
             transform: translateY(-6px);
         }
     }
+}
+
+.g-tab-panel {
+    height: 100%;
 }

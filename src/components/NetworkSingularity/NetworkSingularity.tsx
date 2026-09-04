@@ -13,6 +13,9 @@ interface Node3D {
     y: number;
     z: number;
     label: string;
+    spawnDelay: number;
+    duration: number;
+    colorDelay: number;
 }
 
 interface Connection {
@@ -20,6 +23,7 @@ interface Connection {
     to: number;
     spawnDelay: number;
     duration: number;
+    colorDelay: number;
 }
 
 interface ProjectedNode {
@@ -28,6 +32,9 @@ interface ProjectedNode {
     z: number;
     scale: number;
     label: string;
+    spawnDelay: number;
+    duration: number;
+    colorDelay: number;
 }
 
 const LABELS = [
@@ -67,28 +74,24 @@ const LABELS = [
     'Nginx',
     'Docker',
     'Linux',
-    'CUDA',
-    'TPU',
-    'NVMe',
-    'FPGA',
-    'ASIC',
-    'BGP',
-    'OSPF',
-    'VPC',
-    'IAM',
-    'CI/CD',
-    'Git',
-    'Prom',
-    'Graf',
-    'ELK',
 ];
 
-const NODE_COUNT = 50;
-const MAX_CONNECTIONS = 100;
+const NODE_COUNT = 36;
+const MAX_CONNECTIONS = 57;
 const SPHERE_RADIUS = 200;
 const CONNECTION_DISTANCE = 180;
 const SPAWN_WINDOW_MS = 6000;
 const LINE_GROW_MS = 1500;
+const NODE_SPAWN_WINDOW_MS = 3500;
+const NODE_GROW_MS = 800;
+
+const COLORING_START_MS = 8000;
+const COLORING_DURATION_MS = 2000;
+const SHAKE_DURATION_MS = 500;
+const FADE_DURATION_MS = 1500;
+const COLLAPSE_START_MS = COLORING_START_MS + COLORING_DURATION_MS + SHAKE_DURATION_MS;
+const COLLAPSE_END_MS = COLLAPSE_START_MS + FADE_DURATION_MS;
+const PAUSE_BETWEEN_CYCLES_MS = 1200;
 
 export const NetworkSingularity: React.FC = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -96,6 +99,9 @@ export const NetworkSingularity: React.FC = () => {
     const startTimeRef = useRef<number>(0);
     const [nodeCount, setNodeCount] = useState(0);
     const [connectionCount, setConnectionCount] = useState(0);
+    const [subtitleText, setSubtitleText] = useState('Формирование сети');
+    const [isCritical, setIsCritical] = useState(false);
+    const [subtitleKey, setSubtitleKey] = useState(0);
 
     const mouseRef = useRef({isDown: false, lastX: 0, lastY: 0});
     const rotationRef = useRef({x: 0.3, y: 0});
@@ -121,57 +127,110 @@ export const NetworkSingularity: React.FC = () => {
         resize();
         window.addEventListener('resize', resize);
 
-        const nodes: Node3D[] = [];
-        for (let i = 0; i < NODE_COUNT; i++) {
-            const theta = Math.random() * Math.PI * 2;
-            const phi = Math.acos(2 * Math.random() - 1);
-            const r = SPHERE_RADIUS * Math.cbrt(Math.random());
+        let nodes: Node3D[] = [];
+        let connections: Connection[] = [];
+        let currentPhase = 'building';
 
-            nodes.push({
-                x: r * Math.sin(phi) * Math.cos(theta),
-                y: r * Math.sin(phi) * Math.sin(theta),
-                z: r * Math.cos(phi),
-                label: LABELS[i % LABELS.length],
-            });
-        }
+        const initScene = () => {
+            nodes = [];
+            connections = [];
+            currentPhase = 'building';
+            setSubtitleText('Формирование сети');
+            setIsCritical(false);
+            setSubtitleKey((prev) => prev + 1);
 
-        const candidates: {from: number; to: number; dist: number}[] = [];
-        for (let i = 0; i < nodes.length; i++) {
-            for (let j = i + 1; j < nodes.length; j++) {
-                const dx = nodes[i].x - nodes[j].x;
-                const dy = nodes[i].y - nodes[j].y;
-                const dz = nodes[i].z - nodes[j].z;
-                const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-                if (dist < CONNECTION_DISTANCE) {
-                    candidates.push({from: i, to: j, dist});
+            for (let i = 0; i < NODE_COUNT; i++) {
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                const r = SPHERE_RADIUS * Math.cbrt(Math.random());
+
+                const baseDelay = (i / Math.max(1, NODE_COUNT - 1)) * NODE_SPAWN_WINDOW_MS;
+                const randomOffset = (Math.random() - 0.5) * 300;
+
+                nodes.push({
+                    x: r * Math.sin(phi) * Math.cos(theta),
+                    y: r * Math.sin(phi) * Math.sin(theta),
+                    z: r * Math.cos(phi),
+                    label: LABELS[i % LABELS.length],
+                    spawnDelay: Math.max(0, baseDelay + randomOffset),
+                    duration: NODE_GROW_MS + Math.random() * 300,
+                    colorDelay: 0,
+                });
+            }
+
+            const connectionSet = new Set<string>();
+
+            for (let i = 1; i < nodes.length; i++) {
+                const candidates: {to: number; dist: number}[] = [];
+                for (let j = 0; j < i; j++) {
+                    const dx = nodes[i].x - nodes[j].x;
+                    const dy = nodes[i].y - nodes[j].y;
+                    const dz = nodes[i].z - nodes[j].z;
+                    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                    if (dist < CONNECTION_DISTANCE) {
+                        candidates.push({to: j, dist});
+                    }
+                }
+
+                candidates.sort((a, c) => a.dist - c.dist);
+
+                if (candidates.length > 0) {
+                    const key = `${Math.min(i, candidates[0].to)}-${Math.max(i, candidates[0].to)}`;
+                    if (!connectionSet.has(key)) {
+                        connectionSet.add(key);
+                        connections.push({
+                            from: i,
+                            to: candidates[0].to,
+                            spawnDelay: 0,
+                            duration: 0,
+                            colorDelay: 0,
+                        });
+                    }
+                }
+
+                for (
+                    let k = 1;
+                    k < candidates.length && connections.length < MAX_CONNECTIONS;
+                    k++
+                ) {
+                    const key = `${Math.min(i, candidates[k].to)}-${Math.max(i, candidates[k].to)}`;
+                    if (!connectionSet.has(key)) {
+                        connectionSet.add(key);
+                        connections.push({
+                            from: i,
+                            to: candidates[k].to,
+                            spawnDelay: 0,
+                            duration: 0,
+                            colorDelay: 0,
+                        });
+                    }
                 }
             }
-        }
 
-        candidates.sort((a, c) => a.dist - c.dist);
+            for (let i = connections.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [connections[i], connections[j]] = [connections[j], connections[i]];
+            }
 
-        const picked = candidates.slice(0, MAX_CONNECTIONS);
-        for (let i = picked.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [picked[i], picked[j]] = [picked[j], picked[i]];
-        }
+            connections.forEach((conn, idx) => {
+                const spawnDelay =
+                    (idx / Math.max(1, connections.length - 1)) * SPAWN_WINDOW_MS +
+                    (Math.random() - 0.5) * 400;
+                conn.spawnDelay = Math.max(0, spawnDelay);
+                conn.duration = LINE_GROW_MS + Math.random() * 400;
+                conn.colorDelay = COLORING_START_MS + Math.random() * COLORING_DURATION_MS;
+            });
 
-        const connections: Connection[] = picked.map((c, idx) => {
-            const spawnDelay =
-                (idx / Math.max(1, picked.length - 1)) * SPAWN_WINDOW_MS +
-                (Math.random() - 0.5) * 400;
-            return {
-                from: c.from,
-                to: c.to,
-                spawnDelay: Math.max(0, spawnDelay),
-                duration: LINE_GROW_MS + Math.random() * 400,
-            };
-        });
+            nodes.forEach((node) => {
+                node.colorDelay = COLORING_START_MS + Math.random() * COLORING_DURATION_MS;
+            });
 
-        setNodeCount(nodes.length);
-        setConnectionCount(connections.length);
+            setNodeCount(0);
+            setConnectionCount(0);
+        };
 
-        // Исправлено: все переменные теперь const, переназначения исключены
+        initScene();
+
         const project = (
             node: Node3D,
             rotX: number,
@@ -196,29 +255,64 @@ export const NetworkSingularity: React.FC = () => {
                 z: z2,
                 scale,
                 label: node.label,
+                spawnDelay: node.spawnDelay,
+                duration: node.duration,
+                colorDelay: node.colorDelay,
             };
         };
 
-        const drawLabel = (p: ProjectedNode, zoom: number) => {
+        const drawLabel = (
+            p: ProjectedNode,
+            zoom: number,
+            currentTime: number,
+            shakeIntensity: number,
+            isRed: boolean,
+            fadeOpacity: number,
+        ) => {
+            const elapsed = currentTime - p.spawnDelay;
+            if (elapsed < 0) {
+                return false;
+            }
+
+            const progress = Math.min(1, elapsed / p.duration);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            const appearScale = 0.3 + 0.7 * eased;
+
             const depthFactor = (SPHERE_RADIUS - p.z) / (SPHERE_RADIUS * 2);
-            const opacity = Math.max(0.25, Math.min(1, 0.35 + depthFactor * 0.85));
+            const baseOpacity = Math.max(0.25, Math.min(1, 0.35 + depthFactor * 0.85));
+            const opacity = baseOpacity * eased * fadeOpacity;
+
+            const shakeX = shakeIntensity > 0 ? (Math.random() - 0.5) * shakeIntensity : 0;
+            const shakeY = shakeIntensity > 0 ? (Math.random() - 0.5) * shakeIntensity : 0;
 
             const baseW = 44;
             const baseH = 20;
             const numScale = Number(p.scale);
 
-            // Явное преобразование для удовлетворения строгого правила no-implicit-coercion
-            const w = baseW * Number(numScale) * zoom;
-            const h = baseH * Number(numScale) * zoom;
-            const fontSize = Math.max(7, 10 * Number(numScale) * zoom);
-            const radius = Math.max(2, 4 * Number(numScale) * zoom);
+            const w = baseW * Number(numScale) * zoom * appearScale;
+            const h = baseH * Number(numScale) * zoom * appearScale;
+            const fontSize = Math.max(7, 10 * Number(numScale) * zoom * appearScale);
+            const radius = Math.max(2, 4 * Number(numScale) * zoom * appearScale);
 
-            ctx.fillStyle = `rgba(18, 32, 60, ${opacity * 0.85})`;
-            ctx.strokeStyle = `rgba(140, 195, 255, ${opacity * 0.9})`;
-            ctx.lineWidth = Math.max(0.5, 1 * Number(numScale) * zoom);
+            const drawX = p.x + shakeX;
+            const drawY = p.y + shakeY;
 
-            const x0 = p.x - w / 2;
-            const y0 = p.y - h / 2;
+            const bgColor = isRed
+                ? `rgba(60, 18, 18, ${opacity * 0.85})`
+                : `rgba(18, 32, 60, ${opacity * 0.85})`;
+            const borderColor = isRed
+                ? `rgba(255, 80, 80, ${opacity * 0.9})`
+                : `rgba(140, 195, 255, ${opacity * 0.9})`;
+            const textColor = isRed
+                ? `rgba(255, 220, 220, ${opacity})`
+                : `rgba(220, 240, 255, ${opacity})`;
+
+            ctx.fillStyle = bgColor;
+            ctx.strokeStyle = borderColor;
+            ctx.lineWidth = Math.max(0.5, 1 * Number(numScale) * zoom * appearScale);
+
+            const x0 = drawX - w / 2;
+            const y0 = drawY - h / 2;
             ctx.beginPath();
             ctx.moveTo(x0 + radius, y0);
             ctx.lineTo(x0 + w - radius, y0);
@@ -233,11 +327,13 @@ export const NetworkSingularity: React.FC = () => {
             ctx.fill();
             ctx.stroke();
 
-            ctx.fillStyle = `rgba(220, 240, 255, ${opacity})`;
+            ctx.fillStyle = textColor;
             ctx.font = `600 ${fontSize}px ui-monospace, "SF Mono", Menlo, monospace`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(p.label, p.x, p.y + 0.5);
+            ctx.fillText(p.label, drawX, drawY + 0.5);
+
+            return true;
         };
 
         const animate = (time: number) => {
@@ -248,6 +344,51 @@ export const NetworkSingularity: React.FC = () => {
             const centerY = height / 2;
 
             ctx.clearRect(0, 0, width, height);
+
+            const t = time - startTimeRef.current;
+
+            const isColoring = t >= COLORING_START_MS;
+            const shakeStart = COLORING_START_MS + COLORING_DURATION_MS;
+            const isShaking = t >= shakeStart && t < COLLAPSE_START_MS;
+            const isFading = t >= COLLAPSE_START_MS;
+
+            if (t >= COLLAPSE_START_MS && currentPhase !== 'collapsing') {
+                currentPhase = 'collapsing';
+                setSubtitleText('Распад сети');
+                setIsCritical(true);
+                setSubtitleKey((prev) => prev + 1);
+            } else if (t >= COLORING_START_MS && currentPhase !== 'coloring') {
+                currentPhase = 'coloring';
+                setSubtitleText('Критическая связь');
+                setIsCritical(true);
+                setSubtitleKey((prev) => prev + 1);
+            }
+
+            const fadeOpacity = isFading
+                ? Math.max(0, 1 - (t - COLLAPSE_START_MS) / FADE_DURATION_MS)
+                : 1;
+
+            if (fadeOpacity <= 0 && t >= COLLAPSE_END_MS) {
+                if (t < COLLAPSE_END_MS + PAUSE_BETWEEN_CYCLES_MS) {
+                    ctx.globalAlpha = 1;
+                    ctx.fillStyle = '#05070f';
+                    ctx.fillRect(0, 0, width, height);
+                    animationRef.current = requestAnimationFrame(animate);
+                    return undefined;
+                }
+
+                startTimeRef.current = time;
+                initScene();
+
+                rotationRef.current = {x: 0.3, y: 0};
+                zoomRef.current = 1;
+                velocityRef.current = {x: 0, y: 0};
+
+                animationRef.current = requestAnimationFrame(animate);
+                return undefined;
+            }
+
+            ctx.globalAlpha = fadeOpacity;
 
             const bg = ctx.createRadialGradient(
                 centerX,
@@ -262,11 +403,10 @@ export const NetworkSingularity: React.FC = () => {
             ctx.fillStyle = bg;
             ctx.fillRect(0, 0, width, height);
 
-            const t = time - startTimeRef.current;
-            const autoY = 0.0025 + 0.0015 * Math.sin(t * 0.00023);
-            const autoX = 0.0012 + 0.0009 * Math.sin(t * 0.00017 + 1.3);
+            const autoY = 0.00125 + 0.00075 * Math.sin(t * 0.00023);
+            const autoX = 0.0006 + 0.00045 * Math.sin(t * 0.00017 + 1.3);
 
-            if (mouseRef.current.isDown) {
+            if (mouseRef.current.isDown || isShaking || isFading) {
                 velocityRef.current.y *= 0.9;
                 velocityRef.current.x *= 0.9;
             } else {
@@ -289,35 +429,58 @@ export const NetworkSingularity: React.FC = () => {
                 project(n, rotX, rotY, centerX, centerY, zoom),
             );
 
+            const shakeIntensity = isShaking
+                ? Math.sin(((t - shakeStart) / SHAKE_DURATION_MS) * Math.PI) * 10
+                : 0;
+
+            let visibleNodes = 0;
+            let visibleConnections = 0;
+
             ctx.lineCap = 'round';
             connections.forEach((conn) => {
+                const nodeA = nodes[conn.from];
+                const nodeB = nodes[conn.to];
+
+                if (t < nodeA.spawnDelay || t < nodeB.spawnDelay) {
+                    return;
+                }
+
                 const elapsed = t - conn.spawnDelay;
                 if (elapsed < 0) {
                     return;
                 }
 
+                visibleConnections++;
+
                 const progress = Math.min(1, elapsed / conn.duration);
                 const eased = 1 - Math.pow(1 - progress, 3);
 
-                const nodeA = projected[conn.from];
-                const nodeB = projected[conn.to];
-                const avgZ = (nodeA.z + nodeB.z) / 2;
+                const projectedA = projected[conn.from];
+                const projectedB = projected[conn.to];
+                const avgZ = (projectedA.z + projectedB.z) / 2;
                 const baseOpacity = Math.max(0.04, Math.min(0.55, (SPHERE_RADIUS - avgZ) / 420));
-                const opacity = baseOpacity * eased;
 
-                const endX = nodeA.x + (nodeB.x - nodeA.x) * eased;
-                const endY = nodeA.y + (nodeB.y - nodeA.y) * eased;
+                const isRed = isColoring && t >= conn.colorDelay;
+                const opacity = baseOpacity * eased * fadeOpacity;
 
-                ctx.strokeStyle = `rgba(120, 180, 255, ${opacity})`;
-                ctx.lineWidth = 0.7 * ((nodeA.scale + nodeB.scale) / 2);
+                const endX = projectedA.x + (projectedB.x - projectedA.x) * eased;
+                const endY = projectedA.y + (projectedB.y - projectedA.y) * eased;
+
+                if (isRed) {
+                    ctx.strokeStyle = `rgba(255, 80, 80, ${opacity})`;
+                } else {
+                    ctx.strokeStyle = `rgba(120, 180, 255, ${opacity})`;
+                }
+
+                ctx.lineWidth = 0.7 * ((projectedA.scale + projectedB.scale) / 2);
                 ctx.beginPath();
-                ctx.moveTo(nodeA.x, nodeA.y);
+                ctx.moveTo(projectedA.x, projectedA.y);
                 ctx.lineTo(endX, endY);
                 ctx.stroke();
 
-                if (progress < 1) {
+                if (progress < 1 && !isRed) {
                     const headOpacity = (1 - progress) * 0.9;
-                    const headRadius = 2.2 * ((nodeA.scale + nodeB.scale) / 2);
+                    const headRadius = 2.2 * ((projectedA.scale + projectedB.scale) / 2);
                     const headGlow = ctx.createRadialGradient(
                         endX,
                         endY,
@@ -336,9 +499,20 @@ export const NetworkSingularity: React.FC = () => {
             });
 
             const sorted = [...projected].sort((node1, node2) => node2.z - node1.z);
-            sorted.forEach((p) => drawLabel(p, zoom));
+            sorted.forEach((p) => {
+                const isRed = isColoring && t >= p.colorDelay;
+                const appeared = drawLabel(p, zoom, t, shakeIntensity, isRed, fadeOpacity);
+                if (appeared) {
+                    visibleNodes++;
+                }
+            });
 
+            setNodeCount((prev) => (prev !== visibleNodes ? visibleNodes : prev));
+            setConnectionCount((prev) => (prev !== visibleConnections ? visibleConnections : prev));
+
+            ctx.globalAlpha = 1;
             animationRef.current = requestAnimationFrame(animate);
+            return undefined;
         };
 
         animationRef.current = requestAnimationFrame(animate);
@@ -404,8 +578,12 @@ export const NetworkSingularity: React.FC = () => {
         window.addEventListener('mousemove', handleMouseMove);
         window.addEventListener('mouseup', handleMouseUp);
         canvas.addEventListener('wheel', handleWheel, {passive: false});
-        canvas.addEventListener('touchstart', handleTouchStart, {passive: true});
-        canvas.addEventListener('touchmove', handleTouchMove, {passive: false});
+        canvas.addEventListener('touchstart', handleTouchStart, {
+            passive: true,
+        });
+        canvas.addEventListener('touchmove', handleTouchMove, {
+            passive: false,
+        });
         canvas.addEventListener('touchend', handleTouchEnd);
 
         return () => {
@@ -426,7 +604,17 @@ export const NetworkSingularity: React.FC = () => {
             <canvas ref={canvasRef} className={b('canvas')} />
             <div className={b('overlay')}>
                 <div className={b('title')}>Сетевая сингулярность</div>
-                <div className={b('subtitle')}>Формирование сети</div>
+                <div className={b('subtitle-row')}>
+                    <div
+                        className={`${b('indicator')} ${isCritical ? b('indicator_critical') : ''}`}
+                    />
+                    <div
+                        key={subtitleKey}
+                        className={`${b('subtitle')} ${isCritical ? b('subtitle_critical') : ''}`}
+                    >
+                        {subtitleText}
+                    </div>
+                </div>
                 <div className={b('stats')}>
                     <span className={b('num')}>{String(nodeCount).padStart(2, '0')}</span>
                     <span className={b('label')}> объектов · </span>
