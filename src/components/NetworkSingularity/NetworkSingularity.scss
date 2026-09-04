@@ -1,3 +1,5 @@
+// src/components/NetworkSingularity/NetworkSingularity.scss
+
 @use '../../styles/variables.scss' as variables;
 
 .network-singularity {
@@ -7,7 +9,9 @@
     border-radius: var(--g-border-radius-xl);
     overflow: hidden;
     margin-top: var(--g-spacing-4);
-    background: #05070f;
+    // ГРАДИЕНТ ВЫНЕСЕН В CSS - GPU ускорение
+    background: radial-gradient(circle at center, #0f1a35 0%, #05070f 70%);
+    contain: strict; // Изолируем рендеринг для производительности
 
     &__canvas {
         width: 100%;
@@ -15,6 +19,10 @@
         display: block;
         cursor: grab;
         touch-action: none;
+        // Прозрачный canvas чтобы был виден CSS градиент
+        background: transparent;
+        transform: translateZ(0); // Форсируем GPU-ускорение
+        will-change: contents; // Подсказка браузеру для оптимизации
 
         &:active {
             cursor: grabbing;
@@ -28,6 +36,7 @@
         color: #fff;
         pointer-events: none;
         user-select: none;
+        z-index: 1;
     }
 
     &__title {

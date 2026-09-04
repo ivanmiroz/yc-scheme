@@ -38,8 +38,6 @@ export const useNetworkAnimation = (
     const zoomRef = useRef(1);
     const velocityRef = useRef({x: 0, y: 0});
 
-    // Кэш для градиента фона
-    const bgGradientRef = useRef<CanvasGradient | null>(null);
     // Троттлинг для обновления стейта
     const lastStatsUpdateRef = useRef(0);
     // Кэш DPR для производительности
@@ -90,9 +88,6 @@ export const useNetworkAnimation = (
             dprRef.current = dpr;
             canvas.width = Math.floor(rect.width * dpr);
             canvas.height = Math.floor(rect.height * dpr);
-
-            // Инвалидируем кэш градиента при изменении размера
-            bgGradientRef.current = null;
         };
 
         resize();
@@ -123,11 +118,6 @@ export const useNetworkAnimation = (
             // ПОЛНАЯ очистка canvas для предотвращения артефактов
             ctx.setTransform(1, 0, 0, 1, 0, 0); // Сброс трансформации
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Явная заливка фоном для гарантии отсутствия артефактов
-            ctx.fillStyle = '#05070f';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
             ctx.setTransform(dprRef.current, 0, 0, dprRef.current, 0, 0); // Восстановление
             ctx.clearRect(0, 0, width, height);
 
@@ -153,8 +143,7 @@ export const useNetworkAnimation = (
             if (fadeOpacity <= 0 && t >= COLLAPSE_END_MS) {
                 if (t < COLLAPSE_END_MS + PAUSE_BETWEEN_CYCLES_MS) {
                     ctx.setTransform(1, 0, 0, 1, 0, 0);
-                    ctx.fillStyle = '#05070f';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
                     animationRef.current = requestAnimationFrame(animate);
                     return undefined;
                 }
@@ -171,23 +160,6 @@ export const useNetworkAnimation = (
             }
 
             ctx.globalAlpha = fadeOpacity;
-
-            // Используем кэшированный градиент
-            if (!bgGradientRef.current) {
-                const bg = ctx.createRadialGradient(
-                    centerX,
-                    centerY,
-                    0,
-                    centerX,
-                    centerY,
-                    Math.max(width, height) / 1.2,
-                );
-                bg.addColorStop(0, '#0f1a35');
-                bg.addColorStop(1, '#05070f');
-                bgGradientRef.current = bg;
-            }
-            ctx.fillStyle = bgGradientRef.current;
-            ctx.fillRect(0, 0, width, height);
 
             const autoY = 0.00125 + 0.00075 * Math.sin(t * 0.00023);
             const autoX = 0.0006 + 0.00045 * Math.sin(t * 0.00017 + 1.3);

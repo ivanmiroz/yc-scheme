@@ -40,7 +40,7 @@ export const drawLabel = (
     const baseOpacity = Math.max(0.25, Math.min(1, 0.35 + depthFactor * 0.85));
     const opacity = baseOpacity * eased * fadeOpacity;
 
-    // ОПТИМИЗАЦИЯ: Детерминированный шейк вместо Math.random() каждый кадр
+    // Детерминированный шейк вместо Math.random() каждый кадр
     const shakeX =
         shakeIntensity > 0 ? Math.sin(currentTime * 0.005 + index * 13.7) * shakeIntensity : 0;
     const shakeY =
@@ -71,7 +71,7 @@ export const drawLabel = (
     const x0 = drawX - w / 2;
     const y0 = drawY - h / 2;
 
-    // ОПТИМИЗАЦИЯ: Нативный roundRect работает на уровне браузера и гораздо быстрее ручных кривых
+    // Нативный roundRect работает на уровне браузера и гораздо быстрее ручных кривых
     if (typeof ctx.roundRect === 'function') {
         ctx.beginPath();
         ctx.roundRect(x0, y0, w, h, radius);

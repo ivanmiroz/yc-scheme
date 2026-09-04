@@ -1,3 +1,4 @@
+// src/components/NetworkSingularity/scene.ts
 /* eslint-disable no-param-reassign */
 import type {Connection, Node3D} from './types';
 import {
