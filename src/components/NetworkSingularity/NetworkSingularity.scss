@@ -44,6 +44,7 @@
         align-items: center;
         gap: var(--g-spacing-2);
         margin-bottom: var(--g-spacing-3);
+        min-height: 20px;
     }
 
     &__indicator {
@@ -51,31 +52,15 @@
         height: 8px;
         border-radius: 50%;
         background: #7ab8ff;
-        transition:
-            background 0.3s ease,
-            box-shadow 0.3s ease;
         flex-shrink: 0;
-
-        &_critical {
-            background: #ff5050;
-            box-shadow: 0 0 8px rgba(255, 80, 80, 0.8);
-            animation: pulse-dot 1s ease-in-out infinite;
-        }
     }
 
     &__subtitle {
         font-size: 13px;
-        opacity: 0.6;
         letter-spacing: 0.08em;
         text-transform: uppercase;
         color: #fff;
-        transition: color 0.3s ease;
-
-        &_critical {
-            color: #ff5050;
-            opacity: 1;
-            text-shadow: 0 0 10px rgba(255, 80, 80, 0.5);
-        }
+        opacity: 0.6;
     }
 
     &__stats {
