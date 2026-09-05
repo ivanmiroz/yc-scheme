@@ -1,79 +1,100 @@
 // src/components/ScaleTabs/ScaleTabs.scss
 
-@use '../../styles/variables.scss' as variables;
-
 .scale-tabs {
     display: flex;
-    flex-direction: column;
-    height: 100%;
-    width: 100%;
-    box-sizing: border-box;
-    overflow: visible; // ИЗМЕНЕНО: было hidden, теперь visible чтобы текст не обрезался
+    gap: 1.25vw;
+    padding: 3.5vw 0 3.5vw 5.21vw; // УМЕНЬШЕНО: было 6.2vw, теперь 3.5vw (~75px вместо 119px)
 
-    &__content {
-        flex: 1 1 auto;
+    &__sidebar {
+        flex: 0 0 22.03%;
         display: flex;
         flex-direction: column;
-        min-height: 0;
-        background: variables.$g-color-base-generic-light;
-        border-radius: var(--g-border-radius-xl);
-        margin-top: var(--g-spacing-4);
-        padding: var(--g-spacing-5);
-        box-sizing: border-box;
-
-        .g-tab_active & {
-            background: none;
-        }
+        gap: 1.25vw; // 24px
     }
 
-    &__panel {
-        flex: 1 1 auto;
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        min-height: 0;
-    }
-}
-
-.g-tab {
-    border: none;
-    margin-top: var(--g-spacing-8);
-
-    &-list &:not(:last-child) {
-        margin-inline-end: var(--g-spacing-2);
-    }
-
-    &-list {
-        box-shadow: none;
-        justify-content: center;
-        overflow: visible; // ДОБАВЛЕНО: чтобы активный таб не обрезался
-    }
-
-    &__content {
-        background: variables.$g-color-base-generic-light;
-        border-radius: var(--g-border-radius-xl);
-
-        .g-tab_active & {
-            background: none;
-        }
+    &__header {
+        margin-bottom: 1.04vw;
     }
 
     &__title {
-        color: var(--g-color-text-primary);
-        font-size: var(--g-text-body-1-font-size);
-        overflow: visible;
-        padding: var(--g-spacing-2) var(--g-spacing-4);
-        line-height: 1.2; // ДОБАВЛЕНО: для корректного отображения текста
+        font-size: 2.2vw; // УМЕНЬШЕНО: было 2.5vw (48px), теперь ~90px на 4K
+        font-weight: 800;
+        line-height: 1.1;
+        margin: 0 0 0.8vw 0; // УМЕНЬШЕНО
+        letter-spacing: -0.02em;
+    }
 
-        .g-tab_active & {
-            cursor: default;
-            font-size: variables.$g-text-display-4-font-size;
-            font-weight: variables.$g-text-ultra-bold;
-            text-transform: uppercase;
-            transform: translateY(-6px);
-            line-height: 1.1; // ДОБАВЛЕНО: уменьшаем для крупного текста
+    &__description {
+        font-size: 1.1vw; // УМЕНЬШЕНО: было 1.25vw (24px)
+        line-height: 1.4;
+        margin: 0;
+    }
+
+    &__tabs {
+        display: flex;
+        flex-direction: column;
+        gap: 0.8vw; // УМЕНЬШЕНО: было 1.25vw (24px)
+    }
+
+    &__tab {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 2.5vw 0.83vw 0.83vw 0.83vw; // УМЕНЬШЕНО: было 3.33vw (64px сверху)
+        background: #fff;
+        border-radius: 0.625vw;
+        cursor: pointer;
+        border: none;
+        box-shadow: none;
+
+        &_active {
+            background: #00a2ff;
+            color: #fff;
         }
     }
+
+    &__tab-text {
+        font-size: 1.1vw; // УМЕНЬШЕНО: было 1.25vw (24px)
+        font-weight: 500;
+        line-height: 1.4;
+    }
+
+    &__tab-arrow {
+        width: 0.47vw;
+        height: 0.83vw;
+        flex-shrink: 0;
+        margin-left: 0.83vw;
+        color: #999;
+
+        svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .scale-tabs__tab_active & {
+            color: #fff;
+        }
+    }
+
+    &__content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 2.08vw;
+        position: relative;
+        overflow: hidden;
+    }
+
+    &__panel {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+}
+
+.g-tab-list {
+    display: none;
 }
 
 .g-tab-panel {
