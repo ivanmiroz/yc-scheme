@@ -21,7 +21,9 @@ type ProjectedNodeWithIndex = ProjectedNode & {
     fallSpeed: number;
 };
 
-export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement | null>): void => {
+export const useNetworkAnimation = (
+    canvasRef: React.RefObject<HTMLCanvasElement | null>,
+): void => {
     const animationRef = useRef<number>(0);
     const startTimeRef = useRef<number>(0);
     const mouseRef = useRef({isDown: false, lastX: 0, lastY: 0});
@@ -46,9 +48,12 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
         const resize = () => {
             const rect = canvas.getBoundingClientRect();
             const MAX_DIMENSION = 2560;
+
+            // Оптимизация: ограничиваем DPR до 1.5 для 4K экранов
             const dpr = Math.min(
                 window.devicePixelRatio || 1,
                 MAX_DIMENSION / Math.max(rect.width, rect.height),
+                1.5,
             );
 
             dprRef.current = dpr;
@@ -77,9 +82,13 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
 
             const redStart = connectionsEndTimeRef.current + REDDEN_DELAY_MS;
             const fallStart = redStart + REDDEN_DURATION_MS;
-            const maxFallDelay = nodes.reduce((max, n) => Math.max(max, n.fallDelay), 0);
+            const maxFallDelay = nodes.reduce(
+                (max, n) => Math.max(max, n.fallDelay),
+                0,
+            );
             const maxFallDuration = FALL_DURATION_MS * 1.5;
-            cycleEndRef.current = fallStart + maxFallDelay + maxFallDuration + 1000;
+            cycleEndRef.current =
+                fallStart + maxFallDelay + maxFallDuration + 1000;
         };
 
         initScene();
@@ -108,19 +117,26 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
             const isFalling = t >= fallStart;
 
             const redProgress =
-                isReddening || isFalling ? Math.min(1, (t - redStart) / REDDEN_DURATION_MS) : 0;
+                isReddening || isFalling
+                    ? Math.min(1, (t - redStart) / REDDEN_DURATION_MS)
+                    : 0;
 
+            // Плавное исчезновение связей перед падением
             let connectionsFade = 1;
             if (t < redStart) {
                 connectionsFade = 1;
             } else if (t < fallStart - CONNECTIONS_FADE_DURATION_MS) {
                 connectionsFade = 1;
             } else if (t < fallStart) {
-                connectionsFade = Math.max(0, (fallStart - t) / CONNECTIONS_FADE_DURATION_MS);
+                connectionsFade = Math.max(
+                    0,
+                    (fallStart - t) / CONNECTIONS_FADE_DURATION_MS,
+                );
             } else {
                 connectionsFade = 0;
             }
 
+            // Перезапуск цикла
             if (t >= cycleEnd) {
                 if (t < cycleEnd + PAUSE_BETWEEN_CYCLES_MS) {
                     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -170,8 +186,13 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
                 fallSpeed: n.fallSpeed,
             }));
 
+            // Отрисовка связей с оптимизациями
             if (connectionsFade > 0) {
                 ctx.lineCap = 'round';
+                // Вынос константы из цикла
+                const lineWidth = 4 * scaleFactor;
+                const margin = 200;
+
                 connections.forEach((conn) => {
                     const nodeA = nodes[conn.from];
                     const nodeB = nodes[conn.to];
@@ -186,10 +207,30 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
 
                     const projectedA = projected[conn.from];
                     const projectedB = projected[conn.to];
+
+                    // Ранний выход если связь за пределами экрана
+                    const minX = Math.min(projectedA.x, projectedB.x);
+                    const maxX = Math.max(projectedA.x, projectedB.x);
+                    const minY = Math.min(projectedA.y, projectedB.y);
+                    const maxY = Math.max(projectedA.y, projectedB.y);
+
+                    if (
+                        maxX < -margin ||
+                        minX > width + margin ||
+                        maxY < -margin ||
+                        minY > height + margin
+                    ) {
+                        return;
+                    }
+
                     const avgZ = (projectedA.z + projectedB.z) / 2;
                     const baseOpacity = Math.max(
                         0.04,
-                        Math.min(0.55, (SPHERE_RADIUS * scaleFactor - avgZ) / (420 * scaleFactor)),
+                        Math.min(
+                            0.55,
+                            (SPHERE_RADIUS * scaleFactor - avgZ) /
+                                (420 * scaleFactor),
+                        ),
                     );
 
                     const fallProgressA = isFalling
@@ -197,7 +238,8 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
                               1,
                               Math.max(
                                   0,
-                                  (t - fallStart - projectedA.fallDelay) / FALL_DURATION_MS,
+                                  (t - fallStart - projectedA.fallDelay) /
+                                      FALL_DURATION_MS,
                               ),
                           )
                         : 0;
@@ -206,27 +248,42 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
                               1,
                               Math.max(
                                   0,
-                                  (t - fallStart - projectedB.fallDelay) / FALL_DURATION_MS,
+                                  (t - fallStart - projectedB.fallDelay) /
+                                      FALL_DURATION_MS,
                               ),
                           )
                         : 0;
 
-                    const fallOffsetYA = fallProgressA * (height + 1000) * projectedA.fallSpeed;
-                    const fallOffsetYB = fallProgressB * (height + 1000) * projectedB.fallSpeed;
+                    // Индивидуальное падение с разной скоростью
+                    const fallOffsetYA =
+                        fallProgressA *
+                        (height + 1000) *
+                        projectedA.fallSpeed;
+                    const fallOffsetYB =
+                        fallProgressB *
+                        (height + 1000) *
+                        projectedB.fallSpeed;
 
-                    const avgFallProgress = (fallProgressA + fallProgressB) / 2;
-                    const fadeOpacity = isFalling ? Math.max(0, 1 - avgFallProgress) : 1;
+                    const avgFallProgress =
+                        (fallProgressA + fallProgressB) / 2;
+                    const fadeOpacity = isFalling
+                        ? Math.max(0, 1 - avgFallProgress)
+                        : 1;
 
-                    const opacity = baseOpacity * eased * fadeOpacity * connectionsFade;
+                    const opacity =
+                        baseOpacity * eased * fadeOpacity * connectionsFade;
 
                     ctx.strokeStyle = `rgba(0, 0, 0, ${opacity})`;
-                    ctx.lineWidth = 4 * scaleFactor;
+                    ctx.lineWidth = lineWidth;
 
                     const fallYA = projectedA.y + fallOffsetYA;
                     const fallYB = projectedB.y + fallOffsetYB;
 
-                    const currentEndX = projectedA.x + (projectedB.x - projectedA.x) * eased;
-                    const currentEndY = fallYA + (fallYB - fallYA) * eased;
+                    const currentEndX =
+                        projectedA.x +
+                        (projectedB.x - projectedA.x) * eased;
+                    const currentEndY =
+                        fallYA + (fallYB - fallYA) * eased;
 
                     ctx.beginPath();
                     ctx.moveTo(projectedA.x, fallYA);
@@ -234,31 +291,53 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
                     ctx.stroke();
 
                     if (progress < 1) {
-                        const headOpacity = (1 - progress) * 0.9 * connectionsFade;
+                        const headOpacity =
+                            (1 - progress) * 0.9 * connectionsFade;
                         const headRadius =
-                            2.2 * ((projectedA.scale + projectedB.scale) / 2) * scaleFactor;
+                            2.2 *
+                            ((projectedA.scale + projectedB.scale) / 2) *
+                            scaleFactor;
 
                         ctx.save();
                         ctx.shadowBlur = headRadius * 4;
                         ctx.shadowColor = `rgba(0, 0, 0, ${headOpacity})`;
                         ctx.fillStyle = `rgba(0, 0, 0, ${headOpacity})`;
                         ctx.beginPath();
-                        ctx.arc(currentEndX, currentEndY, headRadius, 0, Math.PI * 2);
+                        ctx.arc(
+                            currentEndX,
+                            currentEndY,
+                            headRadius,
+                            0,
+                            Math.PI * 2,
+                        );
                         ctx.fill();
                         ctx.restore();
                     }
                 });
             }
 
+            // Сортировка по Z для правильного наложения
             projected.sort((node1, node2) => node2.z - node1.z);
 
+            // Отрисовка узлов
             projected.forEach((p) => {
                 const fallProgress = isFalling
-                    ? Math.min(1, Math.max(0, (t - fallStart - p.fallDelay) / FALL_DURATION_MS))
+                    ? Math.min(
+                          1,
+                          Math.max(
+                              0,
+                              (t - fallStart - p.fallDelay) /
+                                  FALL_DURATION_MS,
+                          ),
+                      )
                     : 0;
 
-                const fallOffsetY = fallProgress * (height + 1000) * p.fallSpeed;
-                const fadeOpacity = isFalling ? Math.max(0, 1 - fallProgress) : 1;
+                // Индивидуальное падение с разной скоростью
+                const fallOffsetY =
+                    fallProgress * (height + 1000) * p.fallSpeed;
+                const fadeOpacity = isFalling
+                    ? Math.max(0, 1 - fallProgress)
+                    : 1;
 
                 if (
                     p.y + fallOffsetY < -200 ||
@@ -316,7 +395,10 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
         const handleWheel = (e: WheelEvent) => {
             e.preventDefault();
             const factor = e.deltaY > 0 ? 0.93 : 1.07;
-            zoomRef.current = Math.max(0.4, Math.min(2.5, zoomRef.current * factor));
+            zoomRef.current = Math.max(
+                0.4,
+                Math.min(2.5, zoomRef.current * factor),
+            );
         };
 
         const handleTouchStart = (e: TouchEvent) => {
@@ -327,13 +409,17 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
             }
         };
 
+        // Оптимизация: уменьшенная чувствительность для тача
         const handleTouchMove = (e: TouchEvent) => {
             if (!mouseRef.current.isDown || e.touches.length !== 1) return;
             e.preventDefault();
             const dx = e.touches[0].clientX - mouseRef.current.lastX;
             const dy = e.touches[0].clientY - mouseRef.current.lastY;
-            rotationRef.current.y += dx * 0.008;
-            rotationRef.current.x += dy * 0.008;
+
+            // Уменьшили с 0.008 до 0.004 — вращение в 2 раза медленнее
+            rotationRef.current.y += dx * 0.0013;
+            rotationRef.current.x += dy * 0.0013;
+
             mouseRef.current.lastX = e.touches[0].clientX;
             mouseRef.current.lastY = e.touches[0].clientY;
         };
@@ -346,8 +432,12 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
         window.addEventListener('mousemove', handleMouseMove);
         window.addEventListener('mouseup', handleMouseUp);
         canvas.addEventListener('wheel', handleWheel, {passive: false});
-        canvas.addEventListener('touchstart', handleTouchStart, {passive: true});
-        canvas.addEventListener('touchmove', handleTouchMove, {passive: false});
+        canvas.addEventListener('touchstart', handleTouchStart, {
+            passive: true,
+        });
+        canvas.addEventListener('touchmove', handleTouchMove, {
+            passive: false,
+        });
         canvas.addEventListener('touchend', handleTouchEnd);
 
         return () => {

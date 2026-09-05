@@ -20,6 +20,7 @@ import {ICONS} from './icons';
 type ProjectedNodeWithIndex = ProjectedNode & {index: number};
 
 const iconCache = new Map<string, HTMLImageElement>();
+const textWidthCache = new Map<string, number>();
 
 const getIconImage = (iconSvg: string): HTMLImageElement | undefined => {
     if (!iconCache.has(iconSvg)) {
@@ -60,18 +61,26 @@ export const drawLabel = (
     const eased = 1 - Math.pow(1 - progress, 3);
     const appearScale = APPEAR_SCALE_MIN + APPEAR_SCALE_MAX * eased;
 
-    const depthFactor = (SPHERE_RADIUS * scaleFactor - p.z) / (SPHERE_RADIUS * scaleFactor * 2);
+    const depthFactor =
+        (SPHERE_RADIUS * scaleFactor - p.z) / (SPHERE_RADIUS * scaleFactor * 2);
     const baseOpacity = Math.max(0.25, Math.min(1, 0.35 + depthFactor * 0.85));
     const opacity = baseOpacity * eased * fadeOpacity;
 
     const shakeX =
-        shakeIntensity > 0 ? Math.sin(currentTime * 0.005 + index * 13.7) * shakeIntensity : 0;
+        shakeIntensity > 0
+            ? Math.sin(currentTime * 0.005 + index * 13.7) * shakeIntensity
+            : 0;
     const shakeY =
-        shakeIntensity > 0 ? Math.cos(currentTime * 0.007 + index * 7.3) * shakeIntensity : 0;
+        shakeIntensity > 0
+            ? Math.cos(currentTime * 0.007 + index * 7.3) * shakeIntensity
+            : 0;
 
     const numScale = Math.max(0.1, Number(p.scale));
 
-    const currentIconSize = Math.max(1, ICON_SIZE * numScale * zoom * appearScale * scaleFactor);
+    const currentIconSize = Math.max(
+        1,
+        ICON_SIZE * numScale * zoom * appearScale * scaleFactor,
+    );
     const currentFontSize = Math.max(
         MIN_FONT_SIZE * scaleFactor,
         BASE_FONT_SIZE * numScale * zoom * appearScale * scaleFactor,
@@ -80,7 +89,10 @@ export const drawLabel = (
         MIN_RADIUS * scaleFactor,
         BASE_RADIUS * numScale * zoom * appearScale * scaleFactor,
     );
-    const currentGap = Math.max(1, LABEL_ICON_GAP * numScale * zoom * appearScale * scaleFactor);
+    const currentGap = Math.max(
+        1,
+        LABEL_ICON_GAP * numScale * zoom * appearScale * scaleFactor,
+    );
     const currentPaddingX = Math.max(
         1,
         CARD_PADDING_X * numScale * zoom * appearScale * scaleFactor,
@@ -100,24 +112,42 @@ export const drawLabel = (
     const iconSvg = ICONS[p.label] || ICONS['Сервер'];
     const img = getIconImage(iconSvg);
 
-    ctx.font = `500 ${currentFontSize}px ui-monospace, "SF Mono", Menlo, monospace`;
+    const fontString = `500 ${currentFontSize}px ui-monospace, "SF Mono", Menlo, monospace`;
+    ctx.font = fontString;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    const textWidth = ctx.measureText(p.label).width;
+
+    // Кэш измерений текста для оптимизации
+    const cacheKey = `${p.label}_${Math.round(currentFontSize)}`;
+    let textWidth = textWidthCache.get(cacheKey);
+    if (textWidth === undefined) {
+        textWidth = ctx.measureText(p.label).width;
+        textWidthCache.set(cacheKey, textWidth);
+    }
 
     const cardHeight = currentIconSize + currentPaddingY * 2;
-    const cardWidth = currentPaddingX + currentIconSize + currentGap + textWidth + currentPaddingX;
+    const cardWidth =
+        currentPaddingX +
+        currentIconSize +
+        currentGap +
+        textWidth +
+        currentPaddingX;
 
     const cardX = drawX - cardWidth / 2;
     const cardY = drawY - cardHeight / 2;
 
+    // Только фон карточки меняет цвет: чёрный -> тёмно-красный
     const bgR = Math.round(0 + (200 - 0) * redProgress);
     const bgG = Math.round(0 + (20 - 0) * redProgress);
     const bgB = Math.round(0 + (20 - 0) * redProgress);
     ctx.fillStyle = `rgba(${bgR}, ${bgG}, ${bgB}, ${opacity})`;
 
+    // Рамка остаётся исходного цвета #E9ECF5
     ctx.strokeStyle = `rgba(233, 236, 245, ${opacity})`;
-    ctx.lineWidth = Math.max(0.5, BASE_LINE_WIDTH * numScale * zoom * appearScale * scaleFactor);
+    ctx.lineWidth = Math.max(
+        0.5,
+        BASE_LINE_WIDTH * numScale * zoom * appearScale * scaleFactor,
+    );
 
     ctx.beginPath();
     if (typeof ctx.roundRect === 'function') {
@@ -128,18 +158,26 @@ export const drawLabel = (
     ctx.fill();
     ctx.stroke();
 
+    // Подложка иконки остаётся #F2F2F2
     const iconX = cardX + currentPaddingX;
     const iconY = cardY + currentPaddingY;
 
     ctx.fillStyle = `rgba(242, 242, 242, ${opacity})`;
     ctx.beginPath();
     if (typeof ctx.roundRect === 'function') {
-        ctx.roundRect(iconX, iconY, currentIconSize, currentIconSize, currentIconRadius);
+        ctx.roundRect(
+            iconX,
+            iconY,
+            currentIconSize,
+            currentIconSize,
+            currentIconRadius,
+        );
     } else {
         ctx.rect(iconX, iconY, currentIconSize, currentIconSize);
     }
     ctx.fill();
 
+    // SVG иконка
     if (img && img.complete) {
         ctx.save();
         ctx.globalAlpha = opacity;
@@ -154,6 +192,7 @@ export const drawLabel = (
         ctx.restore();
     }
 
+    // Текст остаётся белым
     const textX = iconX + currentIconSize + currentGap;
     const textY = drawY;
 
