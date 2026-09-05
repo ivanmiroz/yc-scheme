@@ -1,21 +1,43 @@
-// src/components/NetworkSingularity/renderer.ts
 /* eslint-disable no-param-reassign */
 import type {ProjectedNode} from './types';
 import {
     APPEAR_SCALE_MAX,
     APPEAR_SCALE_MIN,
     BASE_FONT_SIZE,
-    BASE_LABEL_HEIGHT,
-    BASE_LABEL_WIDTH,
     BASE_LINE_WIDTH,
     BASE_RADIUS,
+    CARD_PADDING_X,
+    CARD_PADDING_Y,
+    ICON_BORDER_RADIUS,
+    ICON_SIZE,
+    LABEL_ICON_GAP,
     MIN_FONT_SIZE,
-    MIN_LINE_WIDTH,
     MIN_RADIUS,
     SPHERE_RADIUS,
 } from './constants';
+import {ICONS} from './icons';
 
 type ProjectedNodeWithIndex = ProjectedNode & {index: number};
+
+const iconCache = new Map<string, HTMLImageElement>();
+
+const getIconImage = (iconSvg: string): HTMLImageElement | undefined => {
+    if (!iconCache.has(iconSvg)) {
+        const img = new Image();
+        const svgBlob = new Blob([iconSvg], {
+            type: 'image/svg+xml;charset=utf-8',
+        });
+        const url = URL.createObjectURL(svgBlob);
+
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+        };
+
+        img.src = url;
+        iconCache.set(iconSvg, img);
+    }
+    return iconCache.get(iconSvg);
+};
 
 export const drawLabel = (
     ctx: CanvasRenderingContext2D,
@@ -23,9 +45,11 @@ export const drawLabel = (
     zoom: number,
     currentTime: number,
     shakeIntensity: number,
-    isRed: boolean,
     fadeOpacity: number,
     index: number,
+    scaleFactor: number,
+    redProgress: number, // 0 (исходный) -> 1 (полностью красный)
+    fallOffsetY: number, // Смещение вниз при падении
 ): boolean => {
     const elapsed = currentTime - p.spawnDelay;
     if (elapsed < 0) {
@@ -36,69 +60,110 @@ export const drawLabel = (
     const eased = 1 - Math.pow(1 - progress, 3);
     const appearScale = APPEAR_SCALE_MIN + APPEAR_SCALE_MAX * eased;
 
-    const depthFactor = (SPHERE_RADIUS - p.z) / (SPHERE_RADIUS * 2);
+    const depthFactor = (SPHERE_RADIUS * scaleFactor - p.z) / (SPHERE_RADIUS * scaleFactor * 2);
     const baseOpacity = Math.max(0.25, Math.min(1, 0.35 + depthFactor * 0.85));
     const opacity = baseOpacity * eased * fadeOpacity;
 
-    // Детерминированный шейк вместо Math.random() каждый кадр
     const shakeX =
         shakeIntensity > 0 ? Math.sin(currentTime * 0.005 + index * 13.7) * shakeIntensity : 0;
     const shakeY =
         shakeIntensity > 0 ? Math.cos(currentTime * 0.007 + index * 7.3) * shakeIntensity : 0;
 
-    const numScale = Number(p.scale);
+    const numScale = Math.max(0.1, Number(p.scale));
 
-    const w = BASE_LABEL_WIDTH * numScale * zoom * appearScale;
-    const h = BASE_LABEL_HEIGHT * numScale * zoom * appearScale;
-    const fontSize = Math.max(MIN_FONT_SIZE, BASE_FONT_SIZE * numScale * zoom * appearScale);
-    const radius = Math.max(MIN_RADIUS, BASE_RADIUS * numScale * zoom * appearScale);
+    const currentIconSize = Math.max(1, ICON_SIZE * numScale * zoom * appearScale * scaleFactor);
+    const currentFontSize = Math.max(
+        MIN_FONT_SIZE * scaleFactor,
+        BASE_FONT_SIZE * numScale * zoom * appearScale * scaleFactor,
+    );
+    const currentRadius = Math.max(
+        MIN_RADIUS * scaleFactor,
+        BASE_RADIUS * numScale * zoom * appearScale * scaleFactor,
+    );
+    const currentGap = Math.max(1, LABEL_ICON_GAP * numScale * zoom * appearScale * scaleFactor);
+    const currentPaddingX = Math.max(
+        1,
+        CARD_PADDING_X * numScale * zoom * appearScale * scaleFactor,
+    );
+    const currentPaddingY = Math.max(
+        1,
+        CARD_PADDING_Y * numScale * zoom * appearScale * scaleFactor,
+    );
+    const currentIconRadius = Math.max(
+        1,
+        ICON_BORDER_RADIUS * numScale * zoom * appearScale * scaleFactor,
+    );
 
     const drawX = p.x + shakeX;
-    const drawY = p.y + shakeY;
+    const drawY = p.y + shakeY + fallOffsetY; // Добавляем смещение падения
 
-    const bgColor = isRed
-        ? `rgba(60, 18, 18, ${opacity * 0.85})`
-        : `rgba(18, 32, 60, ${opacity * 0.85})`;
-    const borderColor = isRed
-        ? `rgba(255, 80, 80, ${opacity * 0.9})`
-        : `rgba(140, 195, 255, ${opacity * 0.9})`;
-    const textColor = isRed ? `rgba(255, 220, 220, ${opacity})` : `rgba(220, 240, 255, ${opacity})`;
+    const iconSvg = ICONS[p.label] || ICONS['Сервер'];
+    const img = getIconImage(iconSvg);
 
-    ctx.fillStyle = bgColor;
-    ctx.strokeStyle = borderColor;
-    ctx.lineWidth = Math.max(MIN_LINE_WIDTH, BASE_LINE_WIDTH * numScale * zoom * appearScale);
+    ctx.font = `500 ${currentFontSize}px ui-monospace, "SF Mono", Menlo, monospace`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    const textWidth = ctx.measureText(p.label).width;
 
-    const x0 = drawX - w / 2;
-    const y0 = drawY - h / 2;
+    const cardHeight = currentIconSize + currentPaddingY * 2;
+    const cardWidth = currentPaddingX + currentIconSize + currentGap + textWidth + currentPaddingX;
 
-    // Нативный roundRect работает на уровне браузера и гораздо быстрее ручных кривых
+    const cardX = drawX - cardWidth / 2;
+    const cardY = drawY - cardHeight / 2;
+
+    // 🔴 ТОЛЬКО фон карточки меняет цвет: чёрный (0,0,0) -> тёмно-красный (200, 20, 20)
+    const bgR = Math.round(0 + (200 - 0) * redProgress);
+    const bgG = Math.round(0 + (20 - 0) * redProgress);
+    const bgB = Math.round(0 + (20 - 0) * redProgress);
+    ctx.fillStyle = `rgba(${bgR}, ${bgG}, ${bgB}, ${opacity})`;
+
+    // Рамка остаётся исходного цвета #E9ECF5
+    ctx.strokeStyle = `rgba(233, 236, 245, ${opacity})`;
+    ctx.lineWidth = Math.max(0.5, BASE_LINE_WIDTH * numScale * zoom * appearScale * scaleFactor);
+
+    ctx.beginPath();
     if (typeof ctx.roundRect === 'function') {
-        ctx.beginPath();
-        ctx.roundRect(x0, y0, w, h, radius);
-        ctx.fill();
-        ctx.stroke();
+        ctx.roundRect(cardX, cardY, cardWidth, cardHeight, currentRadius);
     } else {
-        // Fallback для очень старых браузеров
-        ctx.beginPath();
-        ctx.moveTo(x0 + radius, y0);
-        ctx.lineTo(x0 + w - radius, y0);
-        ctx.quadraticCurveTo(x0 + w, y0, x0 + w, y0 + radius);
-        ctx.lineTo(x0 + w, y0 + h - radius);
-        ctx.quadraticCurveTo(x0 + w, y0 + h, x0 + w - radius, y0 + h);
-        ctx.lineTo(x0 + radius, y0 + h);
-        ctx.quadraticCurveTo(x0, y0 + h, x0, y0 + h - radius);
-        ctx.lineTo(x0, y0 + radius);
-        ctx.quadraticCurveTo(x0, y0, x0 + radius, y0);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
+        ctx.rect(cardX, cardY, cardWidth, cardHeight);
+    }
+    ctx.fill();
+    ctx.stroke();
+
+    // Подложка иконки остаётся #F2F2F2
+    const iconX = cardX + currentPaddingX;
+    const iconY = cardY + currentPaddingY;
+
+    ctx.fillStyle = `rgba(242, 242, 242, ${opacity})`;
+    ctx.beginPath();
+    if (typeof ctx.roundRect === 'function') {
+        ctx.roundRect(iconX, iconY, currentIconSize, currentIconSize, currentIconRadius);
+    } else {
+        ctx.rect(iconX, iconY, currentIconSize, currentIconSize);
+    }
+    ctx.fill();
+
+    // SVG иконка
+    if (img && img.complete) {
+        ctx.save();
+        ctx.globalAlpha = opacity;
+        const iconPadding = currentIconSize * 0.18;
+        ctx.drawImage(
+            img,
+            iconX + iconPadding,
+            iconY + iconPadding,
+            Math.max(1, currentIconSize - iconPadding * 2),
+            Math.max(1, currentIconSize - iconPadding * 2),
+        );
+        ctx.restore();
     }
 
-    ctx.fillStyle = textColor;
-    ctx.font = `600 ${fontSize}px ui-monospace, "SF Mono", Menlo, monospace`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(p.label, drawX, drawY + 0.5);
+    // Текст остаётся белым
+    const textX = iconX + currentIconSize + currentGap;
+    const textY = drawY;
+
+    ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+    ctx.fillText(p.label, textX, textY);
 
     return true;
 };

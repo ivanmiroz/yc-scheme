@@ -1,71 +1,34 @@
-// src/components/NetworkSingularity/useNetworkAnimation.ts
-import {useEffect, useRef, useState} from 'react';
+import {useEffect, useRef} from 'react';
 
 import {
-    COLLAPSE_END_MS,
-    COLLAPSE_START_MS,
-    COLORING_DURATION_MS,
-    COLORING_START_MS,
-    FADE_DURATION_MS,
+    BASE_CANVAS_SIZE,
+    CONNECTIONS_FADE_DURATION_MS, // ← добавлено
+    FALL_DURATION_MS,
+    MAX_SCALE_FACTOR,
     PAUSE_BETWEEN_CYCLES_MS,
-    SHAKE_DURATION_MS,
+    REDDEN_DELAY_MS,
+    REDDEN_DURATION_MS,
     SPHERE_RADIUS,
 } from './constants';
 import {project} from './geometry';
 import {drawLabel} from './renderer';
 import {generateConnections, generateNodes} from './scene';
-import type {Connection, Node3D, Phase, ProjectedNode} from './types';
+import type {Connection, Node3D, ProjectedNode} from './types';
 
-interface AnimationState {
-    nodeCount: number;
-    connectionCount: number;
-}
+type ProjectedNodeWithIndex = ProjectedNode & {index: number; fallDelay: number};
 
-type ProjectedNodeWithIndex = ProjectedNode & {index: number};
-
-export const useNetworkAnimation = (
-    canvasRef: React.RefObject<HTMLCanvasElement | null>,
-    subtitleRef: React.RefObject<HTMLDivElement | null>,
-    indicatorRef: React.RefObject<HTMLDivElement | null>,
-): AnimationState => {
+export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement | null>): void => {
     const animationRef = useRef<number>(0);
     const startTimeRef = useRef<number>(0);
-    const [nodeCount, setNodeCount] = useState(0);
-    const [connectionCount, setConnectionCount] = useState(0);
-
     const mouseRef = useRef({isDown: false, lastX: 0, lastY: 0});
     const rotationRef = useRef({x: 0.3, y: 0});
     const zoomRef = useRef(1);
     const velocityRef = useRef({x: 0, y: 0});
-
-    // Троттлинг для обновления стейта
-    const lastStatsUpdateRef = useRef(0);
-    // Кэш DPR для производительности
     const dprRef = useRef(1);
+    const scaleFactorRef = useRef(1);
 
-    const updateSubtitle = (text: string, isCritical: boolean) => {
-        const subtitleEl = subtitleRef.current;
-        const indicatorEl = indicatorRef.current;
-        if (!subtitleEl || !indicatorEl) return;
-
-        subtitleEl.textContent = text;
-
-        if (isCritical) {
-            subtitleEl.style.color = '#ff5050';
-            subtitleEl.style.opacity = '1';
-            subtitleEl.style.textShadow = '0 0 10px rgba(255, 80, 80, 0.5)';
-            indicatorEl.style.background = '#ff5050';
-            indicatorEl.style.boxShadow = '0 0 8px rgba(255, 80, 80, 0.8)';
-            indicatorEl.style.animation = 'pulse-dot 1s ease-in-out infinite';
-        } else {
-            subtitleEl.style.color = '#fff';
-            subtitleEl.style.opacity = '0.6';
-            subtitleEl.style.textShadow = 'none';
-            indicatorEl.style.background = '#7ab8ff';
-            indicatorEl.style.boxShadow = 'none';
-            indicatorEl.style.animation = 'none';
-        }
-    };
+    const connectionsEndTimeRef = useRef<number>(0);
+    const cycleEndRef = useRef<number>(0);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -78,7 +41,6 @@ export const useNetworkAnimation = (
 
         const resize = () => {
             const rect = canvas.getBoundingClientRect();
-            // Ограничиваем внутреннее разрешение для производительности на 4K
             const MAX_DIMENSION = 2560;
             const dpr = Math.min(
                 window.devicePixelRatio || 1,
@@ -88,6 +50,10 @@ export const useNetworkAnimation = (
             dprRef.current = dpr;
             canvas.width = Math.floor(rect.width * dpr);
             canvas.height = Math.floor(rect.height * dpr);
+
+            const widthScale = rect.width / BASE_CANVAS_SIZE;
+            const rawScaleFactor = Math.pow(widthScale, 0.5);
+            scaleFactorRef.current = Math.min(rawScaleFactor, MAX_SCALE_FACTOR);
         };
 
         resize();
@@ -95,15 +61,20 @@ export const useNetworkAnimation = (
 
         let nodes: Node3D[] = [];
         let connections: Connection[] = [];
-        let currentPhase: Phase = 'building';
 
         const initScene = () => {
-            nodes = generateNodes();
-            connections = generateConnections(nodes);
-            currentPhase = 'building';
-            updateSubtitle('Формирование сети', false);
-            setNodeCount(0);
-            setConnectionCount(0);
+            nodes = generateNodes(scaleFactorRef.current);
+            connections = generateConnections(nodes, scaleFactorRef.current);
+
+            connectionsEndTimeRef.current = connections.reduce(
+                (max, conn) => Math.max(max, conn.spawnDelay + conn.duration),
+                0,
+            );
+
+            const redStart = connectionsEndTimeRef.current + REDDEN_DELAY_MS;
+            const fallStart = redStart + REDDEN_DURATION_MS;
+            const maxFallDelay = nodes.reduce((max, n) => Math.max(max, n.fallDelay), 0);
+            cycleEndRef.current = fallStart + FALL_DURATION_MS + maxFallDelay;
         };
 
         initScene();
@@ -114,34 +85,46 @@ export const useNetworkAnimation = (
             const height = rect.height;
             const centerX = width / 2;
             const centerY = height / 2;
+            const scaleFactor = scaleFactorRef.current;
 
-            // ПОЛНАЯ очистка canvas для предотвращения артефактов
-            ctx.setTransform(1, 0, 0, 1, 0, 0); // Сброс трансформации
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.setTransform(dprRef.current, 0, 0, dprRef.current, 0, 0); // Восстановление
+            ctx.setTransform(dprRef.current, 0, 0, dprRef.current, 0, 0);
             ctx.clearRect(0, 0, width, height);
 
             const t = time - startTimeRef.current;
 
-            const isColoring = t >= COLORING_START_MS;
-            const shakeStart = COLORING_START_MS + COLORING_DURATION_MS;
-            const isShaking = t >= shakeStart && t < COLLAPSE_START_MS;
-            const isFading = t >= COLLAPSE_START_MS;
+            const connectionsEndTime = connectionsEndTimeRef.current;
+            const redStart = connectionsEndTime + REDDEN_DELAY_MS;
+            const fallStart = redStart + REDDEN_DURATION_MS;
+            const cycleEnd = cycleEndRef.current;
 
-            if (t >= COLLAPSE_START_MS && currentPhase !== 'collapsing') {
-                currentPhase = 'collapsing';
-                updateSubtitle('Распад сети', true);
-            } else if (t >= COLORING_START_MS && currentPhase === 'building') {
-                currentPhase = 'coloring';
-                updateSubtitle('Критическая связь', true);
+            const isReddening = t >= redStart && t < fallStart;
+            const isFalling = t >= fallStart;
+
+            const redProgress =
+                isReddening || isFalling ? Math.min(1, (t - redStart) / REDDEN_DURATION_MS) : 0;
+
+            // 🔑 Плавное появление и исчезновение связей
+            // Связи полностью исчезают к моменту начала падения
+            let connectionsFade = 1;
+            if (t < redStart) {
+                // Фаза прорастания — связи видимы
+                connectionsFade = 1;
+            } else if (t < fallStart - CONNECTIONS_FADE_DURATION_MS) {
+                // Фаза покраснения (до начала затухания) — связи видимы
+                connectionsFade = 1;
+            } else if (t < fallStart) {
+                // Плавное исчезновение в конце покраснения
+                connectionsFade = Math.max(0, (fallStart - t) / CONNECTIONS_FADE_DURATION_MS);
+            } else {
+                // Фаза падения — связей больше нет
+                connectionsFade = 0;
             }
 
-            const fadeOpacity = isFading
-                ? Math.max(0, 1 - (t - COLLAPSE_START_MS) / FADE_DURATION_MS)
-                : 1;
-
-            if (fadeOpacity <= 0 && t >= COLLAPSE_END_MS) {
-                if (t < COLLAPSE_END_MS + PAUSE_BETWEEN_CYCLES_MS) {
+            // Перезапуск цикла
+            if (t >= cycleEnd) {
+                if (t < cycleEnd + PAUSE_BETWEEN_CYCLES_MS) {
                     ctx.setTransform(1, 0, 0, 1, 0, 0);
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
                     animationRef.current = requestAnimationFrame(animate);
@@ -150,7 +133,6 @@ export const useNetworkAnimation = (
 
                 startTimeRef.current = time;
                 initScene();
-
                 rotationRef.current = {x: 0.3, y: 0};
                 zoomRef.current = 1;
                 velocityRef.current = {x: 0, y: 0};
@@ -159,12 +141,12 @@ export const useNetworkAnimation = (
                 return undefined;
             }
 
-            ctx.globalAlpha = fadeOpacity;
+            ctx.globalAlpha = 1;
 
             const autoY = 0.00125 + 0.00075 * Math.sin(t * 0.00023);
             const autoX = 0.0006 + 0.00045 * Math.sin(t * 0.00017 + 1.3);
 
-            if (mouseRef.current.isDown || isShaking || isFading) {
+            if (mouseRef.current.isDown || isReddening || isFalling) {
                 velocityRef.current.y *= 0.9;
                 velocityRef.current.x *= 0.9;
             } else {
@@ -183,103 +165,128 @@ export const useNetworkAnimation = (
             const rotY = rotationRef.current.y;
             const zoom = zoomRef.current;
 
-            // Добавляем исходный индекс для детерминированного шейка
             const projected: ProjectedNodeWithIndex[] = nodes.map((n, i) => ({
-                ...project(n, rotX, rotY, centerX, centerY, zoom),
+                ...project(n, rotX, rotY, centerX, centerY, zoom, scaleFactor),
                 index: i,
+                fallDelay: n.fallDelay,
             }));
 
-            const shakeIntensity = isShaking
-                ? Math.sin(((t - shakeStart) / SHAKE_DURATION_MS) * Math.PI) * 10
-                : 0;
+            // 🔑 Пропускаем отрисовку связей, если они полностью исчезли
+            if (connectionsFade > 0) {
+                ctx.lineCap = 'round';
+                connections.forEach((conn) => {
+                    const nodeA = nodes[conn.from];
+                    const nodeB = nodes[conn.to];
 
-            let visibleNodes = 0;
-            let visibleConnections = 0;
+                    if (t < nodeA.spawnDelay || t < nodeB.spawnDelay) return;
 
-            ctx.lineCap = 'round';
-            connections.forEach((conn) => {
-                const nodeA = nodes[conn.from];
-                const nodeB = nodes[conn.to];
+                    const elapsed = t - conn.spawnDelay;
+                    if (elapsed < 0) return;
 
-                if (t < nodeA.spawnDelay || t < nodeB.spawnDelay) return;
+                    const progress = Math.min(1, elapsed / conn.duration);
+                    const eased = 1 - Math.pow(1 - progress, 3);
 
-                const elapsed = t - conn.spawnDelay;
-                if (elapsed < 0) return;
+                    const projectedA = projected[conn.from];
+                    const projectedB = projected[conn.to];
+                    const avgZ = (projectedA.z + projectedB.z) / 2;
+                    const baseOpacity = Math.max(
+                        0.04,
+                        Math.min(0.55, (SPHERE_RADIUS * scaleFactor - avgZ) / (420 * scaleFactor)),
+                    );
 
-                visibleConnections++;
+                    const fallProgressA = isFalling
+                        ? Math.min(
+                              1,
+                              Math.max(
+                                  0,
+                                  (t - fallStart - projectedA.fallDelay) / FALL_DURATION_MS,
+                              ),
+                          )
+                        : 0;
+                    const fallProgressB = isFalling
+                        ? Math.min(
+                              1,
+                              Math.max(
+                                  0,
+                                  (t - fallStart - projectedB.fallDelay) / FALL_DURATION_MS,
+                              ),
+                          )
+                        : 0;
 
-                const progress = Math.min(1, elapsed / conn.duration);
-                const eased = 1 - Math.pow(1 - progress, 3);
+                    const fallOffsetYA = fallProgressA * (height + 1000);
+                    const fallOffsetYB = fallProgressB * (height + 1000);
 
-                const projectedA = projected[conn.from];
-                const projectedB = projected[conn.to];
-                const avgZ = (projectedA.z + projectedB.z) / 2;
-                const baseOpacity = Math.max(0.04, Math.min(0.55, (SPHERE_RADIUS - avgZ) / 420));
+                    const avgFallProgress = (fallProgressA + fallProgressB) / 2;
+                    const fadeOpacity = isFalling ? Math.max(0, 1 - avgFallProgress) : 1;
 
-                const isRed = isColoring && t >= conn.colorDelay;
-                const opacity = baseOpacity * eased * fadeOpacity;
+                    // 🔑 Применяем connectionsFade к итоговой прозрачности
+                    const opacity = baseOpacity * eased * fadeOpacity * connectionsFade;
 
-                const endX = projectedA.x + (projectedB.x - projectedA.x) * eased;
-                const endY = projectedA.y + (projectedB.y - projectedA.y) * eased;
+                    ctx.strokeStyle = `rgba(0, 0, 0, ${opacity})`;
+                    ctx.lineWidth = 4 * scaleFactor;
 
-                ctx.strokeStyle = isRed
-                    ? `rgba(255, 80, 80, ${opacity})`
-                    : `rgba(120, 180, 255, ${opacity})`;
-                ctx.lineWidth = 0.7 * ((projectedA.scale + projectedB.scale) / 2);
-                ctx.beginPath();
-                ctx.moveTo(projectedA.x, projectedA.y);
-                ctx.lineTo(endX, endY);
-                ctx.stroke();
+                    const fallYA = projectedA.y + fallOffsetYA;
+                    const fallYB = projectedB.y + fallOffsetYB;
 
-                if (progress < 1 && !isRed) {
-                    // Используем shadowBlur вместо createRadialGradient
-                    const headOpacity = (1 - progress) * 0.9;
-                    const headRadius = 2.2 * ((projectedA.scale + projectedB.scale) / 2);
+                    const currentEndX = projectedA.x + (projectedB.x - projectedA.x) * eased;
+                    const currentEndY = fallYA + (fallYB - fallYA) * eased;
 
-                    ctx.save();
-                    ctx.shadowBlur = headRadius * 4;
-                    ctx.shadowColor = `rgba(200, 230, 255, ${headOpacity})`;
-                    ctx.fillStyle = `rgba(200, 230, 255, ${headOpacity})`;
                     ctx.beginPath();
-                    ctx.arc(endX, endY, headRadius, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.restore();
-                }
-            });
+                    ctx.moveTo(projectedA.x, fallYA);
+                    ctx.lineTo(currentEndX, currentEndY);
+                    ctx.stroke();
 
-            // Сортируем in-place
+                    if (progress < 1) {
+                        // 🔑 "Голова" линии тоже затухает вместе с connectionsFade
+                        const headOpacity = (1 - progress) * 0.9 * connectionsFade;
+                        const headRadius =
+                            2.2 * ((projectedA.scale + projectedB.scale) / 2) * scaleFactor;
+
+                        ctx.save();
+                        ctx.shadowBlur = headRadius * 4;
+                        ctx.shadowColor = `rgba(0, 0, 0, ${headOpacity})`;
+                        ctx.fillStyle = `rgba(0, 0, 0, ${headOpacity})`;
+                        ctx.beginPath();
+                        ctx.arc(currentEndX, currentEndY, headRadius, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.restore();
+                    }
+                });
+            }
+
             projected.sort((node1, node2) => node2.z - node1.z);
 
             projected.forEach((p) => {
-                // ПРОВЕРКА ГРАНИЦ - пропускаем узлы за пределами canvas
-                if (p.y < -100 || p.y > height + 100 || p.x < -100 || p.x > width + 100) {
+                const fallProgress = isFalling
+                    ? Math.min(1, Math.max(0, (t - fallStart - p.fallDelay) / FALL_DURATION_MS))
+                    : 0;
+
+                const fallOffsetY = fallProgress * (height + 1000);
+                const fadeOpacity = isFalling ? Math.max(0, 1 - fallProgress) : 1;
+
+                if (
+                    p.y + fallOffsetY < -200 ||
+                    p.y + fallOffsetY > height + 200 ||
+                    p.x < -100 ||
+                    p.x > width + 100
+                ) {
                     return;
                 }
 
-                const isRed = isColoring && t >= p.colorDelay;
-                const appeared = drawLabel(
+                drawLabel(
                     ctx,
                     p,
                     zoom,
                     t,
-                    shakeIntensity,
-                    isRed,
+                    0,
                     fadeOpacity,
                     p.index,
+                    scaleFactor,
+                    redProgress,
+                    fallOffsetY,
                 );
-                if (appeared) {
-                    visibleNodes++;
-                }
             });
 
-            // Обновляем стейт не чаще 100мс
-            if (time - lastStatsUpdateRef.current > 100) {
-                setNodeCount(visibleNodes);
-                setConnectionCount(visibleConnections);
-                lastStatsUpdateRef.current = time;
-            }
-
-            ctx.globalAlpha = 1;
             animationRef.current = requestAnimationFrame(animate);
             return undefined;
         };
@@ -358,10 +365,5 @@ export const useNetworkAnimation = (
             canvas.removeEventListener('touchmove', handleTouchMove);
             canvas.removeEventListener('touchend', handleTouchEnd);
         };
-    }, [canvasRef, subtitleRef, indicatorRef]);
-
-    return {
-        nodeCount,
-        connectionCount,
-    };
+    }, [canvasRef]);
 };

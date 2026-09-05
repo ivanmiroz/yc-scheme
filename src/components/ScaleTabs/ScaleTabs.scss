@@ -3,13 +3,14 @@
 .scale-tabs {
     display: flex;
     gap: 1.25vw;
-    padding: 3.5vw 0 3.5vw 5.21vw; // УМЕНЬШЕНО: было 6.2vw, теперь 3.5vw (~75px вместо 119px)
+    height: 100%;
 
     &__sidebar {
         flex: 0 0 22.03%;
         display: flex;
         flex-direction: column;
         gap: 1.25vw; // 24px
+        padding: 3.5vw 0 3.5vw 5.21vw;
     }
 
     &__header {
@@ -81,9 +82,7 @@
         flex: 1;
         display: flex;
         flex-direction: column;
-        padding: 2.08vw;
         position: relative;
-        overflow: hidden;
     }
 
     &__panel {
