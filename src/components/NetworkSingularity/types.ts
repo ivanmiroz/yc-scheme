@@ -5,17 +5,11 @@ export type Node3D = {
     label: string;
     spawnDelay: number;
     duration: number;
-    fallDelay: number; // ← добавлено
+    fallDelay: number;
+    fallSpeed: number;
 };
 
-export interface Connection {
-    from: number;
-    to: number;
-    spawnDelay: number;
-    duration: number;
-}
-
-export interface ProjectedNode {
+export type ProjectedNode = {
     x: number;
     y: number;
     z: number;
@@ -23,4 +17,11 @@ export interface ProjectedNode {
     label: string;
     spawnDelay: number;
     duration: number;
-}
+};
+
+export type Connection = {
+    from: number;
+    to: number;
+    spawnDelay: number;
+    duration: number;
+};

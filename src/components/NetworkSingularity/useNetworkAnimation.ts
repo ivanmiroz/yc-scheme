@@ -2,7 +2,7 @@ import {useEffect, useRef} from 'react';
 
 import {
     BASE_CANVAS_SIZE,
-    CONNECTIONS_FADE_DURATION_MS, // ← добавлено
+    CONNECTIONS_FADE_DURATION_MS,
     FALL_DURATION_MS,
     MAX_SCALE_FACTOR,
     PAUSE_BETWEEN_CYCLES_MS,
@@ -15,7 +15,11 @@ import {drawLabel} from './renderer';
 import {generateConnections, generateNodes} from './scene';
 import type {Connection, Node3D, ProjectedNode} from './types';
 
-type ProjectedNodeWithIndex = ProjectedNode & {index: number; fallDelay: number};
+type ProjectedNodeWithIndex = ProjectedNode & {
+    index: number;
+    fallDelay: number;
+    fallSpeed: number;
+};
 
 export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement | null>): void => {
     const animationRef = useRef<number>(0);
@@ -74,7 +78,8 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
             const redStart = connectionsEndTimeRef.current + REDDEN_DELAY_MS;
             const fallStart = redStart + REDDEN_DURATION_MS;
             const maxFallDelay = nodes.reduce((max, n) => Math.max(max, n.fallDelay), 0);
-            cycleEndRef.current = fallStart + FALL_DURATION_MS + maxFallDelay;
+            const maxFallDuration = FALL_DURATION_MS * 1.5;
+            cycleEndRef.current = fallStart + maxFallDelay + maxFallDuration + 1000;
         };
 
         initScene();
@@ -105,24 +110,17 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
             const redProgress =
                 isReddening || isFalling ? Math.min(1, (t - redStart) / REDDEN_DURATION_MS) : 0;
 
-            // 🔑 Плавное появление и исчезновение связей
-            // Связи полностью исчезают к моменту начала падения
             let connectionsFade = 1;
             if (t < redStart) {
-                // Фаза прорастания — связи видимы
                 connectionsFade = 1;
             } else if (t < fallStart - CONNECTIONS_FADE_DURATION_MS) {
-                // Фаза покраснения (до начала затухания) — связи видимы
                 connectionsFade = 1;
             } else if (t < fallStart) {
-                // Плавное исчезновение в конце покраснения
                 connectionsFade = Math.max(0, (fallStart - t) / CONNECTIONS_FADE_DURATION_MS);
             } else {
-                // Фаза падения — связей больше нет
                 connectionsFade = 0;
             }
 
-            // Перезапуск цикла
             if (t >= cycleEnd) {
                 if (t < cycleEnd + PAUSE_BETWEEN_CYCLES_MS) {
                     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -169,9 +167,9 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
                 ...project(n, rotX, rotY, centerX, centerY, zoom, scaleFactor),
                 index: i,
                 fallDelay: n.fallDelay,
+                fallSpeed: n.fallSpeed,
             }));
 
-            // 🔑 Пропускаем отрисовку связей, если они полностью исчезли
             if (connectionsFade > 0) {
                 ctx.lineCap = 'round';
                 connections.forEach((conn) => {
@@ -213,13 +211,12 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
                           )
                         : 0;
 
-                    const fallOffsetYA = fallProgressA * (height + 1000);
-                    const fallOffsetYB = fallProgressB * (height + 1000);
+                    const fallOffsetYA = fallProgressA * (height + 1000) * projectedA.fallSpeed;
+                    const fallOffsetYB = fallProgressB * (height + 1000) * projectedB.fallSpeed;
 
                     const avgFallProgress = (fallProgressA + fallProgressB) / 2;
                     const fadeOpacity = isFalling ? Math.max(0, 1 - avgFallProgress) : 1;
 
-                    // 🔑 Применяем connectionsFade к итоговой прозрачности
                     const opacity = baseOpacity * eased * fadeOpacity * connectionsFade;
 
                     ctx.strokeStyle = `rgba(0, 0, 0, ${opacity})`;
@@ -237,7 +234,6 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
                     ctx.stroke();
 
                     if (progress < 1) {
-                        // 🔑 "Голова" линии тоже затухает вместе с connectionsFade
                         const headOpacity = (1 - progress) * 0.9 * connectionsFade;
                         const headRadius =
                             2.2 * ((projectedA.scale + projectedB.scale) / 2) * scaleFactor;
@@ -261,7 +257,7 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
                     ? Math.min(1, Math.max(0, (t - fallStart - p.fallDelay) / FALL_DURATION_MS))
                     : 0;
 
-                const fallOffsetY = fallProgress * (height + 1000);
+                const fallOffsetY = fallProgress * (height + 1000) * p.fallSpeed;
                 const fadeOpacity = isFalling ? Math.max(0, 1 - fallProgress) : 1;
 
                 if (

@@ -55,7 +55,8 @@ export const generateNodes = (scaleFactor: number): Node3D[] => {
                 label: LABELS[nodes.length % LABELS.length],
                 spawnDelay: Math.max(0, baseDelay + randomOffset),
                 duration: NODE_GROW_MS + Math.random() * 300,
-                fallDelay: Math.random() * 800, // ← Случайная задержка падения (0-800мс)
+                fallDelay: Math.random() * 800,
+                fallSpeed: 0.7 + Math.random() * 0.8,
             });
         }
     }
@@ -96,7 +97,6 @@ export const generateConnections = (nodes: Node3D[], scaleFactor: number): Conne
         }
     }
 
-    // Перемешиваем массив связей для случайного порядка прорастания
     for (let i = connections.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [connections[i], connections[j]] = [connections[j], connections[i]];
@@ -104,8 +104,6 @@ export const generateConnections = (nodes: Node3D[], scaleFactor: number): Conne
 
     const limitedConnections = connections.slice(0, MAX_CONNECTIONS);
 
-    // 🔑 КЛЮЧЕВОЕ ИЗМЕНЕНИЕ:
-    // Находим время, когда самый последний узел полностью завершит свою анимацию появления
     const maxNodeAppearTime = Math.max(...nodes.map((n) => n.spawnDelay + n.duration));
 
     return limitedConnections.map((conn, idx) => {

@@ -48,8 +48,8 @@ export const drawLabel = (
     fadeOpacity: number,
     index: number,
     scaleFactor: number,
-    redProgress: number, // 0 (исходный) -> 1 (полностью красный)
-    fallOffsetY: number, // Смещение вниз при падении
+    redProgress: number,
+    fallOffsetY: number,
 ): boolean => {
     const elapsed = currentTime - p.spawnDelay;
     if (elapsed < 0) {
@@ -95,7 +95,7 @@ export const drawLabel = (
     );
 
     const drawX = p.x + shakeX;
-    const drawY = p.y + shakeY + fallOffsetY; // Добавляем смещение падения
+    const drawY = p.y + shakeY + fallOffsetY;
 
     const iconSvg = ICONS[p.label] || ICONS['Сервер'];
     const img = getIconImage(iconSvg);
@@ -111,13 +111,11 @@ export const drawLabel = (
     const cardX = drawX - cardWidth / 2;
     const cardY = drawY - cardHeight / 2;
 
-    // 🔴 ТОЛЬКО фон карточки меняет цвет: чёрный (0,0,0) -> тёмно-красный (200, 20, 20)
     const bgR = Math.round(0 + (200 - 0) * redProgress);
     const bgG = Math.round(0 + (20 - 0) * redProgress);
     const bgB = Math.round(0 + (20 - 0) * redProgress);
     ctx.fillStyle = `rgba(${bgR}, ${bgG}, ${bgB}, ${opacity})`;
 
-    // Рамка остаётся исходного цвета #E9ECF5
     ctx.strokeStyle = `rgba(233, 236, 245, ${opacity})`;
     ctx.lineWidth = Math.max(0.5, BASE_LINE_WIDTH * numScale * zoom * appearScale * scaleFactor);
 
@@ -130,7 +128,6 @@ export const drawLabel = (
     ctx.fill();
     ctx.stroke();
 
-    // Подложка иконки остаётся #F2F2F2
     const iconX = cardX + currentPaddingX;
     const iconY = cardY + currentPaddingY;
 
@@ -143,7 +140,6 @@ export const drawLabel = (
     }
     ctx.fill();
 
-    // SVG иконка
     if (img && img.complete) {
         ctx.save();
         ctx.globalAlpha = opacity;
@@ -158,7 +154,6 @@ export const drawLabel = (
         ctx.restore();
     }
 
-    // Текст остаётся белым
     const textX = iconX + currentIconSize + currentGap;
     const textY = drawY;
 
