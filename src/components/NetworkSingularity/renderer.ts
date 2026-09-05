@@ -61,26 +61,18 @@ export const drawLabel = (
     const eased = 1 - Math.pow(1 - progress, 3);
     const appearScale = APPEAR_SCALE_MIN + APPEAR_SCALE_MAX * eased;
 
-    const depthFactor =
-        (SPHERE_RADIUS * scaleFactor - p.z) / (SPHERE_RADIUS * scaleFactor * 2);
+    const depthFactor = (SPHERE_RADIUS * scaleFactor - p.z) / (SPHERE_RADIUS * scaleFactor * 2);
     const baseOpacity = Math.max(0.25, Math.min(1, 0.35 + depthFactor * 0.85));
     const opacity = baseOpacity * eased * fadeOpacity;
 
     const shakeX =
-        shakeIntensity > 0
-            ? Math.sin(currentTime * 0.005 + index * 13.7) * shakeIntensity
-            : 0;
+        shakeIntensity > 0 ? Math.sin(currentTime * 0.005 + index * 13.7) * shakeIntensity : 0;
     const shakeY =
-        shakeIntensity > 0
-            ? Math.cos(currentTime * 0.007 + index * 7.3) * shakeIntensity
-            : 0;
+        shakeIntensity > 0 ? Math.cos(currentTime * 0.007 + index * 7.3) * shakeIntensity : 0;
 
     const numScale = Math.max(0.1, Number(p.scale));
 
-    const currentIconSize = Math.max(
-        1,
-        ICON_SIZE * numScale * zoom * appearScale * scaleFactor,
-    );
+    const currentIconSize = Math.max(1, ICON_SIZE * numScale * zoom * appearScale * scaleFactor);
     const currentFontSize = Math.max(
         MIN_FONT_SIZE * scaleFactor,
         BASE_FONT_SIZE * numScale * zoom * appearScale * scaleFactor,
@@ -89,10 +81,7 @@ export const drawLabel = (
         MIN_RADIUS * scaleFactor,
         BASE_RADIUS * numScale * zoom * appearScale * scaleFactor,
     );
-    const currentGap = Math.max(
-        1,
-        LABEL_ICON_GAP * numScale * zoom * appearScale * scaleFactor,
-    );
+    const currentGap = Math.max(1, LABEL_ICON_GAP * numScale * zoom * appearScale * scaleFactor);
     const currentPaddingX = Math.max(
         1,
         CARD_PADDING_X * numScale * zoom * appearScale * scaleFactor,
@@ -126,12 +115,7 @@ export const drawLabel = (
     }
 
     const cardHeight = currentIconSize + currentPaddingY * 2;
-    const cardWidth =
-        currentPaddingX +
-        currentIconSize +
-        currentGap +
-        textWidth +
-        currentPaddingX;
+    const cardWidth = currentPaddingX + currentIconSize + currentGap + textWidth + currentPaddingX;
 
     const cardX = drawX - cardWidth / 2;
     const cardY = drawY - cardHeight / 2;
@@ -144,10 +128,7 @@ export const drawLabel = (
 
     // Рамка остаётся исходного цвета #E9ECF5
     ctx.strokeStyle = `rgba(233, 236, 245, ${opacity})`;
-    ctx.lineWidth = Math.max(
-        0.5,
-        BASE_LINE_WIDTH * numScale * zoom * appearScale * scaleFactor,
-    );
+    ctx.lineWidth = Math.max(0.5, BASE_LINE_WIDTH * numScale * zoom * appearScale * scaleFactor);
 
     ctx.beginPath();
     if (typeof ctx.roundRect === 'function') {
@@ -165,13 +146,7 @@ export const drawLabel = (
     ctx.fillStyle = `rgba(242, 242, 242, ${opacity})`;
     ctx.beginPath();
     if (typeof ctx.roundRect === 'function') {
-        ctx.roundRect(
-            iconX,
-            iconY,
-            currentIconSize,
-            currentIconSize,
-            currentIconRadius,
-        );
+        ctx.roundRect(iconX, iconY, currentIconSize, currentIconSize, currentIconRadius);
     } else {
         ctx.rect(iconX, iconY, currentIconSize, currentIconSize);
     }
