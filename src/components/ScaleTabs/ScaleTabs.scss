@@ -1,15 +1,13 @@
-// src/components/ScaleTabs/ScaleTabs.scss
-
 .scale-tabs {
     display: flex;
     gap: 1.25vw;
     height: 100%;
 
     &__sidebar {
-        flex: 0 0 22.03%;
         display: flex;
+        flex: 0 0 22.03%;
         flex-direction: column;
-        gap: 1.25vw; // 24px
+        gap: 1.25vw;
         padding: 3.5vw 0 3.5vw 5.21vw;
     }
 
@@ -18,15 +16,17 @@
     }
 
     &__title {
-        font-size: 2.2vw; // УМЕНЬШЕНО: было 2.5vw (48px), теперь ~90px на 4K
+        color: var(--g-color-text-primary);
+        font-size: 2.2vw;
         font-weight: 800;
-        line-height: 1.1;
-        margin: 0 0 0.8vw; // УМЕНЬШЕНО
         letter-spacing: -0.02em;
+        line-height: 1.1;
+        margin: 0 0 0.8vw;
     }
 
     &__description {
-        font-size: 1.1vw; // УМЕНЬШЕНО: было 1.25vw (24px)
+        color: var(--g-color-text-primary);
+        font-size: 1.1vw;
         line-height: 1.4;
         margin: 0;
     }
@@ -34,53 +34,63 @@
     &__tabs {
         display: flex;
         flex-direction: column;
-        gap: 0.8vw; // УМЕНЬШЕНО: было 1.25vw (24px)
+        gap: 0.8vw;
     }
 
     &__tab {
-        display: flex;
         align-items: center;
-        justify-content: space-between;
-        padding: 2.5vw 0.83vw 0.83vw; // УМЕНЬШЕНО: было 3.33vw (64px сверху)
-        background: #fff;
-        border-radius: 0.625vw;
-        cursor: pointer;
+        background: var(--g-color-base-generic);
         border: none;
+        border-radius: 0.625vw;
         box-shadow: none;
+        color: var(--g-color-text-primary);
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        padding: 2.5vw 0.83vw 0.83vw;
+        transition:
+            background-color 0.2s ease,
+            color 0.2s ease;
+        width: 100%;
 
         &_active {
-            background: #00a2ff;
-            color: #fff;
+            background: var(--g-color-base-brand);
+            color: var(--g-color-text-primary-inverted);
         }
     }
 
     &__tab-text {
-        font-size: 1.1vw; // УМЕНЬШЕНО: было 1.25vw (24px)
+        font-size: 1.1vw;
         font-weight: 500;
         line-height: 1.4;
+        text-align: left;
     }
 
     &__tab-arrow {
-        width: 0.47vw;
-        height: 0.83vw;
+        align-items: center;
+        color: var(--g-color-text-secondary, #999999);
+        display: flex;
         flex-shrink: 0;
+        height: 0.83vw;
+        justify-content: center;
         margin-left: 0.83vw;
-        color: #999;
+        transition: color 0.2s ease;
+        width: 0.47vw;
 
         svg {
-            width: 100%;
-            height: 100%;
             display: block;
+            height: 100%;
+            width: 100%;
         }
 
         .scale-tabs__tab_active & {
-            color: #fff;
+            color: var(--g-color-text-primary-inverted, #ffffff);
         }
     }
 
     &__content {
-        flex: 1;
         display: flex;
+        flex: 1;
         flex-direction: column;
         position: relative;
     }

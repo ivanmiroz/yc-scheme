@@ -14,7 +14,17 @@ const ysDisplay = localFont({
             style: 'normal',
         },
         {
-            path: '../fonts/YS-Display-Black.woff2',
+            path: '../fonts/YS-Display-Medium.woff2',
+            weight: '500',
+            style: 'normal',
+        },
+        {
+            path: '../fonts/YS-Display-Bold.woff2',
+            weight: '700',
+            style: 'normal',
+        },
+        {
+            path: '../fonts/YS-Display-Heavy.woff2',
             weight: '800',
             style: 'normal',
         },

@@ -6,13 +6,28 @@ $gridBreakpoints: (
     'xxl': 1248px,
 );
 
-$g-color-base-generic-light: rgba(0, 0, 0, 0.05);
-
 $g-text-display-4-font-size: 60px;
-
 $g-text-ultra-bold: 800;
 
 .g-root {
+    // Базовые цвета фона и текста
     --g-color-base-background: #e9ecf5;
-    --g-color-text-primary: #000;
+    --g-color-text-primary: #000000;
+
+    // Дополнительные переменные цветов в стиле Gravity UI
+    --g-color-base-generic: #ffffff;
+    --g-color-base-generic-light: rgba(0, 0, 0, 0.05);
+    --g-color-base-generic-hover: rgba(0, 0, 0, 0.1);
+    --g-color-base-generic-accent: #000000;
+    --g-color-base-generic-subtle: #f5f7fa; // Специфичный светлый фон для контента
+
+    // Бренд и инвертированный текст (для контрастных элементов)
+    --g-color-base-brand: #00a2ff;
+    --g-color-text-primary-inverted: #ffffff;
+
+    // Линии и разделители
+    --g-color-line-generic: rgba(0, 0, 0, 0.3);
+
+    // Добавлено для второстепенных элементов (иконки, подсказки)
+    --g-color-text-secondary: #999999;
 }

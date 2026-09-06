@@ -1,0 +1,158 @@
+.infrastructure-choose {
+    display: none;
+    gap: 1.25vw;
+    height: 100%;
+
+    &__content {
+        border-radius: 0.625vw;
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        padding: 2vw;
+        position: relative;
+    }
+
+    &__sidebar {
+        background: var(--g-color-base-generic);
+        border-radius: 0.684vw; // 28px на 4K
+        display: flex;
+        flex: 0 0 22.03%;
+        flex-direction: column;
+        gap: 1.25vw;
+        margin-bottom: 1.587vw; // 65px на 4K
+        margin-right: 2.441vw; // 100px на 4K
+        margin-top: 1.587vw; // 65px на 4K
+        padding: 1.172vw 0.782vw; // 48px 32px на 4K
+    }
+
+    &__title {
+        color: var(--g-color-text-primary);
+        font-size: 2.2vw;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        line-height: 1.1;
+        margin: 0 0 0.8vw;
+    }
+
+    &__tabs {
+        display: grid;
+        gap: 0.5vw;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    &__tab {
+        align-items: center;
+        background: var(--g-color-base-generic-light);
+        border: none;
+        border-radius: 0.625vw;
+        color: var(--g-color-text-primary);
+        cursor: pointer;
+        display: flex;
+        font-size: 0.9vw;
+        font-weight: 500;
+        padding: 1vw;
+        text-align: left;
+        transition:
+            background-color 0.2s ease,
+            color 0.2s ease;
+        white-space: pre-line;
+
+        &_active {
+            background: var(--g-color-base-brand);
+            color: var(--g-color-text-primary-inverted);
+        }
+
+        &:hover:not(&_active) {
+            background: var(--g-color-base-generic-hover);
+        }
+    }
+
+    &__divider {
+        border: none;
+        border-top: 1px solid var(--g-color-line-generic);
+        margin: 1vw;
+        width: calc(100% - 2vw);
+    }
+
+    &__architect-button {
+        align-items: center;
+        background: var(--g-color-base-generic-accent);
+        border: none;
+        border-radius: 0.684vw; // ≈28px на 4K
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        padding: 3.5vw 1.1vw 0.85vw; // 64px 16px 16px на 4K
+        transition: opacity 0.2s ease;
+        width: 100%;
+
+        &:hover {
+            opacity: 0.8;
+        }
+    }
+
+    &__architect-button-text {
+        color: var(--g-color-text-primary-inverted);
+        font-size: 1.1vw;
+        font-weight: 500;
+        line-height: 1.4;
+        text-align: left;
+    }
+
+    &__architect-button-arrow {
+        flex-shrink: 0;
+        height: 0.782vw; // 32px на 4K
+        margin-left: 0.488vw; // 20px на 4K
+        width: 0.44vw; // 18px на 4K
+        fill: var(--g-color-text-primary-inverted); // Гарантирует перекраску, если это inline SVG
+    }
+
+    &__section-title {
+        color: var(--g-color-text-primary);
+        font-size: 1.1vw;
+        font-weight: 700;
+        margin: 0 0 1vw;
+    }
+
+    &__buttons {
+        display: grid;
+        gap: 0.6vw;
+        grid-template-columns: 1fr 1fr; // По 2 кнопки в ряду
+    }
+
+    &__button {
+        align-items: center;
+        background: var(--g-color-base-generic-light);
+        border: none;
+        border-radius: 0.6vw; // 12px на 4K
+        color: var(--g-color-text-primary);
+        cursor: pointer;
+        display: flex;
+        gap: 0.4vw; // 8px на 4K
+        padding: 0.4vw; // 8px на 4K
+        text-align: left;
+        transition: background-color 0.2s ease;
+        width: 100%;
+
+        &:hover {
+            background: var(--g-color-base-generic-hover);
+        }
+    }
+
+    &__button-icon {
+        align-items: center;
+        background: var(--g-color-base-generic);
+        border-radius: 0.195vw; // 8px на 4K
+        display: flex;
+        flex-shrink: 0;
+        height: 2.25vw; // 64px на 4K
+        justify-content: center;
+        width: 3vw; // 64px на 4K
+    }
+
+    &__button-text {
+        color: var(--g-color-text-primary);
+        font-size: 0.9vw;
+        font-weight: 500;
+    }
+}

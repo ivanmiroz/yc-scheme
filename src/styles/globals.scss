@@ -4,12 +4,14 @@ body,
     height: 100%;
     margin: 0;
     padding: 0;
-    color: #000;
+    color: var(--g-color-text-primary);
 }
 
 body.g-root {
     overflow: hidden;
-
-    // Переопределяем переменную Gravity UI для всех компонентов
     --g-font-family-sans: var(--font-ys-display), sans-serif;
+}
+
+button {
+    font-family: inherit;
 }
