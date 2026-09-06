@@ -72,28 +72,16 @@ export const drawLabel = (
 
     const numScale = Math.max(0.1, Number(p.scale));
 
-    const currentIconSize = Math.max(1, ICON_SIZE * numScale * zoom * appearScale * scaleFactor);
-    const currentFontSize = Math.max(
-        MIN_FONT_SIZE * scaleFactor,
-        BASE_FONT_SIZE * numScale * zoom * appearScale * scaleFactor,
-    );
-    const currentRadius = Math.max(
-        MIN_RADIUS * scaleFactor,
-        BASE_RADIUS * numScale * zoom * appearScale * scaleFactor,
-    );
-    const currentGap = Math.max(1, LABEL_ICON_GAP * numScale * zoom * appearScale * scaleFactor);
-    const currentPaddingX = Math.max(
-        1,
-        CARD_PADDING_X * numScale * zoom * appearScale * scaleFactor,
-    );
-    const currentPaddingY = Math.max(
-        1,
-        CARD_PADDING_Y * numScale * zoom * appearScale * scaleFactor,
-    );
-    const currentIconRadius = Math.max(
-        1,
-        ICON_BORDER_RADIUS * numScale * zoom * appearScale * scaleFactor,
-    );
+    // Стабилизация масштаба для предотвращения дрожания
+    const stableScale = Math.round(numScale * zoom * appearScale * scaleFactor * 100) / 100;
+
+    const currentIconSize = Math.max(1, ICON_SIZE * stableScale);
+    const currentFontSize = Math.max(MIN_FONT_SIZE * scaleFactor, BASE_FONT_SIZE * stableScale);
+    const currentRadius = Math.max(MIN_RADIUS * scaleFactor, BASE_RADIUS * stableScale);
+    const currentGap = Math.max(1, LABEL_ICON_GAP * stableScale);
+    const currentPaddingX = Math.max(1, CARD_PADDING_X * stableScale);
+    const currentPaddingY = Math.max(1, CARD_PADDING_Y * stableScale);
+    const currentIconRadius = Math.max(1, ICON_BORDER_RADIUS * stableScale);
 
     const drawX = p.x + shakeX;
     const drawY = p.y + shakeY + fallOffsetY;
@@ -114,8 +102,11 @@ export const drawLabel = (
         textWidthCache.set(cacheKey, textWidth);
     }
 
-    const cardHeight = currentIconSize + currentPaddingY * 2;
-    const cardWidth = currentPaddingX + currentIconSize + currentGap + textWidth + currentPaddingX;
+    // Округление размеров для предотвращения субпиксельного дрожания
+    const cardHeight = Math.round(currentIconSize + currentPaddingY * 2);
+    const cardWidth = Math.round(
+        currentPaddingX + currentIconSize + currentGap + textWidth + currentPaddingX,
+    );
 
     const cardX = drawX - cardWidth / 2;
     const cardY = drawY - cardHeight / 2;
@@ -128,7 +119,7 @@ export const drawLabel = (
 
     // Рамка остаётся исходного цвета #E9ECF5
     ctx.strokeStyle = `rgba(233, 236, 245, ${opacity})`;
-    ctx.lineWidth = Math.max(0.5, BASE_LINE_WIDTH * numScale * zoom * appearScale * scaleFactor);
+    ctx.lineWidth = Math.max(0.5, BASE_LINE_WIDTH * stableScale);
 
     ctx.beginPath();
     if (typeof ctx.roundRect === 'function') {
