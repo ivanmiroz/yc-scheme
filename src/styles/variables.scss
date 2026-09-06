@@ -11,3 +11,8 @@ $g-color-base-generic-light: rgba(0, 0, 0, 0.05);
 $g-text-display-4-font-size: 60px;
 
 $g-text-ultra-bold: 800;
+
+.g-root {
+    --g-color-base-background: #e9ecf5;
+    --g-color-text-primary: #000;
+}

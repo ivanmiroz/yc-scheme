@@ -1,16 +1,15 @@
-// src/styles/globals.scss
-
 html,
 body,
 #__next {
     height: 100%;
     margin: 0;
     padding: 0;
-    font-family: 'YS Display', sans-serif;
-    color: #000; /* Дефолтный цвет текста для всего приложения */
+    color: #000;
 }
 
 body.g-root {
     overflow: hidden;
-    background-color: #e9ecf5;
+
+    // Переопределяем переменную Gravity UI для всех компонентов
+    --g-font-family-sans: var(--font-ys-display), sans-serif;
 }
