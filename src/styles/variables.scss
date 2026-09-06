@@ -30,4 +30,12 @@ $g-text-ultra-bold: 800;
 
     // Добавлено для второстепенных элементов (иконки, подсказки)
     --g-color-text-secondary: #999999;
+
+    // Typography - Font Sizes
+    --g-text-size-xs: 0.9vw; // 14px на 4K
+    --g-text-size-sm: 1.1vw; // 18px на 4K
+    --g-text-size-md: 1.4vw; // 24px на 4K
+    --g-text-size-lg: 1.8vw; // 28px на 4K
+    --g-text-size-xl: 2.2vw; // 36px на 4K
+    --g-text-size-2xl: 2.8vw; // 46px на 4K
 }

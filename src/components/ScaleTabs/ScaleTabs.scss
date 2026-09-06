@@ -17,7 +17,7 @@
 
     &__title {
         color: var(--g-color-text-primary);
-        font-size: 2.2vw;
+        font-size: var(--g-text-size-xl);
         font-weight: 800;
         letter-spacing: -0.02em;
         line-height: 1.1;
@@ -26,7 +26,7 @@
 
     &__description {
         color: var(--g-color-text-primary);
-        font-size: 1.1vw;
+        font-size: var(--g-text-size-sm);
         line-height: 1.4;
         margin: 0;
     }
@@ -60,7 +60,7 @@
     }
 
     &__tab-text {
-        font-size: 1.1vw;
+        font-size: var(--g-text-size-sm);
         font-weight: 500;
         line-height: 1.4;
         text-align: left;
