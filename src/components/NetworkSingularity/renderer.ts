@@ -72,16 +72,19 @@ export const drawLabel = (
 
     const numScale = Math.max(0.1, Number(p.scale));
 
-    // Стабилизация масштаба для предотвращения дрожания
+    // Стабилизация масштаба
     const stableScale = Math.round(numScale * zoom * appearScale * scaleFactor * 100) / 100;
 
-    const currentIconSize = Math.max(1, ICON_SIZE * stableScale);
-    const currentFontSize = Math.max(MIN_FONT_SIZE * scaleFactor, BASE_FONT_SIZE * stableScale);
-    const currentRadius = Math.max(MIN_RADIUS * scaleFactor, BASE_RADIUS * stableScale);
-    const currentGap = Math.max(1, LABEL_ICON_GAP * stableScale);
-    const currentPaddingX = Math.max(1, CARD_PADDING_X * stableScale);
-    const currentPaddingY = Math.max(1, CARD_PADDING_Y * stableScale);
-    const currentIconRadius = Math.max(1, ICON_BORDER_RADIUS * stableScale);
+    // ВСЕ размеры округляются до целых пикселей — ключевое исправление
+    const currentIconSize = Math.round(Math.max(1, ICON_SIZE * stableScale));
+    const currentFontSize = Math.round(
+        Math.max(MIN_FONT_SIZE * scaleFactor, BASE_FONT_SIZE * stableScale),
+    );
+    const currentRadius = Math.round(Math.max(MIN_RADIUS * scaleFactor, BASE_RADIUS * stableScale));
+    const currentGap = Math.round(Math.max(1, LABEL_ICON_GAP * stableScale));
+    const currentPaddingX = Math.round(Math.max(1, CARD_PADDING_X * stableScale));
+    const currentPaddingY = Math.round(Math.max(1, CARD_PADDING_Y * stableScale));
+    const currentIconRadius = Math.round(Math.max(1, ICON_BORDER_RADIUS * stableScale));
 
     const drawX = p.x + shakeX;
     const drawY = p.y + shakeY + fallOffsetY;
@@ -94,30 +97,29 @@ export const drawLabel = (
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
 
-    // Кэш измерений текста для оптимизации
-    const cacheKey = `${p.label}_${Math.round(currentFontSize)}`;
+    // Кэш измерений текста
+    const cacheKey = `${p.label}_${currentFontSize}`;
     let textWidth = textWidthCache.get(cacheKey);
     if (textWidth === undefined) {
         textWidth = ctx.measureText(p.label).width;
         textWidthCache.set(cacheKey, textWidth);
     }
 
-    // Округление размеров для предотвращения субпиксельного дрожания
-    const cardHeight = Math.round(currentIconSize + currentPaddingY * 2);
-    const cardWidth = Math.round(
-        currentPaddingX + currentIconSize + currentGap + textWidth + currentPaddingX,
-    );
+    // Все размеры целые → cardWidth/cardHeight тоже целые
+    const cardHeight = currentIconSize + currentPaddingY * 2;
+    const cardWidth =
+        currentPaddingX + currentIconSize + currentGap + Math.round(textWidth) + currentPaddingX;
 
-    const cardX = drawX - cardWidth / 2;
-    const cardY = drawY - cardHeight / 2;
+    // Округление координат карточки
+    const cardX = Math.round(drawX - cardWidth / 2);
+    const cardY = Math.round(drawY - cardHeight / 2);
 
-    // Только фон карточки меняет цвет: чёрный -> тёмно-красный
+    // Фон карточки
     const bgR = Math.round(0 + (200 - 0) * redProgress);
     const bgG = Math.round(0 + (20 - 0) * redProgress);
     const bgB = Math.round(0 + (20 - 0) * redProgress);
     ctx.fillStyle = `rgba(${bgR}, ${bgG}, ${bgB}, ${opacity})`;
 
-    // Рамка остаётся исходного цвета #E9ECF5
     ctx.strokeStyle = `rgba(233, 236, 245, ${opacity})`;
     ctx.lineWidth = Math.max(0.5, BASE_LINE_WIDTH * stableScale);
 
@@ -130,7 +132,7 @@ export const drawLabel = (
     ctx.fill();
     ctx.stroke();
 
-    // Подложка иконки остаётся #F2F2F2
+    // Подложка иконки — координаты целые, т.к. все слагаемые целые
     const iconX = cardX + currentPaddingX;
     const iconY = cardY + currentPaddingY;
 
@@ -147,7 +149,7 @@ export const drawLabel = (
     if (img && img.complete) {
         ctx.save();
         ctx.globalAlpha = opacity;
-        const iconPadding = currentIconSize * 0.18;
+        const iconPadding = Math.round(currentIconSize * 0.18);
         ctx.drawImage(
             img,
             iconX + iconPadding,
@@ -158,9 +160,9 @@ export const drawLabel = (
         ctx.restore();
     }
 
-    // Текст остаётся белым
+    // Текст — координата Y вычисляется от целых cardY и cardHeight
     const textX = iconX + currentIconSize + currentGap;
-    const textY = drawY;
+    const textY = cardY + Math.floor(cardHeight / 2);
 
     ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
     ctx.fillText(p.label, textX, textY);
