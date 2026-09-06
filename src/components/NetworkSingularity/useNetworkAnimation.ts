@@ -365,8 +365,8 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
             const dy = e.touches[0].clientY - mouseRef.current.lastY;
 
             // Уменьшили с 0.008 до 0.004 — вращение в 2 раза медленнее
-            rotationRef.current.y += dx * 0.0013;
-            rotationRef.current.x += dy * 0.0013;
+            rotationRef.current.y += dx * 0.0039;
+            rotationRef.current.x += dy * 0.0039;
 
             mouseRef.current.lastX = e.touches[0].clientX;
             mouseRef.current.lastY = e.touches[0].clientY;
