@@ -76,8 +76,12 @@ export const drawLabel = (
         ICON_BORDER_RADIUS * numScale * zoom * appearScale * scaleFactor,
     );
 
-    const drawX = p.x + shakeX;
-    const drawY = p.y + shakeY + fallOffsetY;
+    // === НАЧАЛО ИЗМЕНЕНИЙ ===
+    // Округляем координаты центра карточки до целых пикселей,
+    // чтобы избежать субпиксельного дрожания на экранах с высоким DPR
+    const drawX = Math.round(p.x + shakeX);
+    const drawY = Math.round(p.y + shakeY + fallOffsetY);
+    // === КОНЕЦ ИЗМЕНЕНИЙ ===
 
     // Получаем ключ иконки по названию
     const iconKey = getIconKeyByLabel(p.label) || 'servers';
@@ -88,8 +92,10 @@ export const drawLabel = (
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
 
-    // Кэш измерений текста
-    const cacheKey = `${p.label}_${Math.round(currentFontSize)}`;
+    // === НАЧАЛО ИЗМЕНЕНИЙ ===
+    // Точный ключ для кэша ширины текста (без округления до целого)
+    const cacheKey = `${p.label}_${currentFontSize.toFixed(2)}`;
+    // === КОНЕЦ ИЗМЕНЕНИЙ ===
     let textWidth = textWidthCache.get(cacheKey);
     if (textWidth === undefined) {
         textWidth = ctx.measureText(p.label).width;
@@ -134,7 +140,12 @@ export const drawLabel = (
     }
     ctx.fill();
 
-    // Отрисовка PNG-иконки
+    // === НАЧАЛО ИЗМЕНЕНИЙ ===
+    // Включаем сглаживание для иконок
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    // === КОНЕЦ ИЗМЕНЕНИЙ ===
+
     if (img && img.complete) {
         ctx.save();
         ctx.globalAlpha = opacity;
