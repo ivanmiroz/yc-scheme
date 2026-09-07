@@ -76,23 +76,21 @@ export const InfrastructureChoose: React.FC<InfrastructureChooseProps> = ({
 
     // Запуск/остановка canvas-анимации в зависимости от видимости
     useEffect(() => {
-        if (!visible) {
-            // Останавливаем анимацию и сбрасываем
-            cleanupRef.current?.();
-            cleanupRef.current = null;
-            return;
+        // Инициализируем функцию очистки
+        let cleanup: (() => void) | null = null;
+
+        if (visible && canvasRef.current) {
+            const result = initCanvasAnimation(canvasRef.current);
+            // Проверяем, что result действительно функция очистки
+            if (typeof result === 'function') {
+                cleanup = result;
+            }
         }
 
-        if (!canvasRef.current) return;
+        // Сохраняем актуальную cleanup-функцию в ref
+        cleanupRef.current = cleanup;
 
-        const cleanup = initCanvasAnimation(canvasRef.current);
-        // Проверяем, что cleanup является функцией (может быть void)
-        if (typeof cleanup === 'function') {
-            cleanupRef.current = cleanup;
-        } else {
-            cleanupRef.current = null;
-        }
-
+        // Всегда возвращаем функцию очистки (consistent-return)
         return () => {
             cleanupRef.current?.();
             cleanupRef.current = null;
