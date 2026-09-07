@@ -30,6 +30,7 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
         const ctx = canvas.getContext('2d');
         if (!ctx) return undefined;
 
+        // Предзагрузка PNG-иконок
         loadAllIcons();
 
         startTimeRef.current = performance.now();
@@ -38,7 +39,7 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
             const rect = canvas.getBoundingClientRect();
             const MAX_DIMENSION = 2560;
 
-            // Для 4K экранов (ширина > 2560) используем DPR = 1, чтобы не перегружать GPU
+            // Для 4K экранов (ширина >= 2560) используем DPR = 1, чтобы не перегружать GPU
             let dpr = Math.min(window.devicePixelRatio || 1, 1.5);
             if (rect.width >= 2560 || rect.height >= 1440) {
                 dpr = 1;
@@ -113,7 +114,7 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
                 fallSpeed: n.fallSpeed,
             }));
 
-            // Отрисовка связей
+            // Отрисовка связей (без разрушения)
             ctx.lineCap = 'round';
             const lineWidth = 4 * scaleFactor;
             const margin = 200;
@@ -178,10 +179,10 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
                 }
             });
 
-            // Сортировка по Z
+            // Сортировка по Z для правильного наложения
             projected.sort((node1, node2) => node2.z - node1.z);
 
-            // Отрисовка узлов
+            // Отрисовка узлов (без округления координат)
             projected.forEach((p) => {
                 if (p.y < -200 || p.y > height + 200 || p.x < -100 || p.x > width + 100) {
                     return;
@@ -195,7 +196,7 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
 
         animationRef.current = requestAnimationFrame(animate);
 
-        // Обработчики мыши и тача (без изменений)
+        // Обработчики мыши и тача
         const handleMouseDown = (e: MouseEvent) => {
             mouseRef.current.isDown = true;
             mouseRef.current.lastX = e.clientX;

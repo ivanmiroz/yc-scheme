@@ -51,8 +51,13 @@ export const drawLabel = (
     const shakeY =
         shakeIntensity > 0 ? Math.cos(currentTime * 0.007 + index * 7.3) * shakeIntensity : 0;
 
+    // Дробные координаты центра (без округления)
+    const drawX = p.x + shakeX;
+    const drawY = p.y + shakeY + fallOffsetY;
+
     const numScale = Math.max(0.1, Number(p.scale));
 
+    // Все размеры оставляем дробными для плавности
     const currentIconSize = Math.max(1, ICON_SIZE * numScale * zoom * appearScale * scaleFactor);
     const currentFontSize = Math.max(
         MIN_FONT_SIZE * scaleFactor,
@@ -76,10 +81,6 @@ export const drawLabel = (
         ICON_BORDER_RADIUS * numScale * zoom * appearScale * scaleFactor,
     );
 
-    // Без округления координат для плавности
-    const drawX = p.x + shakeX;
-    const drawY = p.y + shakeY + fallOffsetY;
-
     const iconKey = getIconKeyByLabel(p.label) || 'servers';
     const img = getIcon(iconKey);
 
@@ -88,7 +89,6 @@ export const drawLabel = (
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
 
-    // Точный ключ для кэша ширины текста
     const cacheKey = `${p.label}_${currentFontSize.toFixed(2)}`;
     let textWidth = textWidthCache.get(cacheKey);
     if (textWidth === undefined) {
@@ -102,6 +102,7 @@ export const drawLabel = (
     const cardX = drawX - cardWidth / 2;
     const cardY = drawY - cardHeight / 2;
 
+    // Фон карточки
     const bgR = Math.round(0 + (200 - 0) * redProgress);
     const bgG = Math.round(0 + (20 - 0) * redProgress);
     const bgB = Math.round(0 + (20 - 0) * redProgress);
@@ -119,6 +120,7 @@ export const drawLabel = (
     ctx.fill();
     ctx.stroke();
 
+    // Подложка иконки
     const iconX = cardX + currentPaddingX;
     const iconY = cardY + currentPaddingY;
 
@@ -131,8 +133,9 @@ export const drawLabel = (
     }
     ctx.fill();
 
-    // Отключаем сглаживание для ускорения
-    ctx.imageSmoothingEnabled = false;
+    // Включаем сглаживание для иконок
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
 
     if (img && img.complete) {
         ctx.save();
@@ -148,6 +151,7 @@ export const drawLabel = (
         ctx.restore();
     }
 
+    // Текст
     const textX = iconX + currentIconSize + currentGap;
     const textY = drawY;
 
