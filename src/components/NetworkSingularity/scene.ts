@@ -1,7 +1,6 @@
 import type {Connection, Node3D} from './types';
 import {
     CONNECTION_DISTANCE,
-    LABELS,
     LINE_GROW_MS,
     MAX_CONNECTIONS,
     MIN_NODE_DISTANCE,
@@ -11,6 +10,7 @@ import {
     SPAWN_WINDOW_MS,
     SPHERE_RADIUS,
 } from './constants';
+import {LABELS} from '../InfrastructureChoose/canvasAnimation/icons';
 
 export const generateNodes = (scaleFactor: number): Node3D[] => {
     const nodes: Node3D[] = [];

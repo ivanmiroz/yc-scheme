@@ -49,6 +49,32 @@ export const getIcon = (key: string): HTMLImageElement | undefined => {
     return iconCache[key];
 };
 
+// Список названий (labels) для генерации узлов
+export const LABELS: string[] = [
+    'Кластер',
+    'База данных',
+    'IAM',
+    'GPU',
+    'Kubernetes',
+    'Backup',
+    'Серверы',
+    'Гипервизор',
+    'DWH',
+    'Виртуальная машина',
+    'Cloud Compute',
+    'Приложения',
+    'Сервер данных',
+    'Сервер',
+    'Docker-контейнер',
+    'Балансировщик',
+    'Мониторинг',
+    'Хранилище',
+    'DNS',
+    'CDN',
+    'Cloud Back',
+    'Object Storage',
+];
+
 // Сопоставление названий (labels) с ключами иконок
 export const LABEL_TO_ICON_KEY: Record<string, string> = {
     Кластер: 'kubernetes',

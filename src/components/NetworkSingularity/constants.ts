@@ -33,28 +33,3 @@ export const BASE_LINE_WIDTH = 1;
 
 export const APPEAR_SCALE_MIN = 0.8;
 export const APPEAR_SCALE_MAX = 0.2;
-
-export const LABELS = [
-    'Кластер',
-    'База данных',
-    'IAM',
-    'GPU',
-    'Kubernetes',
-    'Backup',
-    'Серверы',
-    'Гипервизор',
-    'DWH',
-    'Виртуальная машина',
-    'Cloud Compute',
-    'Приложения',
-    'Сервер данных',
-    'Сервер',
-    'Docker-контейнер',
-    'Балансировщик',
-    'Мониторинг',
-    'Хранилище',
-    'DNS',
-    'CDN',
-    'Cloud Back',
-    'Object Storage',
-];
