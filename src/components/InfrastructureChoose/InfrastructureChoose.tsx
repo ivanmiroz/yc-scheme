@@ -54,44 +54,75 @@ const listItems: ListItem[] = [
     },
 ];
 
-export const InfrastructureChoose: React.FC = () => {
-    const [activeTab, setActiveTab] = React.useState(tabs[0].value);
+interface InfrastructureChooseProps {
+    activeIndex: number;
+    onBack?: () => void;
+    visible: boolean;
+}
+
+export const InfrastructureChoose: React.FC<InfrastructureChooseProps> = ({
+    activeIndex,
+    onBack,
+    visible,
+}) => {
+    const [localActiveIndex, setLocalActiveIndex] = React.useState(activeIndex);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const cleanupRef = useRef<(() => void) | null>(null);
 
+    // Синхронизация с внешним индексом
     useEffect(() => {
-        if (!canvasRef.current) {
-            return () => {};
-        }
-        const cleanup = initCanvasAnimation(canvasRef.current);
-        return () => {
-            if (cleanup) cleanup();
-        };
-    }, []);
+        setLocalActiveIndex(activeIndex);
+    }, [activeIndex]);
 
-    const renderContent = () => {
-        return null;
-    };
+    // Запуск/остановка canvas-анимации в зависимости от видимости
+    useEffect(() => {
+        if (!visible) {
+            // Останавливаем анимацию и сбрасываем
+            cleanupRef.current?.();
+            cleanupRef.current = null;
+            return;
+        }
+
+        if (!canvasRef.current) return;
+
+        const cleanup = initCanvasAnimation(canvasRef.current);
+        // Проверяем, что cleanup является функцией (может быть void)
+        if (typeof cleanup === 'function') {
+            cleanupRef.current = cleanup;
+        } else {
+            cleanupRef.current = null;
+        }
+
+        return () => {
+            cleanupRef.current?.();
+            cleanupRef.current = null;
+        };
+    }, [visible]);
 
     return (
         <div className={b()}>
             <div className={b('content')}>
                 <div className={b('content-inner')}>
-                    {renderContent()}
                     <div className={b('canvas-container')}>
                         <canvas ref={canvasRef} className={b('canvas')} />
                     </div>
                 </div>
             </div>
 
+            {/* Кнопка "Назад" в левом верхнем углу */}
+            <button className={b('back-button')} onClick={onBack} type="button">
+                ← Назад
+            </button>
+
             <div className={b('sidebar')}>
                 <h2 className={b('title')}>Выбери инфраструктуру:</h2>
                 <div className={b('tabs')}>
-                    {tabs.map((tab) => (
+                    {tabs.map((tab, index) => (
                         <button
                             key={tab.value}
                             type="button"
-                            className={b('tab', {active: activeTab === tab.value})}
-                            onClick={() => setActiveTab(tab.value)}
+                            className={b('tab', {active: localActiveIndex === index})}
+                            onClick={() => setLocalActiveIndex(index)}
                         >
                             {tab.label}
                         </button>

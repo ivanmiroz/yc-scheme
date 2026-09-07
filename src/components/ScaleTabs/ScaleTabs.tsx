@@ -1,8 +1,6 @@
-// src/components/ScaleTabs/ScaleTabs.tsx
 'use client';
 
 import React from 'react';
-import {TabPanel, TabProvider} from '@gravity-ui/uikit';
 import block from 'bem-cn-lite';
 
 import {NetworkSingularity} from '../NetworkSingularity/NetworkSingularity';
@@ -10,33 +8,24 @@ import './ScaleTabs.scss';
 
 const b = block('scale-tabs');
 
-interface TabItem {
+interface ActionItem {
     value: string;
     label: string;
 }
 
-const tabs: TabItem[] = [
-    {
-        value: 'scale',
-        label: 'Масштабируйтесь безопасно',
-    },
-    {
-        value: 'time-to-market',
-        label: 'Ускорение Time to Market',
-    },
-    {
-        value: 'ai',
-        label: 'Разработка ИИ-приложений',
-    },
-    {
-        value: 'security',
-        label: 'Обеспечение безопасной работы сервисов',
-    },
+const actions: ActionItem[] = [
+    {value: 'scale', label: 'Масштабируйтесь безопасно'},
+    {value: 'time-to-market', label: 'Ускорение Time to Market'},
+    {value: 'ai', label: 'Разработка ИИ-приложений'},
+    {value: 'security', label: 'Обеспечение безопасной работы сервисов'},
 ];
 
-export const ScaleTabs: React.FC = () => {
-    const [activeTab, setActiveTab] = React.useState('scale');
+interface ScaleTabsProps {
+    activeIndex?: number;
+    onActionClick?: (index: number) => void;
+}
 
+export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionClick}) => {
     return (
         <div className={b()}>
             <div className={b('sidebar')}>
@@ -48,15 +37,16 @@ export const ScaleTabs: React.FC = () => {
                     </p>
                 </div>
 
-                <div className={b('tabs')}>
-                    {tabs.map((tab) => (
-                        <div
-                            key={tab.value}
-                            className={b('tab', {active: activeTab === tab.value})}
-                            onClick={() => setActiveTab(tab.value)}
+                <div className={b('actions')}>
+                    {actions.map((action, index) => (
+                        <button
+                            key={action.value}
+                            className={b('button', {active: activeIndex === index})}
+                            type="button"
+                            onClick={() => onActionClick?.(index)}
                         >
-                            <span className={b('tab-text')}>{tab.label}</span>
-                            <span className={b('tab-arrow')}>
+                            <span className={b('button-text')}>{action.label}</span>
+                            <span className={b('button-arrow')}>
                                 <svg
                                     width="9"
                                     height="16"
@@ -73,21 +63,15 @@ export const ScaleTabs: React.FC = () => {
                                     />
                                 </svg>
                             </span>
-                        </div>
+                        </button>
                     ))}
                 </div>
             </div>
 
             <div className={b('content')}>
-                <TabProvider value={activeTab}>
-                    {tabs.map((tab) => (
-                        <TabPanel key={tab.value} value={tab.value}>
-                            <div className={b('panel')}>
-                                <NetworkSingularity />
-                            </div>
-                        </TabPanel>
-                    ))}
-                </TabProvider>
+                <div className={b('panel')}>
+                    <NetworkSingularity />
+                </div>
             </div>
         </div>
     );

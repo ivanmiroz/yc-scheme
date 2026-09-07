@@ -31,13 +31,13 @@
         margin: 0;
     }
 
-    &__tabs {
+    &__actions {
         display: flex;
         flex-direction: column;
         gap: 0.8vw;
     }
 
-    &__tab {
+    &__button {
         align-items: center;
         background: var(--g-color-base-generic);
         border: none;
@@ -53,20 +53,38 @@
             color 0.2s ease;
         width: 100%;
 
+        &:hover {
+            background: var(--g-color-base-generic-hover, #f0f0f0);
+        }
+
+        // Активное состояние — голубой фон и белый текст
         &_active {
             background: var(--g-color-base-brand);
             color: var(--g-color-text-primary-inverted);
+
+            &:hover {
+                background: var(--g-color-base-brand); // при наведении фон не меняется
+            }
+
+            .scale-tabs__button-text {
+                color: var(--g-color-text-primary-inverted);
+            }
+
+            .scale-tabs__button-arrow {
+                color: var(--g-color-text-primary-inverted);
+            }
         }
     }
 
-    &__tab-text {
+    &__button-text {
         font-size: var(--g-text-size-sm);
         font-weight: 500;
         line-height: 1.4;
         text-align: left;
+        transition: color 0.2s ease;
     }
 
-    &__tab-arrow {
+    &__button-arrow {
         align-items: center;
         color: var(--g-color-text-secondary, #999999);
         display: flex;
@@ -82,10 +100,6 @@
             height: 100%;
             width: 100%;
         }
-
-        .scale-tabs__tab_active & {
-            color: var(--g-color-text-primary-inverted, #ffffff);
-        }
     }
 
     &__content {
@@ -100,12 +114,4 @@
         flex-direction: column;
         height: 100%;
     }
-}
-
-.g-tab-list {
-    display: none;
-}
-
-.g-tab-panel {
-    height: 100%;
 }
