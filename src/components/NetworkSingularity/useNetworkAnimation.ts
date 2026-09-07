@@ -30,7 +30,6 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
         const ctx = canvas.getContext('2d');
         if (!ctx) return undefined;
 
-        // Предзагрузка всех PNG-иконок (без ожидания)
         loadAllIcons();
 
         startTimeRef.current = performance.now();
@@ -39,12 +38,13 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
             const rect = canvas.getBoundingClientRect();
             const MAX_DIMENSION = 2560;
 
-            // Оптимизация: ограничиваем DPR до 1.5 для 4K экранов
-            const dpr = Math.min(
-                window.devicePixelRatio || 1,
-                MAX_DIMENSION / Math.max(rect.width, rect.height),
-                1.5,
-            );
+            // Для 4K экранов (ширина > 2560) используем DPR = 1, чтобы не перегружать GPU
+            let dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+            if (rect.width >= 2560 || rect.height >= 1440) {
+                dpr = 1;
+            } else {
+                dpr = Math.min(dpr, MAX_DIMENSION / Math.max(rect.width, rect.height));
+            }
 
             dprRef.current = dpr;
             canvas.width = Math.floor(rect.width * dpr);
@@ -113,7 +113,7 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
                 fallSpeed: n.fallSpeed,
             }));
 
-            // Отрисовка связей (без разрушения)
+            // Отрисовка связей
             ctx.lineCap = 'round';
             const lineWidth = 4 * scaleFactor;
             const margin = 200;
@@ -171,46 +171,31 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
                     const headRadius =
                         2.2 * ((projectedA.scale + projectedB.scale) / 2) * scaleFactor;
 
-                    ctx.save();
-                    ctx.shadowBlur = headRadius * 4;
-                    ctx.shadowColor = `rgba(0, 0, 0, ${headOpacity})`;
                     ctx.fillStyle = `rgba(0, 0, 0, ${headOpacity})`;
                     ctx.beginPath();
                     ctx.arc(currentEndX, currentEndY, headRadius, 0, Math.PI * 2);
                     ctx.fill();
-                    ctx.restore();
                 }
             });
 
-            // Сортировка по Z для правильного наложения
+            // Сортировка по Z
             projected.sort((node1, node2) => node2.z - node1.z);
 
-            // Отрисовка узлов (без падения)
+            // Отрисовка узлов
             projected.forEach((p) => {
                 if (p.y < -200 || p.y > height + 200 || p.x < -100 || p.x > width + 100) {
                     return;
                 }
 
-                drawLabel(
-                    ctx,
-                    p,
-                    zoom,
-                    t,
-                    0,
-                    1, // fadeOpacity всегда 1
-                    p.index,
-                    scaleFactor,
-                    0, // redProgress всегда 0
-                    0, // fallOffsetY всегда 0
-                );
+                drawLabel(ctx, p, zoom, t, 0, 1, p.index, scaleFactor, 0, 0);
             });
 
             animationRef.current = requestAnimationFrame(animate);
-            return undefined;
         };
 
         animationRef.current = requestAnimationFrame(animate);
 
+        // Обработчики мыши и тача (без изменений)
         const handleMouseDown = (e: MouseEvent) => {
             mouseRef.current.isDown = true;
             mouseRef.current.lastX = e.clientX;
@@ -270,12 +255,8 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
         window.addEventListener('mousemove', handleMouseMove);
         window.addEventListener('mouseup', handleMouseUp);
         canvas.addEventListener('wheel', handleWheel, {passive: false});
-        canvas.addEventListener('touchstart', handleTouchStart, {
-            passive: true,
-        });
-        canvas.addEventListener('touchmove', handleTouchMove, {
-            passive: false,
-        });
+        canvas.addEventListener('touchstart', handleTouchStart, {passive: true});
+        canvas.addEventListener('touchmove', handleTouchMove, {passive: false});
         canvas.addEventListener('touchend', handleTouchEnd);
 
         return () => {

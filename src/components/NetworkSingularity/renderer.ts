@@ -76,14 +76,10 @@ export const drawLabel = (
         ICON_BORDER_RADIUS * numScale * zoom * appearScale * scaleFactor,
     );
 
-    // === НАЧАЛО ИЗМЕНЕНИЙ ===
-    // Округляем координаты центра карточки до целых пикселей,
-    // чтобы избежать субпиксельного дрожания на экранах с высоким DPR
-    const drawX = Math.round(p.x + shakeX);
-    const drawY = Math.round(p.y + shakeY + fallOffsetY);
-    // === КОНЕЦ ИЗМЕНЕНИЙ ===
+    // Без округления координат для плавности
+    const drawX = p.x + shakeX;
+    const drawY = p.y + shakeY + fallOffsetY;
 
-    // Получаем ключ иконки по названию
     const iconKey = getIconKeyByLabel(p.label) || 'servers';
     const img = getIcon(iconKey);
 
@@ -92,10 +88,8 @@ export const drawLabel = (
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
 
-    // === НАЧАЛО ИЗМЕНЕНИЙ ===
-    // Точный ключ для кэша ширины текста (без округления до целого)
+    // Точный ключ для кэша ширины текста
     const cacheKey = `${p.label}_${currentFontSize.toFixed(2)}`;
-    // === КОНЕЦ ИЗМЕНЕНИЙ ===
     let textWidth = textWidthCache.get(cacheKey);
     if (textWidth === undefined) {
         textWidth = ctx.measureText(p.label).width;
@@ -108,13 +102,11 @@ export const drawLabel = (
     const cardX = drawX - cardWidth / 2;
     const cardY = drawY - cardHeight / 2;
 
-    // Фон карточки
     const bgR = Math.round(0 + (200 - 0) * redProgress);
     const bgG = Math.round(0 + (20 - 0) * redProgress);
     const bgB = Math.round(0 + (20 - 0) * redProgress);
     ctx.fillStyle = `rgba(${bgR}, ${bgG}, ${bgB}, ${opacity})`;
 
-    // Рамка
     ctx.strokeStyle = `rgba(233, 236, 245, ${opacity})`;
     ctx.lineWidth = Math.max(0.5, BASE_LINE_WIDTH * numScale * zoom * appearScale * scaleFactor);
 
@@ -127,7 +119,6 @@ export const drawLabel = (
     ctx.fill();
     ctx.stroke();
 
-    // Подложка иконки
     const iconX = cardX + currentPaddingX;
     const iconY = cardY + currentPaddingY;
 
@@ -140,11 +131,8 @@ export const drawLabel = (
     }
     ctx.fill();
 
-    // === НАЧАЛО ИЗМЕНЕНИЙ ===
-    // Включаем сглаживание для иконок
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    // === КОНЕЦ ИЗМЕНЕНИЙ ===
+    // Отключаем сглаживание для ускорения
+    ctx.imageSmoothingEnabled = false;
 
     if (img && img.complete) {
         ctx.save();
@@ -160,7 +148,6 @@ export const drawLabel = (
         ctx.restore();
     }
 
-    // Текст
     const textX = iconX + currentIconSize + currentGap;
     const textY = drawY;
 
