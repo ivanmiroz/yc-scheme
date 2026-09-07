@@ -13,6 +13,7 @@ import {
 import {project} from './geometry';
 import {drawLabel} from './renderer';
 import {generateConnections, generateNodes} from './scene';
+import {loadAllIcons} from '../InfrastructureChoose/canvasAnimation/icons';
 import type {Connection, Node3D, ProjectedNode} from './types';
 
 type ProjectedNodeWithIndex = ProjectedNode & {
@@ -40,6 +41,9 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
 
         const ctx = canvas.getContext('2d');
         if (!ctx) return undefined;
+
+        // Предзагрузка всех PNG-иконок (без ожидания)
+        loadAllIcons();
 
         startTimeRef.current = performance.now();
 

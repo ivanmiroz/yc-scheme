@@ -15,30 +15,11 @@ import {
     MIN_RADIUS,
     SPHERE_RADIUS,
 } from './constants';
-import {ICONS} from './icons';
+import {getIcon, getIconKeyByLabel} from '../InfrastructureChoose/canvasAnimation/icons';
 
 type ProjectedNodeWithIndex = ProjectedNode & {index: number};
 
-const iconCache = new Map<string, HTMLImageElement>();
 const textWidthCache = new Map<string, number>();
-
-const getIconImage = (iconSvg: string): HTMLImageElement | undefined => {
-    if (!iconCache.has(iconSvg)) {
-        const img = new Image();
-        const svgBlob = new Blob([iconSvg], {
-            type: 'image/svg+xml;charset=utf-8',
-        });
-        const url = URL.createObjectURL(svgBlob);
-
-        img.onload = () => {
-            URL.revokeObjectURL(url);
-        };
-
-        img.src = url;
-        iconCache.set(iconSvg, img);
-    }
-    return iconCache.get(iconSvg);
-};
 
 export const drawLabel = (
     ctx: CanvasRenderingContext2D,
@@ -98,15 +79,16 @@ export const drawLabel = (
     const drawX = p.x + shakeX;
     const drawY = p.y + shakeY + fallOffsetY;
 
-    const iconSvg = ICONS[p.label] || ICONS['Сервер'];
-    const img = getIconImage(iconSvg);
+    // Получаем ключ иконки по названию
+    const iconKey = getIconKeyByLabel(p.label) || 'servers';
+    const img = getIcon(iconKey);
 
     const fontString = `500 ${currentFontSize}px ui-monospace, "SF Mono", Menlo, monospace`;
     ctx.font = fontString;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
 
-    // Кэш измерений текста для оптимизации
+    // Кэш измерений текста
     const cacheKey = `${p.label}_${Math.round(currentFontSize)}`;
     let textWidth = textWidthCache.get(cacheKey);
     if (textWidth === undefined) {
@@ -120,13 +102,13 @@ export const drawLabel = (
     const cardX = drawX - cardWidth / 2;
     const cardY = drawY - cardHeight / 2;
 
-    // Только фон карточки меняет цвет: чёрный -> тёмно-красный
+    // Фон карточки
     const bgR = Math.round(0 + (200 - 0) * redProgress);
     const bgG = Math.round(0 + (20 - 0) * redProgress);
     const bgB = Math.round(0 + (20 - 0) * redProgress);
     ctx.fillStyle = `rgba(${bgR}, ${bgG}, ${bgB}, ${opacity})`;
 
-    // Рамка остаётся исходного цвета #E9ECF5
+    // Рамка
     ctx.strokeStyle = `rgba(233, 236, 245, ${opacity})`;
     ctx.lineWidth = Math.max(0.5, BASE_LINE_WIDTH * numScale * zoom * appearScale * scaleFactor);
 
@@ -139,7 +121,7 @@ export const drawLabel = (
     ctx.fill();
     ctx.stroke();
 
-    // Подложка иконки остаётся #F2F2F2
+    // Подложка иконки
     const iconX = cardX + currentPaddingX;
     const iconY = cardY + currentPaddingY;
 
@@ -152,7 +134,7 @@ export const drawLabel = (
     }
     ctx.fill();
 
-    // SVG иконка
+    // Отрисовка PNG-иконки
     if (img && img.complete) {
         ctx.save();
         ctx.globalAlpha = opacity;
@@ -167,7 +149,7 @@ export const drawLabel = (
         ctx.restore();
     }
 
-    // Текст остаётся белым
+    // Текст
     const textX = iconX + currentIconSize + currentGap;
     const textY = drawY;
 

@@ -48,3 +48,34 @@ export const loadAllIcons = (): Promise<Record<string, HTMLImageElement>> => {
 export const getIcon = (key: string): HTMLImageElement | undefined => {
     return iconCache[key];
 };
+
+// Сопоставление названий (labels) с ключами иконок
+export const LABEL_TO_ICON_KEY: Record<string, string> = {
+    Кластер: 'kubernetes',
+    'База данных': 'dwh',
+    IAM: 'apps',
+    GPU: 'compute',
+    Kubernetes: 'kubernetes',
+    Backup: 'backup',
+    Серверы: 'servers',
+    Гипервизор: 'hypervisor',
+    DWH: 'dwh',
+    'Виртуальная машина': 'hypervisor',
+    'Cloud Compute': 'compute',
+    Приложения: 'apps',
+    'Сервер данных': 'servers',
+    Сервер: 'servers',
+    'Docker-контейнер': 'kubernetes',
+    Балансировщик: 'network',
+    Мониторинг: 'network',
+    Хранилище: 'storage',
+    DNS: 'network',
+    CDN: 'network',
+    'Cloud Back': 'backup',
+    'Object Storage': 'storage',
+};
+
+// Функция получения ключа иконки по названию
+export const getIconKeyByLabel = (label: string): string | undefined => {
+    return LABEL_TO_ICON_KEY[label];
+};
