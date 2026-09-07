@@ -72,17 +72,28 @@ export const drawLabel = (
 
     const numScale = Math.max(0.1, Number(p.scale));
 
-    // Стабилизация масштаба (до 3 знаков для плавности)
-    const stableScale = Math.round(numScale * zoom * appearScale * scaleFactor * 1000) / 1000;
-
-    // Размеры НЕ округляем — оставляем плавными
-    const currentIconSize = Math.max(1, ICON_SIZE * stableScale);
-    const currentFontSize = Math.max(MIN_FONT_SIZE * scaleFactor, BASE_FONT_SIZE * stableScale);
-    const currentRadius = Math.max(MIN_RADIUS * scaleFactor, BASE_RADIUS * stableScale);
-    const currentGap = Math.max(1, LABEL_ICON_GAP * stableScale);
-    const currentPaddingX = Math.max(1, CARD_PADDING_X * stableScale);
-    const currentPaddingY = Math.max(1, CARD_PADDING_Y * stableScale);
-    const currentIconRadius = Math.max(1, ICON_BORDER_RADIUS * stableScale);
+    const currentIconSize = Math.max(1, ICON_SIZE * numScale * zoom * appearScale * scaleFactor);
+    const currentFontSize = Math.max(
+        MIN_FONT_SIZE * scaleFactor,
+        BASE_FONT_SIZE * numScale * zoom * appearScale * scaleFactor,
+    );
+    const currentRadius = Math.max(
+        MIN_RADIUS * scaleFactor,
+        BASE_RADIUS * numScale * zoom * appearScale * scaleFactor,
+    );
+    const currentGap = Math.max(1, LABEL_ICON_GAP * numScale * zoom * appearScale * scaleFactor);
+    const currentPaddingX = Math.max(
+        1,
+        CARD_PADDING_X * numScale * zoom * appearScale * scaleFactor,
+    );
+    const currentPaddingY = Math.max(
+        1,
+        CARD_PADDING_Y * numScale * zoom * appearScale * scaleFactor,
+    );
+    const currentIconRadius = Math.max(
+        1,
+        ICON_BORDER_RADIUS * numScale * zoom * appearScale * scaleFactor,
+    );
 
     const drawX = p.x + shakeX;
     const drawY = p.y + shakeY + fallOffsetY;
@@ -95,30 +106,29 @@ export const drawLabel = (
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
 
-    // Кэш измерений текста
-    const cacheKey = `${p.label}_${Math.round(currentFontSize * 10)}`;
+    // Кэш измерений текста для оптимизации
+    const cacheKey = `${p.label}_${Math.round(currentFontSize)}`;
     let textWidth = textWidthCache.get(cacheKey);
     if (textWidth === undefined) {
         textWidth = ctx.measureText(p.label).width;
         textWidthCache.set(cacheKey, textWidth);
     }
 
-    // Размеры карточки (дробные, но стабильные)
     const cardHeight = currentIconSize + currentPaddingY * 2;
     const cardWidth = currentPaddingX + currentIconSize + currentGap + textWidth + currentPaddingX;
 
-    // Округляем только финальные координаты карточки
-    const cardX = Math.round(drawX - cardWidth / 2);
-    const cardY = Math.round(drawY - cardHeight / 2);
+    const cardX = drawX - cardWidth / 2;
+    const cardY = drawY - cardHeight / 2;
 
-    // Фон карточки
+    // Только фон карточки меняет цвет: чёрный -> тёмно-красный
     const bgR = Math.round(0 + (200 - 0) * redProgress);
     const bgG = Math.round(0 + (20 - 0) * redProgress);
     const bgB = Math.round(0 + (20 - 0) * redProgress);
     ctx.fillStyle = `rgba(${bgR}, ${bgG}, ${bgB}, ${opacity})`;
 
+    // Рамка остаётся исходного цвета #E9ECF5
     ctx.strokeStyle = `rgba(233, 236, 245, ${opacity})`;
-    ctx.lineWidth = Math.max(0.5, BASE_LINE_WIDTH * stableScale);
+    ctx.lineWidth = Math.max(0.5, BASE_LINE_WIDTH * numScale * zoom * appearScale * scaleFactor);
 
     ctx.beginPath();
     if (typeof ctx.roundRect === 'function') {
@@ -129,7 +139,7 @@ export const drawLabel = (
     ctx.fill();
     ctx.stroke();
 
-    // Подложка иконки — координаты от целых cardX/cardY
+    // Подложка иконки остаётся #F2F2F2
     const iconX = cardX + currentPaddingX;
     const iconY = cardY + currentPaddingY;
 
@@ -157,9 +167,9 @@ export const drawLabel = (
         ctx.restore();
     }
 
-    // Текст — позиция вычисляется от целых cardY/cardHeight
+    // Текст остаётся белым
     const textX = iconX + currentIconSize + currentGap;
-    const textY = cardY + cardHeight / 2;
+    const textY = drawY;
 
     ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
     ctx.fillText(p.label, textX, textY);
