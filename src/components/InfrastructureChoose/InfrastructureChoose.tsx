@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, {useEffect, useRef} from 'react';
 import block from 'bem-cn-lite';
 import './InfrastructureChoose.scss';
+import {initCanvasAnimation} from './canvasAnimation';
 
 const b = block('infrastructure-choose');
 
@@ -172,26 +173,31 @@ const listItems: ListItem[] = [
 
 export const InfrastructureChoose: React.FC = () => {
     const [activeTab, setActiveTab] = React.useState(tabs[0].value);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    useEffect(() => {
+        if (!canvasRef.current) {
+            return () => {};
+        }
+        const cleanup = initCanvasAnimation(canvasRef.current);
+        return () => {
+            if (cleanup) cleanup();
+        };
+    }, []);
 
     const renderContent = () => {
-        switch (activeTab) {
-            case 'scale':
-                return <h3>Масштабирование без ограничений</h3>;
-            case 'ai':
-                return <h3>Инфраструктура для ИИ</h3>;
-            case 'stability':
-                return <h3>Стабильная работа сервисов</h3>;
-            case 'ttm':
-                return <h3>Ускорение time-to-market</h3>;
-            default:
-                return null;
-        }
+        return null;
     };
 
     return (
         <div className={b()}>
             <div className={b('content')}>
-                <div className={b('content-inner')}>{renderContent()}</div>
+                <div className={b('content-inner')}>
+                    {renderContent()}
+                    <div className={b('canvas-container')}>
+                        <canvas ref={canvasRef} className={b('canvas')} />
+                    </div>
+                </div>
             </div>
 
             <div className={b('sidebar')}>

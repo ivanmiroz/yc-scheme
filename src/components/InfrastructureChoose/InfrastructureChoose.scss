@@ -1,13 +1,20 @@
+@import './InfrastructureChooseCanvas.scss';
+
 .infrastructure-choose {
-    display: none;
-    gap: 1.25vw;
+    display: flex;
     height: 100%;
 
     &__content {
         display: flex;
         flex: 1;
         flex-direction: column;
-        padding: 2vw;
+        position: relative;
+    }
+
+    &__content-inner {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
     }
 
     &__sidebar {
@@ -76,11 +83,11 @@
         align-items: center;
         background: var(--g-color-base-generic-accent);
         border: none;
-        border-radius: 0.684vw; // ≈28px на 4K
+        border-radius: 0.684vw;
         cursor: pointer;
         display: flex;
         justify-content: space-between;
-        padding: 3.5vw 1.1vw 0.85vw; // 64px 16px 16px на 4K
+        padding: 3.5vw 1.1vw 0.85vw;
         transition: opacity 0.2s ease;
         width: 100%;
     }
@@ -95,10 +102,10 @@
 
     &__architect-button-arrow {
         flex-shrink: 0;
-        height: 0.782vw; // 32px на 4K
-        margin-left: 0.488vw; // 20px на 4K
-        width: 0.44vw; // 18px на 4K
-        fill: var(--g-color-text-primary-inverted); // Гарантирует перекраску, если это inline SVG
+        height: 0.782vw;
+        margin-left: 0.488vw;
+        width: 0.44vw;
+        fill: var(--g-color-text-primary-inverted);
     }
 
     &__section-title {
@@ -119,12 +126,12 @@
         align-items: center;
         background: var(--g-color-base-generic-light);
         border: none;
-        border-radius: 0.6vw; // 12px на 4K
+        border-radius: 0.6vw;
         color: var(--g-color-text-primary);
         cursor: pointer;
         display: flex;
-        gap: 0.6vw; // 8px на 4K
-        padding: 0.4vw; // 8px на 4K
+        gap: 0.6vw;
+        padding: 0.4vw;
         text-align: left;
         transition: background-color 0.2s ease;
         width: 100%;
