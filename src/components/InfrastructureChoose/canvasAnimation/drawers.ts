@@ -28,15 +28,19 @@ export const drawTextBlocks = (
         const podium = podiums.find((p) => p.id === item.id);
         if (!podium) return;
 
+        // Центр платформы по вертикали
         const podiumCenterY = podium.currentY + podium.scaledHeight / 2;
-        const lines = item.text.split('\n');
 
-        const totalBlockHeight = fontSize + gap * 2 + lines.length * lineHeight;
-        const startY = podiumCenterY - totalBlockHeight / 2;
+        // Линия между номером и текстом должна быть точно в центре платформы
+        const lineY = podiumCenterY;
 
+        // Верхняя координата номера (базовая линия номера = startY + fontSize)
+        const startY = lineY - fontSize - gap;
+
+        // Рисуем номер
         ctx.fillText(item.number, textX, startY + fontSize);
 
-        const lineY = startY + fontSize + gap;
+        // Рисуем линию
         ctx.beginPath();
         ctx.strokeStyle = 'rgba(0, 0, 0, 1)';
         ctx.lineWidth = Math.max(1, fontSize * TEXT_CONFIG.LINE_WIDTH_RATIO);
@@ -44,7 +48,10 @@ export const drawTextBlocks = (
         ctx.lineTo(textX + fontSize * TEXT_CONFIG.LINE_LENGTH_RATIO, lineY);
         ctx.stroke();
 
-        let textY = lineY + gap + fontSize;
+        // Рисуем строки текста ниже линии с отступом gap
+        const textStartY = lineY + gap + fontSize; // базовая линия первой строки
+        const lines = item.text.split('\n');
+        let textY = textStartY;
         lines.forEach((line) => {
             ctx.fillText(line.toUpperCase(), textX, textY);
             textY += lineHeight;
@@ -127,8 +134,11 @@ export const drawPositions = (
     const labelBorderRadius = canvasWidth * (6 / 1920);
     const labelGap = iconSize * 0.2;
 
+    // Межстрочный интервал для многострочных подписей
+    const lineHeight = labelFontSize * 1.4;
+
     const lineWidth = Math.max(1, canvasWidth * (2 / 1920));
-    const lineHeight = canvasWidth * (7 / 1920);
+    const lineHeightForConnector = canvasWidth * (7 / 1920); // высота вертикальной линии-коннектора
     const lineBorderRadius = canvasWidth * (2 / 1920);
 
     ctx.font = `bold ${labelFontSize}px "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif`;
@@ -187,17 +197,28 @@ export const drawPositions = (
         // Рисуем текст и подложку для текста
         const label = config.label;
         const lines = label.split('\n');
-        const textMetrics = ctx.measureText(label);
-        const textWidth = textMetrics.width;
-        const labelWidth = textWidth + labelPaddingX * 2;
+
+        // Вычисляем максимальную ширину среди строк
+        let maxLineWidth = 0;
+        lines.forEach((line) => {
+            const metrics = ctx.measureText(line);
+            if (metrics.width > maxLineWidth) {
+                maxLineWidth = metrics.width;
+            }
+        });
+
+        // Горизонтальный отступ теперь одинаковый для всех подписей
+        const horizontalPadding = labelPaddingX;
+
+        const labelWidth = maxLineWidth + horizontalPadding * 2;
         const labelHeight = labelFontSize + labelPaddingY * 2 + (lines.length - 1) * lineHeight;
 
         const labelX = adjustedX - labelWidth / 2;
 
         const lineX = adjustedX - lineWidth / 2;
-        const lineY = labelY - lineHeight;
+        const lineY = labelY - lineHeightForConnector;
 
-        drawRoundedTopRect(ctx, lineX, lineY, lineWidth, lineHeight, lineBorderRadius);
+        drawRoundedTopRect(ctx, lineX, lineY, lineWidth, lineHeightForConnector, lineBorderRadius);
         ctx.fillStyle = 'rgba(176, 189, 217, 1)';
         ctx.fill();
 

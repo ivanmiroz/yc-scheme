@@ -38,12 +38,16 @@ export const currentScheme: PlatformScheme[] = [
         platformId: 2, // Платформа 2 (Визуализация и контейнеризация)
         positions: [
             {positionNumber: '2.1', iconKey: 'kubernetes', label: 'Kubernetes'},
-            {positionNumber: '2.2', iconKey: 'hypervisor', label: 'Гипервизор, виртуальные машины'},
+            {
+                positionNumber: '2.2',
+                iconKey: 'hypervisor',
+                label: 'Гипервизор,\n виртуальные машины',
+            },
             {positionNumber: '2.3', iconKey: 'stackland', label: 'Yandex Cloud Stackland'},
             {
                 positionNumber: '2.4',
                 iconKey: 'baremetal',
-                label: 'BareMetal Extend: Virtualization',
+                label: 'BareMetal\n Extend: Virtualization',
             },
             {positionNumber: '2.5', iconKey: 'backup', label: 'Cloud Backup'},
             {positionNumber: '2.6', iconKey: 'compute', label: 'Cloud Compute'},
