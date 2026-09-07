@@ -54,7 +54,16 @@
         width: 100%;
 
         &:hover {
-            background: var(--g-color-base-generic-hover, #f0f0f0);
+            background: var(--g-color-base-brand);
+            color: var(--g-color-text-primary-inverted);
+
+            .scale-tabs__button-text {
+                color: var(--g-color-text-primary-inverted);
+            }
+
+            .scale-tabs__button-arrow {
+                color: var(--g-color-text-primary-inverted);
+            }
         }
 
         // Активное состояние — голубой фон и белый текст
