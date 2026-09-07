@@ -8,7 +8,7 @@ export const drawTextBlocks = (
     ctx: CanvasRenderingContext2D,
     podiums: Array<{id: number; currentY: number; scaledHeight: number}>,
     textData: readonly TextDataItem[],
-    textOpacity: number,
+    textOpacities: number[],
     canvasWidth: number,
 ) => {
     const fontSize = canvasWidth * TEXT_CONFIG.FONT_SIZE_RATIO;
@@ -16,7 +16,6 @@ export const drawTextBlocks = (
     const gap = fontSize * TEXT_CONFIG.GAP_RATIO;
 
     ctx.save();
-    ctx.globalAlpha = textOpacity;
     ctx.font = `400 ${fontSize}px "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif`;
     ctx.fillStyle = 'rgba(0, 0, 0, 1)';
     ctx.textAlign = 'left';
@@ -24,9 +23,13 @@ export const drawTextBlocks = (
 
     const textX = canvasWidth * TEXT_CONFIG.TEXT_X_RATIO;
 
-    textData.forEach((item) => {
+    textData.forEach((item, index) => {
         const podium = podiums.find((p) => p.id === item.id);
         if (!podium) return;
+
+        // Индивидуальная прозрачность для этого текстового блока
+        ctx.save();
+        ctx.globalAlpha = textOpacities[index] ?? 0;
 
         // Центр платформы по вертикали
         const podiumCenterY = podium.currentY + podium.scaledHeight / 2;
@@ -56,6 +59,8 @@ export const drawTextBlocks = (
             ctx.fillText(line.toUpperCase(), textX, textY);
             textY += lineHeight;
         });
+
+        ctx.restore();
     });
 
     ctx.restore();
@@ -115,10 +120,18 @@ const drawIcon = (
     ctx.drawImage(icon, iconX, iconY, iconDrawSize, iconDrawSize);
 };
 
+/**
+ * Рисует позиции с индивидуальной прозрачностью для каждой.
+ * @param {CanvasRenderingContext2D} ctx - Контекст canvas.
+ * @param {Position[]} positions - Массив позиций для отрисовки.
+ * @param {number[]} opacities - Массив прозрачностей (0..1) для каждой позиции.
+ * @param {number} canvasWidth - Ширина canvas в логических пикселях.
+ * @returns {void}
+ */
 export const drawPositions = (
     ctx: CanvasRenderingContext2D,
     positions: Position[],
-    textOpacity: number,
+    opacities: number[],
     canvasWidth: number,
 ) => {
     const baseWidth = 1920;
@@ -143,15 +156,19 @@ export const drawPositions = (
 
     ctx.font = `bold ${labelFontSize}px "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif`;
 
-    positions.forEach((pos) => {
+    positions.forEach((pos, index) => {
         // Получаем конфигурацию позиции
         const config = getPositionConfig(pos.positionNumber);
 
         // Если позиция не указана в схеме - пропускаем (не рисуем ничего)
         if (!config || !config.label) return;
 
+        // Индивидуальная прозрачность
+        const opacity = opacities[index] ?? 0;
+        if (opacity <= 0) return; // если полностью прозрачна, пропускаем
+
         ctx.save();
-        ctx.globalAlpha = textOpacity;
+        ctx.globalAlpha = opacity;
 
         const isBottomPosition =
             pos.positionNumber.endsWith('.2') || pos.positionNumber.endsWith('.5');

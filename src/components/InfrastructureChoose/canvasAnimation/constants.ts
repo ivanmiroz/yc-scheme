@@ -1,8 +1,15 @@
 export const ANIMATION_CONFIG = {
     PLATFORM_DURATION: 2000,
-    TEXT_DURATION: 800,
+    TEXT_DURATION: 400,
     STAGGER_DELAY: 150,
     PLATFORMS_COUNT: 4,
+    TEXT_STAGGER_DELAY: 150,
+} as const;
+
+export const POSITION_ANIMATION_CONFIG = {
+    BASE_DELAY: 100, // базовая задержка перед появлением позиции
+    MAX_RANDOM_DELAY: 500, // максимальная случайная задержка
+    DURATION: 400, // длительность появления каждой позиции
 } as const;
 
 export const TEXT_DATA = [

@@ -1,8 +1,13 @@
-import {PodiumState} from './types';
-import {ANIMATION_CONFIG, TEXT_DATA} from './constants';
+import {PodiumState, Position} from './types';
+import {ANIMATION_CONFIG, POSITION_ANIMATION_CONFIG, TEXT_DATA} from './constants';
 import {calculatePositions} from './positions';
 import {drawPositions, drawTextBlocks} from './drawers';
 import {loadAllIcons} from './icons';
+
+interface PositionAnimationParams {
+    delay: number;
+    duration: number;
+}
 
 export const createPodiumAnimator = (
     canvas: HTMLCanvasElement,
@@ -12,9 +17,13 @@ export const createPodiumAnimator = (
     let podiums: PodiumState[] = [];
     let animationFrameId: number | null = null;
     let startTime: number | null = null;
-    let textOpacity = 0;
+    let textOpacities: number[] = new Array(TEXT_DATA.length).fill(0);
     let textAnimationStarted = false;
     let textStartTime = 0;
+    let positions: Position[] = [];
+    let positionAnimParams: PositionAnimationParams[] = [];
+    let positionOpacities: number[] = [];
+    let iconsLoaded = false;
 
     const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
 
@@ -28,7 +37,7 @@ export const createPodiumAnimator = (
 
         ctx.clearRect(0, 0, width, height);
 
-        let allFinished = true;
+        let allPlatformsFinished = true;
 
         for (let i = podiums.length - 1; i >= 0; i--) {
             const p = podiums[i];
@@ -39,7 +48,7 @@ export const createPodiumAnimator = (
             const progress = Math.min(adjustedElapsed / ANIMATION_CONFIG.PLATFORM_DURATION, 1);
 
             if (progress < 1) {
-                allFinished = false;
+                allPlatformsFinished = false;
             }
 
             const easedProgress = easeOutCubic(progress);
@@ -48,28 +57,77 @@ export const createPodiumAnimator = (
             ctx.drawImage(podiumImage, p.currentX, p.currentY, p.scaledWidth, p.scaledHeight);
         }
 
-        if (allFinished && !textAnimationStarted) {
+        if (allPlatformsFinished && !textAnimationStarted) {
             textAnimationStarted = true;
             textStartTime = timestamp;
+
+            // Инициализируем позиции и их случайные параметры появления
+            positions = calculatePositions(podiums);
+            positionAnimParams = positions.map(() => {
+                const randomDelay = Math.random() * POSITION_ANIMATION_CONFIG.MAX_RANDOM_DELAY;
+                return {
+                    delay: POSITION_ANIMATION_CONFIG.BASE_DELAY + randomDelay,
+                    duration: POSITION_ANIMATION_CONFIG.DURATION,
+                };
+            });
+            positionOpacities = new Array(positions.length).fill(0);
         }
 
         if (textAnimationStarted) {
             const textElapsed = timestamp - textStartTime;
-            const textProgress = Math.min(textElapsed / ANIMATION_CONFIG.TEXT_DURATION, 1);
-            textOpacity = easeOutCubic(textProgress);
+
+            // Расчёт прозрачности для каждого текста
+            textOpacities = TEXT_DATA.map((_, index) => {
+                const delay = index * ANIMATION_CONFIG.TEXT_STAGGER_DELAY;
+                const localElapsed = Math.max(0, textElapsed - delay);
+                const localProgress = Math.min(localElapsed / ANIMATION_CONFIG.TEXT_DURATION, 1);
+                return easeOutCubic(localProgress);
+            });
+
+            // Расчёт прозрачности для каждой позиции
+            positionOpacities = positions.map((_, index) => {
+                const {delay, duration} = positionAnimParams[index];
+                const localElapsed = Math.max(0, textElapsed - delay);
+                const localProgress = Math.min(localElapsed / duration, 1);
+                return easeOutCubic(localProgress);
+            });
         }
 
-        if (textOpacity > 0) {
-            drawTextBlocks(ctx, podiums, TEXT_DATA, textOpacity, width);
-
-            const positions = calculatePositions(podiums);
-            drawPositions(ctx, positions, textOpacity, width);
+        // Рисуем тексты с их индивидуальной прозрачностью
+        if (textAnimationStarted) {
+            drawTextBlocks(ctx, podiums, TEXT_DATA, textOpacities, width);
         }
 
-        if (!allFinished || textOpacity < 1) {
-            animationFrameId = requestAnimationFrame(animate);
-        } else {
+        // Рисуем позиции с индивидуальной прозрачностью
+        if (positions.length > 0 && positionOpacities.length === positions.length) {
+            drawPositions(ctx, positions, positionOpacities, width);
+        }
+
+        // Проверяем, завершены ли все анимации
+        const allTextsFinished = textOpacities.every((op) => op >= 1);
+        const allPositionsFinished = positionOpacities.every((op) => op >= 1);
+        const allAnimationsFinished =
+            allPlatformsFinished &&
+            textAnimationStarted &&
+            allTextsFinished &&
+            allPositionsFinished;
+
+        if (allAnimationsFinished) {
             animationFrameId = null;
+        } else {
+            animationFrameId = requestAnimationFrame(animate);
+        }
+    };
+
+    const redrawIfComplete = () => {
+        const allTextsFinished = textOpacities.every((op) => op >= 1);
+        const allPositionsFinished = positionOpacities.every((op) => op >= 1);
+        if (textAnimationStarted && allTextsFinished && allPositionsFinished && iconsLoaded) {
+            const dpr = window.devicePixelRatio || 1;
+            const width = canvas.width / dpr;
+            ctx.clearRect(0, 0, width, canvas.height / dpr);
+            drawTextBlocks(ctx, podiums, TEXT_DATA, textOpacities, width);
+            drawPositions(ctx, positions, positionOpacities, width);
         }
     };
 
@@ -78,9 +136,12 @@ export const createPodiumAnimator = (
             cancelAnimationFrame(animationFrameId);
         }
 
-        textOpacity = 0;
+        textOpacities = new Array(TEXT_DATA.length).fill(0);
         textAnimationStarted = false;
         textStartTime = 0;
+        positions = [];
+        positionAnimParams = [];
+        positionOpacities = [];
 
         const dpr = window.devicePixelRatio || 1;
         const width = canvas.width / dpr;
@@ -128,13 +189,9 @@ export const createPodiumAnimator = (
 
     // Загружаем иконки параллельно с анимацией платформ
     loadAllIcons().then(() => {
+        iconsLoaded = true;
         // Если анимация уже завершилась, перерисовываем с иконками
-        if (textOpacity >= 1 && !animationFrameId) {
-            const dpr = window.devicePixelRatio || 1;
-            const width = canvas.width / dpr;
-            const positions = calculatePositions(podiums);
-            drawPositions(ctx, positions, textOpacity, width);
-        }
+        redrawIfComplete();
     });
 
     return {
