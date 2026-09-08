@@ -20,6 +20,19 @@ import {getIcon, getIconKeyByLabel} from '../InfrastructureChoose/canvasAnimatio
 type ProjectedNodeWithIndex = ProjectedNode & {index: number};
 
 const textWidthCache = new Map<string, number>();
+const rgbaCache = new Map<string, string>();
+
+const rgba = (r: number, g: number, b: number, a: number): string => {
+    const key = `${r},${g},${b},${Math.round(a * 100)}`;
+    let s = rgbaCache.get(key);
+    if (s === undefined) {
+        s = `rgba(${r},${g},${b},${a})`;
+        rgbaCache.set(key, s);
+    }
+    return s;
+};
+
+let hasRoundRect: boolean | undefined;
 
 export const drawLabel = (
     ctx: CanvasRenderingContext2D,
@@ -34,30 +47,27 @@ export const drawLabel = (
     fallOffsetY: number,
 ): boolean => {
     const elapsed = currentTime - p.spawnDelay;
-    if (elapsed < 0) {
-        return false;
-    }
+    if (elapsed < 0) return false;
 
     const progress = Math.min(1, elapsed / p.duration);
     const eased = 1 - Math.pow(1 - progress, 3);
     const appearScale = APPEAR_SCALE_MIN + APPEAR_SCALE_MAX * eased;
 
-    const depthFactor = (SPHERE_RADIUS * scaleFactor - p.z) / (SPHERE_RADIUS * scaleFactor * 2);
-    const baseOpacity = Math.max(0.25, Math.min(1, 0.35 + depthFactor * 0.85));
-    const opacity = baseOpacity * eased * fadeOpacity;
+    const sphereR = SPHERE_RADIUS * scaleFactor;
+    const depthFactor = Math.max(0, Math.min(1, (sphereR - p.z) / (sphereR * 2)));
+
+    const opacity = eased * fadeOpacity;
 
     const shakeX =
         shakeIntensity > 0 ? Math.sin(currentTime * 0.005 + index * 13.7) * shakeIntensity : 0;
     const shakeY =
         shakeIntensity > 0 ? Math.cos(currentTime * 0.007 + index * 7.3) * shakeIntensity : 0;
 
-    // Дробные координаты центра (без округления)
     const drawX = p.x + shakeX;
     const drawY = p.y + shakeY + fallOffsetY;
 
     const numScale = Math.max(0.1, Number(p.scale));
 
-    // Все размеры оставляем дробными для плавности
     const currentIconSize = Math.max(1, ICON_SIZE * numScale * zoom * appearScale * scaleFactor);
     const currentFontSize = Math.max(
         MIN_FONT_SIZE * scaleFactor,
@@ -102,17 +112,25 @@ export const drawLabel = (
     const cardX = drawX - cardWidth / 2;
     const cardY = drawY - cardHeight / 2;
 
-    // Фон карточки
-    const bgR = Math.round(0 + (200 - 0) * redProgress);
-    const bgG = Math.round(0 + (20 - 0) * redProgress);
-    const bgB = Math.round(0 + (20 - 0) * redProgress);
-    ctx.fillStyle = `rgba(${bgR}, ${bgG}, ${bgB}, ${opacity})`;
+    const invDepth = 1 - depthFactor;
+    const baseR = Math.round(233 * invDepth);
+    const baseG = Math.round(236 * invDepth);
+    const baseB = Math.round(245 * invDepth);
 
-    ctx.strokeStyle = `rgba(233, 236, 245, ${opacity})`;
+    const bgR = Math.round(baseR + (200 - baseR) * redProgress);
+    const bgG = Math.round(baseG + (20 - baseG) * redProgress);
+    const bgB = Math.round(baseB + (20 - baseB) * redProgress);
+
+    ctx.fillStyle = rgba(bgR, bgG, bgB, opacity);
+    ctx.strokeStyle = rgba(233, 236, 245, opacity);
     ctx.lineWidth = Math.max(0.5, BASE_LINE_WIDTH * numScale * zoom * appearScale * scaleFactor);
 
+    if (hasRoundRect === undefined) {
+        hasRoundRect = typeof ctx.roundRect === 'function';
+    }
+
     ctx.beginPath();
-    if (typeof ctx.roundRect === 'function') {
+    if (hasRoundRect) {
         ctx.roundRect(cardX, cardY, cardWidth, cardHeight, currentRadius);
     } else {
         ctx.rect(cardX, cardY, cardWidth, cardHeight);
@@ -120,43 +138,33 @@ export const drawLabel = (
     ctx.fill();
     ctx.stroke();
 
-    // Подложка иконки
     const iconX = cardX + currentPaddingX;
     const iconY = cardY + currentPaddingY;
 
-    ctx.fillStyle = `rgba(242, 242, 242, ${opacity})`;
+    ctx.fillStyle = rgba(242, 242, 242, opacity);
     ctx.beginPath();
-    if (typeof ctx.roundRect === 'function') {
+    if (hasRoundRect) {
         ctx.roundRect(iconX, iconY, currentIconSize, currentIconSize, currentIconRadius);
     } else {
         ctx.rect(iconX, iconY, currentIconSize, currentIconSize);
     }
     ctx.fill();
 
-    // Включаем сглаживание для иконок
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
     if (img && img.complete) {
-        ctx.save();
-        ctx.globalAlpha = opacity;
+        const prevAlpha = ctx.globalAlpha;
+        ctx.globalAlpha = opacity * Math.max(0.25, depthFactor);
         const iconPadding = currentIconSize * 0.18;
-        ctx.drawImage(
-            img,
-            iconX + iconPadding,
-            iconY + iconPadding,
-            Math.max(1, currentIconSize - iconPadding * 2),
-            Math.max(1, currentIconSize - iconPadding * 2),
-        );
-        ctx.restore();
+        const drawSize = Math.max(1, currentIconSize - iconPadding * 2);
+        ctx.drawImage(img, iconX + iconPadding, iconY + iconPadding, drawSize, drawSize);
+        ctx.globalAlpha = prevAlpha;
     }
 
-    // Текст
     const textX = iconX + currentIconSize + currentGap;
-    const textY = drawY;
-
-    ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
-    ctx.fillText(p.label, textX, textY);
+    ctx.fillStyle = rgba(255, 255, 255, opacity);
+    ctx.fillText(p.label, textX, drawY);
 
     return true;
 };

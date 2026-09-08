@@ -64,10 +64,15 @@ export const generateNodes = (scaleFactor: number): Node3D[] => {
     return nodes;
 };
 
-export const generateConnections = (nodes: Node3D[], scaleFactor: number): Connection[] => {
+export const generateConnections = (
+    nodes: Node3D[],
+    scaleFactor: number,
+    maxConnections: number = MAX_CONNECTIONS,
+): Connection[] => {
     const connections: Connection[] = [];
     const connectionSet = new Set<string>();
     const scaledDistance = CONNECTION_DISTANCE * scaleFactor;
+    const MAX_CONNECTIONS_PER_NODE = 3;
 
     for (let i = 1; i < nodes.length; i++) {
         const candidates: {to: number; dist: number}[] = [];
@@ -76,20 +81,22 @@ export const generateConnections = (nodes: Node3D[], scaleFactor: number): Conne
             const dy = nodes[i].y - nodes[j].y;
             const dz = nodes[i].z - nodes[j].z;
             const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
             if (dist < scaledDistance) {
                 candidates.push({to: j, dist});
             }
         }
 
         candidates.sort((a, c) => a.dist - c.dist);
+        const topCandidates = candidates.slice(0, MAX_CONNECTIONS_PER_NODE);
 
-        if (candidates.length > 0) {
-            const key = `${Math.min(i, candidates[0].to)}-${Math.max(i, candidates[0].to)}`;
+        for (const candidate of topCandidates) {
+            const key = `${Math.min(i, candidate.to)}-${Math.max(i, candidate.to)}`;
             if (!connectionSet.has(key)) {
                 connectionSet.add(key);
                 connections.push({
                     from: i,
-                    to: candidates[0].to,
+                    to: candidate.to,
                     spawnDelay: 0,
                     duration: 0,
                 });
@@ -102,7 +109,8 @@ export const generateConnections = (nodes: Node3D[], scaleFactor: number): Conne
         [connections[i], connections[j]] = [connections[j], connections[i]];
     }
 
-    const limitedConnections = connections.slice(0, MAX_CONNECTIONS);
+    // Используем переданный лимит
+    const limitedConnections = connections.slice(0, maxConnections);
 
     const maxNodeAppearTime = Math.max(...nodes.map((n) => n.spawnDelay + n.duration));
 

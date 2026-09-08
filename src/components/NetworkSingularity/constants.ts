@@ -2,7 +2,9 @@ export const NODE_COUNT = 50;
 export const SPHERE_RADIUS = 300;
 export const MIN_NODE_DISTANCE = 60;
 export const CONNECTION_DISTANCE = 180;
-export const MAX_CONNECTIONS = 80;
+export const MAX_CONNECTIONS = 250;
+// NEW: для 4K ограничиваем количество связей
+export const MAX_CONNECTIONS_4K = 120;
 
 export const NODE_SPAWN_WINDOW_MS = 2000;
 export const NODE_GROW_MS = 600;
@@ -10,8 +12,10 @@ export const SPAWN_WINDOW_MS = 1500;
 export const LINE_GROW_MS = 400;
 
 export const PERSPECTIVE = 800;
-export const BASE_CANVAS_SIZE = 1200;
+export const BASE_CANVAS_SIZE = 900;
 export const MAX_SCALE_FACTOR = 2;
+// NEW: максимальный физический размер канваса (по большей стороне)
+export const MAX_CANVAS_DIMENSION = 2560;
 
 export const REDDEN_DELAY_MS = 300;
 export const REDDEN_DURATION_MS = 1500;
@@ -32,4 +36,4 @@ export const MIN_FONT_SIZE = 10;
 export const BASE_LINE_WIDTH = 1;
 
 export const APPEAR_SCALE_MIN = 0.8;
-export const APPEAR_SCALE_MAX = 0.2;
+export const APPEAR_SCALE_MAX = 0.1;

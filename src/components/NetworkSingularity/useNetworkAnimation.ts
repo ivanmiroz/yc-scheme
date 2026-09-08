@@ -1,6 +1,13 @@
 import {useEffect, useRef} from 'react';
 
-import {BASE_CANVAS_SIZE, MAX_SCALE_FACTOR, SPHERE_RADIUS} from './constants';
+import {
+    BASE_CANVAS_SIZE,
+    MAX_CANVAS_DIMENSION,
+    MAX_CONNECTIONS,
+    MAX_CONNECTIONS_4K,
+    MAX_SCALE_FACTOR,
+    SPHERE_RADIUS,
+} from './constants';
 import {project} from './geometry';
 import {drawLabel} from './renderer';
 import {generateConnections, generateNodes} from './scene';
@@ -22,36 +29,39 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
     const velocityRef = useRef({x: 0, y: 0});
     const dprRef = useRef(1);
     const scaleFactorRef = useRef(1);
+    const is4KRef = useRef(false);
+    const lastFrameTimeRef = useRef(0);
 
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return undefined;
 
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', {alpha: true, desynchronized: true});
         if (!ctx) return undefined;
 
-        // Предзагрузка PNG-иконок
         loadAllIcons();
 
         startTimeRef.current = performance.now();
 
         const resize = () => {
             const rect = canvas.getBoundingClientRect();
-            const MAX_DIMENSION = 2560;
+            const cssWidth = rect.width;
+            const cssHeight = rect.height;
+            const maxCssDim = Math.max(cssWidth, cssHeight);
 
-            // Для 4K экранов (ширина >= 2560) используем DPR = 1, чтобы не перегружать GPU
             let dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-            if (rect.width >= 2560 || rect.height >= 1440) {
-                dpr = 1;
-            } else {
-                dpr = Math.min(dpr, MAX_DIMENSION / Math.max(rect.width, rect.height));
+            const targetPhysical = maxCssDim * dpr;
+            if (targetPhysical > MAX_CANVAS_DIMENSION) {
+                dpr = MAX_CANVAS_DIMENSION / maxCssDim;
             }
 
+            is4KRef.current = maxCssDim >= 2560;
             dprRef.current = dpr;
-            canvas.width = Math.floor(rect.width * dpr);
-            canvas.height = Math.floor(rect.height * dpr);
 
-            const widthScale = rect.width / BASE_CANVAS_SIZE;
+            canvas.width = Math.floor(cssWidth * dpr);
+            canvas.height = Math.floor(cssHeight * dpr);
+
+            const widthScale = cssWidth / BASE_CANVAS_SIZE;
             const rawScaleFactor = Math.pow(widthScale, 0.5);
             scaleFactorRef.current = Math.min(rawScaleFactor, MAX_SCALE_FACTOR);
         };
@@ -64,12 +74,22 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
 
         const initScene = () => {
             nodes = generateNodes(scaleFactorRef.current);
-            connections = generateConnections(nodes, scaleFactorRef.current);
+            const maxConn = is4KRef.current ? MAX_CONNECTIONS_4K : MAX_CONNECTIONS;
+            connections = generateConnections(nodes, scaleFactorRef.current, maxConn);
         };
 
         initScene();
 
+        const getTargetFPS = () => (is4KRef.current ? 30 : 60);
+
         const animate = (time: number) => {
+            const frameInterval = 1000 / getTargetFPS();
+            if (time - lastFrameTimeRef.current < frameInterval) {
+                animationRef.current = requestAnimationFrame(animate);
+                return;
+            }
+            lastFrameTimeRef.current = time;
+
             const rect = canvas.getBoundingClientRect();
             const width = rect.width;
             const height = rect.height;
@@ -77,14 +97,12 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
             const centerY = height / 2;
             const scaleFactor = scaleFactorRef.current;
 
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.setTransform(dprRef.current, 0, 0, dprRef.current, 0, 0);
+            const dpr = dprRef.current;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             ctx.clearRect(0, 0, width, height);
 
             const t = time - startTimeRef.current;
 
-            // Ускоренное вращение (в 2 раза быстрее)
             const autoY = 0.0025 + 0.0015 * Math.sin(t * 0.00023);
             const autoX = 0.0012 + 0.0009 * Math.sin(t * 0.00017 + 1.3);
 
@@ -114,10 +132,11 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
                 fallSpeed: n.fallSpeed,
             }));
 
-            // Отрисовка связей (без разрушения)
             ctx.lineCap = 'round';
             const lineWidth = 4 * scaleFactor;
             const margin = 200;
+            const sphereR = SPHERE_RADIUS * scaleFactor;
+            const invSphereR2 = 1 / (sphereR * 2);
 
             connections.forEach((conn) => {
                 const nodeA = nodes[conn.from];
@@ -148,15 +167,17 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
                     return;
                 }
 
-                const avgZ = (projectedA.z + projectedB.z) / 2;
-                const baseOpacity = Math.max(
-                    0.04,
-                    Math.min(0.55, (SPHERE_RADIUS * scaleFactor - avgZ) / (420 * scaleFactor)),
-                );
+                const avgZ = (projectedA.z + projectedB.z) * 0.5;
+                const depthFactor = Math.max(0, Math.min(1, (sphereR - avgZ) * invSphereR2));
 
-                const opacity = baseOpacity * eased;
+                const invDepth = 1 - depthFactor;
+                const lineR = Math.round(233 * invDepth);
+                const lineG = Math.round(236 * invDepth);
+                const lineB = Math.round(245 * invDepth);
 
-                ctx.strokeStyle = `rgba(0, 0, 0, ${opacity})`;
+                const opacity = eased;
+
+                ctx.strokeStyle = `rgba(${lineR},${lineG},${lineB},${opacity})`;
                 ctx.lineWidth = lineWidth;
 
                 const currentEndX = projectedA.x + (projectedB.x - projectedA.x) * eased;
@@ -170,19 +191,17 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
                 if (progress < 1) {
                     const headOpacity = (1 - progress) * 0.9;
                     const headRadius =
-                        2.2 * ((projectedA.scale + projectedB.scale) / 2) * scaleFactor;
+                        2.2 * ((projectedA.scale + projectedB.scale) * 0.5) * scaleFactor;
 
-                    ctx.fillStyle = `rgba(0, 0, 0, ${headOpacity})`;
+                    ctx.fillStyle = `rgba(${lineR},${lineG},${lineB},${headOpacity})`;
                     ctx.beginPath();
                     ctx.arc(currentEndX, currentEndY, headRadius, 0, Math.PI * 2);
                     ctx.fill();
                 }
             });
 
-            // Сортировка по Z для правильного наложения
             projected.sort((node1, node2) => node2.z - node1.z);
 
-            // Отрисовка узлов (без округления координат)
             projected.forEach((p) => {
                 if (p.y < -200 || p.y > height + 200 || p.x < -100 || p.x > width + 100) {
                     return;
@@ -196,7 +215,6 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
 
         animationRef.current = requestAnimationFrame(animate);
 
-        // Обработчики мыши и тача
         const handleMouseDown = (e: MouseEvent) => {
             mouseRef.current.isDown = true;
             mouseRef.current.lastX = e.clientX;
