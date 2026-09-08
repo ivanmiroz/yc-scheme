@@ -1,8 +1,8 @@
 export const NODE_COUNT = 50;
-export const SPHERE_RADIUS = 300;
+export const SPHERE_RADIUS = 400;
 export const MIN_NODE_DISTANCE = 60;
 export const CONNECTION_DISTANCE = 180;
-export const MAX_CONNECTIONS = 80;
+export const MAX_CONNECTIONS = 150;
 
 export const NODE_SPAWN_WINDOW_MS = 2000;
 export const NODE_GROW_MS = 600;

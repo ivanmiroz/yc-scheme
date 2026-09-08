@@ -1,8 +1,14 @@
 import {useEffect, useRef} from 'react';
 
-import {BASE_CANVAS_SIZE, MAX_SCALE_FACTOR, SPHERE_RADIUS} from './constants';
+import {
+    APPEAR_SCALE_MAX,
+    APPEAR_SCALE_MIN,
+    BASE_CANVAS_SIZE,
+    ICON_BORDER_RADIUS,
+    MAX_SCALE_FACTOR,
+} from './constants';
 import {project} from './geometry';
-import {drawLabel} from './renderer';
+import {drawLabel, getCardColor, getCardDimensions} from './renderer';
 import {generateConnections, generateNodes} from './scene';
 import {loadAllIcons} from '../InfrastructureChoose/canvasAnimation/icons';
 import type {Connection, Node3D, ProjectedNode} from './types';
@@ -13,9 +19,114 @@ type ProjectedNodeWithIndex = ProjectedNode & {
     fallSpeed: number;
 };
 
+type RenderItem =
+    | {
+          type: 'line';
+          z: number;
+          edgeA: {x: number; y: number};
+          edgeB: {x: number; y: number};
+          eased: number;
+          progress: number;
+          r: number;
+          g: number;
+          b: number;
+          headRadius: number;
+          lineWidth: number;
+      }
+    | {
+          type: 'node';
+          z: number;
+          node: ProjectedNodeWithIndex;
+      };
+
+const getEdgePoint = (
+    cx: number,
+    cy: number,
+    w: number,
+    h: number,
+    tx: number,
+    ty: number,
+    radius = 0,
+): {x: number; y: number} => {
+    const dx = tx - cx;
+    const dy = ty - cy;
+
+    if (dx === 0 && dy === 0) {
+        return {x: cx, y: cy};
+    }
+
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+
+    let t: number;
+    if (absDx * h > absDy * w) {
+        t = w / 2 / absDx;
+    } else {
+        t = h / 2 / absDy;
+    }
+
+    const edgeX = cx + dx * t;
+    const edgeY = cy + dy * t;
+
+    if (radius <= 0) {
+        return {x: edgeX, y: edgeY};
+    }
+
+    const halfW = w / 2;
+    const halfH = h / 2;
+
+    let cornerCenterX: number;
+    let cornerCenterY: number;
+
+    if (edgeX > cx) {
+        cornerCenterX = cx + halfW - radius;
+    } else {
+        cornerCenterX = cx - halfW + radius;
+    }
+
+    if (edgeY > cy) {
+        cornerCenterY = cy + halfH - radius;
+    } else {
+        cornerCenterY = cy - halfH + radius;
+    }
+
+    const vecX = edgeX - cornerCenterX;
+    const vecY = edgeY - cornerCenterY;
+    const dist = Math.sqrt(vecX * vecX + vecY * vecY);
+
+    if (dist > radius) {
+        return {x: edgeX, y: edgeY};
+    }
+
+    const normalizedX = vecX / dist;
+    const normalizedY = vecY / dist;
+
+    return {
+        x: cornerCenterX + normalizedX * radius,
+        y: cornerCenterY + normalizedY * radius,
+    };
+};
+
+const computeCardRadius = (
+    p: ProjectedNodeWithIndex,
+    zoom: number,
+    currentTime: number,
+    scaleFactor: number,
+): number => {
+    const elapsed = currentTime - p.spawnDelay;
+    if (elapsed < 0) return 1;
+
+    const progress = Math.min(1, elapsed / p.duration);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const appearScale = APPEAR_SCALE_MIN + APPEAR_SCALE_MAX * eased;
+    const numScale = Math.max(0.1, Number(p.scale));
+
+    return Math.max(1, ICON_BORDER_RADIUS * numScale * zoom * appearScale * scaleFactor);
+};
+
 export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement | null>): void => {
-    const animationRef = useRef<number>(0);
-    const startTimeRef = useRef<number>(0);
+    const animationRef = useRef(0);
+    const startTimeRef = useRef(0);
     const mouseRef = useRef({isDown: false, lastX: 0, lastY: 0});
     const rotationRef = useRef({x: 0.3, y: 0});
     const zoomRef = useRef(1);
@@ -27,19 +138,19 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
         const canvas = canvasRef.current;
         if (!canvas) return undefined;
 
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', {alpha: false, desynchronized: true});
         if (!ctx) return undefined;
 
-        // Предзагрузка PNG-иконок
-        loadAllIcons();
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
 
+        loadAllIcons();
         startTimeRef.current = performance.now();
 
         const resize = () => {
             const rect = canvas.getBoundingClientRect();
             const MAX_DIMENSION = 2560;
 
-            // Для 4K экранов (ширина >= 2560) используем DPR = 1, чтобы не перегружать GPU
             let dpr = Math.min(window.devicePixelRatio || 1, 1.5);
             if (rect.width >= 2560 || rect.height >= 1440) {
                 dpr = 1;
@@ -77,14 +188,12 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
             const centerY = height / 2;
             const scaleFactor = scaleFactorRef.current;
 
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.setTransform(dprRef.current, 0, 0, dprRef.current, 0, 0);
-            ctx.clearRect(0, 0, width, height);
+            ctx.fillStyle = 'rgb(233, 236, 245)';
+            ctx.fillRect(0, 0, width, height);
 
             const t = time - startTimeRef.current;
 
-            // Ускоренное вращение (в 2 раза быстрее)
             const autoY = 0.0025 + 0.0015 * Math.sin(t * 0.00023);
             const autoX = 0.0012 + 0.0009 * Math.sin(t * 0.00017 + 1.3);
 
@@ -114,19 +223,19 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
                 fallSpeed: n.fallSpeed,
             }));
 
-            // Отрисовка связей (без разрушения)
-            ctx.lineCap = 'round';
             const lineWidth = 4 * scaleFactor;
             const margin = 200;
+            const renderList: RenderItem[] = [];
 
-            connections.forEach((conn) => {
+            for (let ci = 0; ci < connections.length; ci++) {
+                const conn = connections[ci];
                 const nodeA = nodes[conn.from];
                 const nodeB = nodes[conn.to];
 
-                if (t < nodeA.spawnDelay || t < nodeB.spawnDelay) return;
+                if (t < nodeA.spawnDelay || t < nodeB.spawnDelay) continue;
 
                 const elapsed = t - conn.spawnDelay;
-                if (elapsed < 0) return;
+                if (elapsed < 0) continue;
 
                 const progress = Math.min(1, elapsed / conn.duration);
                 const eased = 1 - Math.pow(1 - progress, 3);
@@ -134,10 +243,34 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
                 const projectedA = projected[conn.from];
                 const projectedB = projected[conn.to];
 
-                const minX = Math.min(projectedA.x, projectedB.x);
-                const maxX = Math.max(projectedA.x, projectedB.x);
-                const minY = Math.min(projectedA.y, projectedB.y);
-                const maxY = Math.max(projectedA.y, projectedB.y);
+                const dimsA = getCardDimensions(projectedA, zoom, t, scaleFactor);
+                const dimsB = getCardDimensions(projectedB, zoom, t, scaleFactor);
+                const radiusA = computeCardRadius(projectedA, zoom, t, scaleFactor);
+                const radiusB = computeCardRadius(projectedB, zoom, t, scaleFactor);
+
+                const edgeA = getEdgePoint(
+                    projectedA.x,
+                    projectedA.y,
+                    dimsA.width,
+                    dimsA.height,
+                    projectedB.x,
+                    projectedB.y,
+                    radiusA,
+                );
+                const edgeB = getEdgePoint(
+                    projectedB.x,
+                    projectedB.y,
+                    dimsB.width,
+                    dimsB.height,
+                    projectedA.x,
+                    projectedA.y,
+                    radiusB,
+                );
+
+                const minX = Math.min(edgeA.x, edgeB.x);
+                const maxX = Math.max(edgeA.x, edgeB.x);
+                const minY = Math.min(edgeA.y, edgeB.y);
+                const maxY = Math.max(edgeA.y, edgeB.y);
 
                 if (
                     maxX < -margin ||
@@ -145,58 +278,92 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
                     maxY < -margin ||
                     minY > height + margin
                 ) {
-                    return;
+                    continue;
                 }
 
                 const avgZ = (projectedA.z + projectedB.z) / 2;
-                const baseOpacity = Math.max(
-                    0.04,
-                    Math.min(0.55, (SPHERE_RADIUS * scaleFactor - avgZ) / (420 * scaleFactor)),
-                );
+                const {r, g, b} = getCardColor({z: avgZ} as ProjectedNodeWithIndex, scaleFactor);
+                const headRadius = 2.2 * ((projectedA.scale + projectedB.scale) / 2) * scaleFactor;
 
-                const opacity = baseOpacity * eased;
+                renderList.push({
+                    type: 'line',
+                    z: avgZ,
+                    edgeA,
+                    edgeB,
+                    eased,
+                    progress,
+                    r,
+                    g,
+                    b,
+                    headRadius,
+                    lineWidth,
+                });
+            }
 
-                ctx.strokeStyle = `rgba(0, 0, 0, ${opacity})`;
-                ctx.lineWidth = lineWidth;
-
-                const currentEndX = projectedA.x + (projectedB.x - projectedA.x) * eased;
-                const currentEndY = projectedA.y + (projectedB.y - projectedA.y) * eased;
-
-                ctx.beginPath();
-                ctx.moveTo(projectedA.x, projectedA.y);
-                ctx.lineTo(currentEndX, currentEndY);
-                ctx.stroke();
-
-                if (progress < 1) {
-                    const headOpacity = (1 - progress) * 0.9;
-                    const headRadius =
-                        2.2 * ((projectedA.scale + projectedB.scale) / 2) * scaleFactor;
-
-                    ctx.fillStyle = `rgba(0, 0, 0, ${headOpacity})`;
-                    ctx.beginPath();
-                    ctx.arc(currentEndX, currentEndY, headRadius, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            });
-
-            // Сортировка по Z для правильного наложения
-            projected.sort((node1, node2) => node2.z - node1.z);
-
-            // Отрисовка узлов (без округления координат)
-            projected.forEach((p) => {
+            for (let pi = 0; pi < projected.length; pi++) {
+                const p = projected[pi];
                 if (p.y < -200 || p.y > height + 200 || p.x < -100 || p.x > width + 100) {
-                    return;
+                    continue;
                 }
+                renderList.push({type: 'node', z: p.z, node: p});
+            }
 
-                drawLabel(ctx, p, zoom, t, 0, 1, p.index, scaleFactor, 0, 0);
-            });
+            renderList.sort((a, b) => b.z - a.z);
+
+            for (let i = 0; i < renderList.length; i++) {
+                const item = renderList[i];
+                if (item.type === 'line') {
+                    // Вычисляем направление линии
+                    const dx = item.edgeB.x - item.edgeA.x;
+                    const dy = item.edgeB.y - item.edgeA.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist === 0) continue;
+
+                    const nx = dx / dist;
+                    const ny = dy / dist;
+
+                    // Компенсация lineCap: 'round' — сдвигаем оба конца на lineWidth/2 внутрь
+                    const lineHalfWidth = item.lineWidth / 2;
+                    const startX = item.edgeA.x + nx * lineHalfWidth;
+                    const startY = item.edgeA.y + ny * lineHalfWidth;
+
+                    const currentEndX = item.edgeA.x + dx * item.eased;
+                    const currentEndY = item.edgeA.y + dy * item.eased;
+                    const endX = currentEndX - nx * lineHalfWidth;
+                    const endY = currentEndY - ny * lineHalfWidth;
+
+                    // Проверяем, что линия не стала отрицательной длины
+                    const adjustedDist = Math.sqrt(
+                        Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2),
+                    );
+                    if (adjustedDist <= 0) continue;
+
+                    ctx.lineCap = 'round';
+                    ctx.lineWidth = item.lineWidth;
+                    ctx.strokeStyle = `rgb(${item.r}, ${item.g}, ${item.b})`;
+
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(endX, endY);
+                    ctx.stroke();
+
+                    if (item.progress < 1) {
+                        ctx.fillStyle = `rgb(${item.r}, ${item.g}, ${item.b})`;
+                        ctx.beginPath();
+                        ctx.arc(currentEndX, currentEndY, item.headRadius, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                } else {
+                    drawLabel(ctx, item.node, zoom, t, 0, item.node.index, scaleFactor, 0);
+                }
+            }
 
             animationRef.current = requestAnimationFrame(animate);
         };
 
         animationRef.current = requestAnimationFrame(animate);
 
-        // Обработчики мыши и тача
         const handleMouseDown = (e: MouseEvent) => {
             mouseRef.current.isDown = true;
             mouseRef.current.lastX = e.clientX;

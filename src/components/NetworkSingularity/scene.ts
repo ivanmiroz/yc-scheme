@@ -83,13 +83,16 @@ export const generateConnections = (nodes: Node3D[], scaleFactor: number): Conne
 
         candidates.sort((a, c) => a.dist - c.dist);
 
-        if (candidates.length > 0) {
-            const key = `${Math.min(i, candidates[0].to)}-${Math.max(i, candidates[0].to)}`;
+        const maxCandidatesPerNode = 3;
+        const selectedCandidates = candidates.slice(0, maxCandidatesPerNode);
+
+        for (const candidate of selectedCandidates) {
+            const key = `${Math.min(i, candidate.to)}-${Math.max(i, candidate.to)}`;
             if (!connectionSet.has(key)) {
                 connectionSet.add(key);
                 connections.push({
                     from: i,
-                    to: candidates[0].to,
+                    to: candidate.to,
                     spawnDelay: 0,
                     duration: 0,
                 });
@@ -102,7 +105,8 @@ export const generateConnections = (nodes: Node3D[], scaleFactor: number): Conne
         [connections[i], connections[j]] = [connections[j], connections[i]];
     }
 
-    const limitedConnections = connections.slice(0, MAX_CONNECTIONS);
+    const adjustedMaxConnections = Math.floor(MAX_CONNECTIONS * 1.5);
+    const limitedConnections = connections.slice(0, adjustedMaxConnections);
 
     const maxNodeAppearTime = Math.max(...nodes.map((n) => n.spawnDelay + n.duration));
 
