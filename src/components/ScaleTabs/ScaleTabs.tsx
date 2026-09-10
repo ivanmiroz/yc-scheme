@@ -28,6 +28,12 @@ interface ScaleTabsProps {
 export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionClick}) => {
     return (
         <div className={b()}>
+            <div className={b('content')}>
+                <div className={b('panel')}>
+                    <NetworkSingularity />
+                </div>
+            </div>
+
             <div className={b('sidebar')}>
                 <div className={b('header')}>
                     <h2 className={b('title')}>Платформа для гибридных решений</h2>
@@ -65,12 +71,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
                             </span>
                         </button>
                     ))}
-                </div>
-            </div>
-
-            <div className={b('content')}>
-                <div className={b('panel')}>
-                    <NetworkSingularity />
                 </div>
             </div>
         </div>
