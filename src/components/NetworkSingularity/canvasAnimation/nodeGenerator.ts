@@ -108,7 +108,6 @@ const buildRoutes = (nodes: Node2D[], scaleFactor: number): void => {
         if (node.lineStyle === 'snake') {
             node.path = applySnakeToPath(
                 basePath,
-                scaleFactor,
                 snakeAmplitude,
                 SNAKE_COILS,
                 snakeMinLen,

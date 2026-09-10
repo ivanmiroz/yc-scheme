@@ -435,17 +435,15 @@ export const buildSnakeSegment = (
  * витки становятся плотнее.
  *
  * @param base - Исходная полилиния.
- * @param scaleFactor - Коэффициент масштабирования.
- * @param amplitude - Амплитуда колебаний змейки.
+ * @param amplitude - Амплитуда колебаний змейки (в пикселях, уже умноженная на scaleFactor).
  * @param coils - Количество полных витков.
- * @param minSegmentLen - Минимальная длина сегмента для применения змейки.
+ * @param minSegmentLen - Минимальная длина сегмента для применения змейки (в пикселях, уже умноженная на scaleFactor).
  * @param lengthRatio - Доля длины сегмента, отводимая под змейку (0..1).
  * @returns Полилиния, у которой центральная часть самого длинного
  *          сегмента (если он достаточно длинный) заменена змейкой.
  */
 export const applySnakeToPath = (
     base: Point[],
-    scaleFactor: number,
     amplitude: number,
     coils: number,
     minSegmentLen: number,
@@ -453,6 +451,7 @@ export const applySnakeToPath = (
 ): Point[] => {
     if (base.length < 2) return base;
 
+    // Ищем самый длинный сегмент
     let longestIdx = -1;
     let longestLen = 0;
     for (let i = 1; i < base.length; i++) {
@@ -468,9 +467,11 @@ export const applySnakeToPath = (
     const A = base[longestIdx - 1];
     const B = base[longestIdx];
 
+    // Единичный вектор вдоль сегмента A→B
     const ux = (B.x - A.x) / longestLen;
     const uy = (B.y - A.y) / longestLen;
 
+    // Длина змейки и отступ от каждого конца сегмента до её начала
     const snakeLen = longestLen * lengthRatio;
     const padLen = (longestLen - snakeLen) / 2;
 
@@ -485,6 +486,8 @@ export const applySnakeToPath = (
 
     const snakePoints = buildSnakeSegment(P0, P1, coils, amplitude);
 
+    // Собираем результат: всё до A, потом A → P0 (прямая) → змейка → P1 → B (прямая), потом всё после B.
+    // snakePoints начинается с P0 и заканчивается P1 — дублировать их не нужно.
     const result: Point[] = [];
     for (let i = 0; i < longestIdx - 1; i++) result.push(base[i]);
     result.push(A);
