@@ -1,10 +1,12 @@
 export {useNetworkAnimation} from './useNetworkAnimation';
 export {generateNodes2D} from './nodeGenerator';
-export {drawNode, calculateAppearOpacity, prepareCanvas} from './renderer';
+export {routeOrthogonal} from './route';
+export {drawNode, drawGrowingPath, calculateAppearOpacity, prepareCanvas} from './renderer';
 export {
     computeBBox,
     intersects,
     distanceToCenter,
+    distanceBetween,
     calculateScaleFactor,
     calculateCanvasDimensions,
 } from './utils';

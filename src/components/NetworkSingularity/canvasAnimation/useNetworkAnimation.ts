@@ -1,10 +1,10 @@
 import {useEffect, useRef} from 'react';
 
 import {generateNodes2D} from './nodeGenerator';
-import {calculateAppearOpacity, drawNode, prepareCanvas} from './renderer';
+import {calculateAppearOpacity, drawGrowingPath, drawNode, prepareCanvas} from './renderer';
 import {calculateCanvasDimensions, calculateScaleFactor} from './utils';
 import {Node2D} from './types';
-import {TARGET_FPS} from './constants';
+import {APPEAR_DURATION, TARGET_FPS} from './constants';
 import {loadAllIcons} from '../../InfrastructureChoose/canvasAnimation/icons';
 
 export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement | null>): void => {
@@ -38,7 +38,7 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
             scaleFactorRef.current = calculateScaleFactor(cssWidth);
             sizeRef.current = {width: cssWidth, height: cssHeight};
 
-            // Перегенерируем позиции при ресайзе
+            // Перегенерируем позиции и маршруты при ресайзе
             nodesRef.current = generateNodes2D(cssWidth, cssHeight, scaleFactorRef.current);
         };
 
@@ -60,6 +60,22 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
 
             const t = time - startTimeRef.current;
 
+            // 1. Сначала рисуем растущие линии соединений (чтобы они были ПОД иконками)
+            for (const node of nodesRef.current) {
+                const appearElapsed = t - node.spawnDelay;
+
+                // Если узел ещё не начал появляться — пропускаем
+                if (appearElapsed <= 0) continue;
+
+                // Прогресс появления текущего узла (0.0 ... 1.0)
+                const appearProgress = Math.min(1, appearElapsed / APPEAR_DURATION);
+
+                if (node.path.length < 2) continue;
+
+                drawGrowingPath(ctx, node.path, scaleFactor, appearProgress, node.lineStyle);
+            }
+
+            // 2. Затем рисуем сами узлы поверх линий
             for (const node of nodesRef.current) {
                 const opacity = calculateAppearOpacity(t, node.spawnDelay);
                 if (opacity === 0) continue;
