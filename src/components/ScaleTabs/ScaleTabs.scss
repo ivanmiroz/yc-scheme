@@ -50,8 +50,7 @@
         padding: 2.5vw 0.83vw 0.83vw;
         transition:
             background-color 0.2s ease,
-            color 0.2s ease,
-            opacity 0.2s ease;
+            color 0.2s ease;
         width: 100%;
 
         &:hover {
@@ -82,25 +81,28 @@
             .scale-tabs__button-arrow {
                 color: var(--g-color-text-primary-inverted);
             }
-        }
 
-        // Стили для неактивных кнопок (после заморозки)
-        &_disabled {
-            cursor: default;
-            pointer-events: none; // Отключаем все события мыши
-
-            &:hover {
-                background: inherit;
-                color: inherit;
+            // Только активная кнопка остаётся чёрной в disabled состоянии
+            &.scale-tabs__button_disabled {
+                background: #000000;
+                color: var(--g-color-text-primary-inverted);
+                cursor: default;
+                pointer-events: none;
 
                 .scale-tabs__button-text {
-                    color: inherit;
+                    color: var(--g-color-text-primary-inverted);
                 }
 
                 .scale-tabs__button-arrow {
-                    color: inherit;
+                    color: var(--g-color-text-primary-inverted);
                 }
             }
+        }
+
+        // Неактивные кнопки в disabled состоянии сохраняют обычный вид
+        &_disabled {
+            cursor: default;
+            pointer-events: none;
         }
     }
 
