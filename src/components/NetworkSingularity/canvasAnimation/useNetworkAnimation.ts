@@ -4,7 +4,7 @@ import {generateNodes2D} from './nodeGenerator';
 import {calculateAppearOpacity, drawGrowingPath, drawNode, prepareCanvas} from './renderer';
 import {calculateCanvasDimensions, calculateScaleFactor} from './utils';
 import {Node2D} from './types';
-import {APPEAR_DURATION, TARGET_FPS} from './constants';
+import {APPEAR_DURATION, LABEL_FONT_SIZE} from './constants';
 import {loadAllIcons} from '../../InfrastructureChoose/canvasAnimation/icons';
 
 export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement | null>): void => {
@@ -12,9 +12,9 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
     const startTimeRef = useRef<number>(0);
     const dprRef = useRef(1);
     const scaleFactorRef = useRef(1);
-    const lastFrameTimeRef = useRef(0);
     const nodesRef = useRef<Node2D[]>([]);
     const sizeRef = useRef({width: 0, height: 0});
+    const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -26,31 +26,29 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
         let isMounted = true;
 
         const resize = () => {
-            const rect = canvas.getBoundingClientRect();
-            const cssWidth = rect.width;
-            const cssHeight = rect.height;
+            if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current);
 
-            const dimensions = calculateCanvasDimensions(cssWidth, cssHeight);
-            canvas.width = dimensions.width;
-            canvas.height = dimensions.height;
-            dprRef.current = dimensions.dpr;
+            resizeTimeoutRef.current = setTimeout(() => {
+                if (!isMounted) return;
 
-            scaleFactorRef.current = calculateScaleFactor(cssWidth);
-            sizeRef.current = {width: cssWidth, height: cssHeight};
+                const rect = canvas.getBoundingClientRect();
+                const cssWidth = rect.width;
+                const cssHeight = rect.height;
 
-            // Перегенерируем позиции и маршруты при ресайзе
-            nodesRef.current = generateNodes2D(cssWidth, cssHeight, scaleFactorRef.current);
+                const dimensions = calculateCanvasDimensions(cssWidth, cssHeight);
+                canvas.width = dimensions.width;
+                canvas.height = dimensions.height;
+                dprRef.current = dimensions.dpr;
+
+                scaleFactorRef.current = calculateScaleFactor(cssWidth);
+                sizeRef.current = {width: cssWidth, height: cssHeight};
+
+                nodesRef.current = generateNodes2D(cssWidth, cssHeight, scaleFactorRef.current);
+            }, 150); // Debounce 150ms для защиты от тяжелых пересчетов при драге окна
         };
 
         const animate = (time: number) => {
             if (!isMounted) return;
-
-            const frameInterval = 1000 / TARGET_FPS;
-            if (time - lastFrameTimeRef.current < frameInterval) {
-                animationRef.current = requestAnimationFrame(animate);
-                return;
-            }
-            lastFrameTimeRef.current = time;
 
             const {width, height} = sizeRef.current;
             const dpr = dprRef.current;
@@ -60,22 +58,30 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
 
             const t = time - startTimeRef.current;
 
-            // 1. Сначала рисуем растущие линии соединений (чтобы они были ПОД иконками)
+            // Оптимизация: выносим общие настройки контекста из цикла отрисовки узлов
+            ctx.font = `500 ${LABEL_FONT_SIZE * scaleFactor}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.fillStyle = '#000000';
+
             for (const node of nodesRef.current) {
                 const appearElapsed = t - node.spawnDelay;
-
-                // Если узел ещё не начал появляться — пропускаем
                 if (appearElapsed <= 0) continue;
 
-                // Прогресс появления текущего узла (0.0 ... 1.0)
                 const appearProgress = Math.min(1, appearElapsed / APPEAR_DURATION);
-
                 if (node.path.length < 2) continue;
 
-                drawGrowingPath(ctx, node.path, scaleFactor, appearProgress, node.lineStyle);
+                drawGrowingPath(
+                    ctx,
+                    node.path,
+                    scaleFactor,
+                    appearProgress,
+                    node.lineStyle,
+                    node.pathLengths,
+                    node.totalPathLength,
+                );
             }
 
-            // 2. Затем рисуем сами узлы поверх линий
             for (const node of nodesRef.current) {
                 const opacity = calculateAppearOpacity(t, node.spawnDelay);
                 if (opacity === 0) continue;
@@ -102,6 +108,7 @@ export const useNetworkAnimation = (canvasRef: React.RefObject<HTMLCanvasElement
             isMounted = false;
             cancelAnimationFrame(animationRef.current);
             window.removeEventListener('resize', resize);
+            if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current);
         };
     }, [canvasRef]);
 };

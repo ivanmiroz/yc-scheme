@@ -10,12 +10,6 @@ export interface BBox {
     h: number;
 }
 
-/**
- * solid  — сплошная;
- * dashed — пунктирная;
- * snake  — сплошная, у которой самый длинный сегмент превращён в «змейку»
- *          с несколькими витками.
- */
 export type LineStyle = 'solid' | 'dashed' | 'snake';
 
 export interface Node2D {
@@ -25,16 +19,13 @@ export interface Node2D {
     label: string;
     iconKey: string;
     bbox: BBox;
-    /** Координаты центра точки соединения (кружочка под текстом) */
     connectionPoint: {x: number; y: number};
-    /** Флаг для узлов без иконки и текста */
-    isEmpty?: boolean;
-    /** Стиль линии, которая будет идти к этому узлу */
+    isEmpty: boolean; // Убрано '?', так как значение всегда присваивается
     lineStyle: LineStyle;
-    /**
-     * Предрассчитанный ортогональный маршрут (уже с змейкой, если стиль 'snake').
-     */
     path: Point[];
+    // Оптимизация: кэш длин сегментов для анимации появления
+    pathLengths?: number[];
+    totalPathLength?: number;
 }
 
 export interface NodeWithDistance {

@@ -29,12 +29,6 @@ const shuffleArray = <T>(array: T[]): T[] => {
     return shuffled;
 };
 
-/**
- * Случайно выбирает стиль линии:
- *   ~50% solid, ~25% dashed, ~25% snake
- *
- * @returns Стиль линии для нового соединения.
- */
 const getRandomLineStyle = (): LineStyle => {
     const r = Math.random();
     if (r < 0.5) return 'solid';
@@ -95,7 +89,6 @@ const buildRoutes = (nodes: Node2D[], scaleFactor: number): void => {
             continue;
         }
 
-        // 1. Базовый ортогональный маршрут в обход иконок и текста
         const basePath = routeOrthogonal(
             nodes[closestIdx].connectionPoint,
             node.connectionPoint,
@@ -103,8 +96,6 @@ const buildRoutes = (nodes: Node2D[], scaleFactor: number): void => {
             margin,
         );
 
-        // 2. Если стиль 'snake' — центральную часть самого длинного сегмента
-        //    заменяем на змейку. По краям сегмента остаются прямые участки.
         if (node.lineStyle === 'snake') {
             node.path = applySnakeToPath(
                 basePath,
@@ -115,6 +106,19 @@ const buildRoutes = (nodes: Node2D[], scaleFactor: number): void => {
             );
         } else {
             node.path = basePath;
+        }
+
+        // Оптимизация: предвычисляем длины сегментов для анимации
+        const path = node.path;
+        if (path.length >= 2) {
+            const lengths: number[] = [0];
+            let total = 0;
+            for (let k = 1; k < path.length; k++) {
+                total += Math.hypot(path[k].x - path[k - 1].x, path[k].y - path[k - 1].y);
+                lengths.push(total);
+            }
+            node.pathLengths = lengths;
+            node.totalPathLength = total;
         }
     }
 };
@@ -142,14 +146,11 @@ export const generateNodes2D = (width: number, height: number, scaleFactor: numb
     }
 
     const shuffledPositions = shuffleArray(allPositions);
-
     const nodeTypes: ('icon' | 'empty')[] = [
         ...Array(NODE_COUNT).fill('icon'),
         ...Array(EMPTY_NODE_COUNT).fill('empty'),
     ];
-
     const shuffledTypes = shuffleArray(nodeTypes);
-
     const shuffledLabels = [...LABELS].sort(() => 0.5 - Math.random());
     const selectedLabels = shuffledLabels.slice(0, NODE_COUNT);
     let iconIndex = 0;
@@ -159,7 +160,6 @@ export const generateNodes2D = (width: number, height: number, scaleFactor: numb
     for (let i = 0; i < totalNodes; i++) {
         const position = shuffledPositions[i];
         const nodeType = shuffledTypes[i];
-
         const {col, row} = position;
 
         const cellCenterX = paddingX + cellW * (col + 0.5);
@@ -170,13 +170,11 @@ export const generateNodes2D = (width: number, height: number, scaleFactor: numb
 
         const x = cellCenterX + offsetX;
         const y = cellCenterY + offsetY;
-
         const lineStyle = getRandomLineStyle();
 
         if (nodeType === 'icon') {
             const label = selectedLabels[iconIndex++];
             const iconKey = getIconKeyByLabel(label) || 'servers';
-
             const bbox = computeBBox(x, y, scaleFactor, label);
 
             const iconHalfH = (BASE_ICON_SIZE / 2) * scaleFactor;
@@ -199,7 +197,6 @@ export const generateNodes2D = (width: number, height: number, scaleFactor: numb
             });
         } else {
             const connRadius = CONNECTION_POINT_RADIUS * scaleFactor;
-
             nodes.push({
                 x,
                 y,
