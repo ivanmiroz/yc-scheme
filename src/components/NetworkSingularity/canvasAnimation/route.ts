@@ -6,17 +6,6 @@ const DIR_V = 2;
 
 const TURN_PENALTY = 20;
 
-/**
- * Проверяет, пересекает ли ортогональный отрезок внутренность препятствия.
- * Границы препятствия считаются «проходимыми».
- *
- * @param x1 - X начала отрезка.
- * @param y1 - Y начала отрезка.
- * @param x2 - X конца отрезка.
- * @param y2 - Y конца отрезка.
- * @param ob - Прямоугольник-препятствие.
- * @returns true, если отрезок заходит внутрь препятствия.
- */
 const segmentHitsObstacle = (x1: number, y1: number, x2: number, y2: number, ob: BBox): boolean => {
     if (y1 === y2) {
         const y = y1;
@@ -32,26 +21,14 @@ const segmentHitsObstacle = (x1: number, y1: number, x2: number, y2: number, ob:
     return maxY > ob.y && minY < ob.y + ob.h;
 };
 
-/**
- * Бинарная мин-куча для A*.
- * Хранит параллельные массивы значений f и индексов состояний.
- */
 class MinHeap {
     private readonly f: number[] = [];
     private readonly idx: number[] = [];
 
-    /** Текущее количество элементов в куче. */
     get size(): number {
         return this.f.length;
     }
 
-    /**
-     * Добавляет пару (f, idx) в кучу.
-     *
-     * @param fv - Значение f (приоритет).
-     * @param iv - Индекс состояния A*.
-     * @returns Ничего не возвращает.
-     */
     push(fv: number, iv: number): void {
         let i = this.f.length;
         this.f.push(fv);
@@ -69,11 +46,6 @@ class MinHeap {
         }
     }
 
-    /**
-     * Извлекает пару с минимальным f.
-     *
-     * @returns Кортеж [f, idx] или null, если куча пуста.
-     */
     pop(): [number, number] | null {
         const size = this.f.length;
         if (size === 0) return null;
@@ -122,16 +94,6 @@ interface HananGrid {
     vBlocked: Uint8Array;
 }
 
-/**
- * Строит сетку Ханана по границам препятствий плюс координаты start/end
- * и помечает сегменты, проходящие через внутренность препятствий.
- *
- * @param start - Стартовая точка маршрута.
- * @param end - Конечная точка маршрута.
- * @param obstacles - Прямоугольники-препятствия.
- * @param margin - Отступ от границ препятствий.
- * @returns Сетка Ханана с масками заблокированных сегментов.
- */
 const buildHananGrid = (start: Point, end: Point, obstacles: BBox[], margin: number): HananGrid => {
     const xSet = new Set<number>([start.x, end.x]);
     const ySet = new Set<number>([start.y, end.y]);
@@ -192,15 +154,6 @@ const buildHananGrid = (start: Point, end: Point, obstacles: BBox[], margin: num
     return {xs, ys, nx, ny, hCount, vCount, hBlocked, vBlocked};
 };
 
-/**
- * Ищет путь по сетке Ханана с помощью A* с учётом направления
- * (штраф за поворот TURN_PENALTY).
- *
- * @param grid - Сетка Ханана с масками заблокированных сегментов.
- * @param start - Стартовая точка.
- * @param end - Конечная точка.
- * @returns Полилиния пути или null, если путь не найден.
- */
 const runAStar = (grid: HananGrid, start: Point, end: Point): Point[] | null => {
     const {xs, ys, nx, ny, hCount, vCount, hBlocked, vBlocked} = grid;
 
@@ -289,12 +242,6 @@ const runAStar = (grid: HananGrid, start: Point, end: Point): Point[] | null => 
     return rawPath;
 };
 
-/**
- * Удаляет дубликаты и коллинеарные промежуточные точки из полилинии.
- *
- * @param rawPath - Исходная полилиния.
- * @returns Упрощённая полилиния без избыточных точек.
- */
 const simplifyPath = (rawPath: Point[]): Point[] => {
     if (rawPath.length === 0) return rawPath;
 
@@ -323,21 +270,6 @@ const simplifyPath = (rawPath: Point[]): Point[] => {
     return simplified;
 };
 
-/**
- * Прокладывает ортогональный маршрут от start к end, обходя препятствия.
- *
- * Алгоритм:
- *  1. Строится сетка Ханана — вертикальные/горизонтальные линии на границах
- *     препятствий (с отступом margin) плюс координаты start/end.
- *  2. По этой сетке запускается A* с штрафом за поворот (учёт направления).
- *  3. Путь упрощается удалением коллинеарных точек.
- *
- * @param start - Стартовая точка маршрута.
- * @param end - Конечная точка маршрута.
- * @param obstacles - Прямоугольники-препятствия.
- * @param margin - Зазор между линией и препятствием.
- * @returns Точки маршрута: первая — start, последняя — end.
- */
 export const routeOrthogonal = (
     start: Point,
     end: Point,
@@ -360,21 +292,6 @@ export const routeOrthogonal = (
     return simplifyPath(rawPath);
 };
 
-// =====================================================================
-//                         ЗМЕЙКА (SNAKE)
-// =====================================================================
-
-/**
- * Строит ортогональную «змейку» между start и end:
- * линия колеблется перпендикулярно направлению start→end
- * с амплитудой amplitude и делает coils полных витков.
- *
- * @param start - Начало змейки.
- * @param end - Конец змейки.
- * @param coils - Количество полных витков.
- * @param amplitude - Амплитуда колебаний (в пикселях).
- * @returns Точки полилинии-змейки.
- */
 export const buildSnakeSegment = (
     start: Point,
     end: Point,
@@ -426,22 +343,6 @@ export const buildSnakeSegment = (
     return points;
 };
 
-/**
- * Если у пути есть достаточно длинный прямой сегмент — заменяет его
- * ЦЕНТРАЛЬНУЮ ЧАСТЬ на «змейку». По краям сегмента остаются прямые участки.
- *
- * Так как змейка занимает только `lengthRatio` от длины сегмента,
- * при том же количестве витков `coils` шаг витка уменьшается —
- * витки становятся плотнее.
- *
- * @param base - Исходная полилиния.
- * @param amplitude - Амплитуда колебаний змейки (в пикселях, уже умноженная на scaleFactor).
- * @param coils - Количество полных витков.
- * @param minSegmentLen - Минимальная длина сегмента для применения змейки (в пикселях, уже умноженная на scaleFactor).
- * @param lengthRatio - Доля длины сегмента, отводимая под змейку (0..1).
- * @returns Полилиния, у которой центральная часть самого длинного
- *          сегмента (если он достаточно длинный) заменена змейкой.
- */
 export const applySnakeToPath = (
     base: Point[],
     amplitude: number,
@@ -451,7 +352,6 @@ export const applySnakeToPath = (
 ): Point[] => {
     if (base.length < 2) return base;
 
-    // Ищем самый длинный сегмент
     let longestIdx = -1;
     let longestLen = 0;
     for (let i = 1; i < base.length; i++) {
@@ -467,11 +367,9 @@ export const applySnakeToPath = (
     const A = base[longestIdx - 1];
     const B = base[longestIdx];
 
-    // Единичный вектор вдоль сегмента A→B
     const ux = (B.x - A.x) / longestLen;
     const uy = (B.y - A.y) / longestLen;
 
-    // Длина змейки и отступ от каждого конца сегмента до её начала
     const snakeLen = longestLen * lengthRatio;
     const padLen = (longestLen - snakeLen) / 2;
 
@@ -486,8 +384,6 @@ export const applySnakeToPath = (
 
     const snakePoints = buildSnakeSegment(P0, P1, coils, amplitude);
 
-    // Собираем результат: всё до A, потом A → P0 (прямая) → змейка → P1 → B (прямая), потом всё после B.
-    // snakePoints начинается с P0 и заканчивается P1 — дублировать их не нужно.
     const result: Point[] = [];
     for (let i = 0; i < longestIdx - 1; i++) result.push(base[i]);
     result.push(A);

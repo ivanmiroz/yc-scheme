@@ -1,4 +1,10 @@
-import {LABELS, getIconKeyByLabel} from '../../InfrastructureChoose/canvasAnimation/icons';
+/* eslint-disable no-param-reassign -- 
+   Намеренная мутация свойств объекта node (path, sourceIdx и т.д.) используется 
+   для предотвращения создания новых объектов в каждом кадре анимации, 
+   что критично для производительности и избежания срабатывания GC. 
+*/
+
+import {getIconKeyByLabel} from '../../InfrastructureChoose/canvasAnimation/icons';
 import {
     BASE_ICON_SIZE,
     CANVAS_PADDING_PERCENT,
@@ -10,13 +16,15 @@ import {
     LABEL_GAP,
     NODE_AVOIDANCE_MARGIN,
     NODE_COUNT,
+    NODE_SPACING,
+    POSITION_SEARCH_ATTEMPTS,
     SNAKE_AMPLITUDE,
     SNAKE_COILS,
     SNAKE_LENGTH_RATIO,
     SNAKE_MIN_SEGMENT_LEN,
     SPAWN_DELAY_STEP,
 } from './constants';
-import {computeBBox, distanceBetween, distanceToCenter} from './utils';
+import {computeBBox, distanceBetween, distanceToCenter, intersects} from './utils';
 import {BBox, LineStyle, Node2D, NodeWithDistance} from './types';
 import {applySnakeToPath, routeOrthogonal} from './route';
 
@@ -36,7 +44,269 @@ const getRandomLineStyle = (): LineStyle => {
     return 'snake';
 };
 
-const sortNodesByDistanceAndAssignDelays = (
+/**
+ * Строит маршрут ТОЛЬКО для одного узла (не трогает остальные).
+ * Мутирует переданный объект node, добавляя свойства sourceIdx, path, pathLengths и totalPathLength.
+ *
+ * @param node - Узел, для которого строится маршрут.
+ * @param allNodes - Массив всех узлов на сцене (используется для поиска ближайшего соседа и препятствий).
+ * @param scaleFactor - Коэффициент масштабирования.
+ * @returns Ничего не возвращает (мутирует переданный объект node).
+ */
+export const buildRouteForNode = (node: Node2D, allNodes: Node2D[], scaleFactor: number): void => {
+    const obstacles: BBox[] = allNodes
+        .filter((n) => n !== node && !n.isEmpty && n.bbox.w > 0 && n.bbox.h > 0)
+        .map((n) => n.bbox);
+
+    const margin = NODE_AVOIDANCE_MARGIN * scaleFactor;
+    const snakeAmplitude = SNAKE_AMPLITUDE * scaleFactor;
+    const snakeMinLen = SNAKE_MIN_SEGMENT_LEN * scaleFactor;
+
+    let closestIdx = -1;
+    let minDist = Infinity;
+
+    for (let j = 0; j < allNodes.length; j++) {
+        const other = allNodes[j];
+        if (other === node) continue;
+        if (other.createdAt > node.createdAt) continue;
+
+        const d = distanceBetween(
+            node.connectionPoint.x,
+            node.connectionPoint.y,
+            other.connectionPoint.x,
+            other.connectionPoint.y,
+        );
+        if (d < minDist) {
+            minDist = d;
+            closestIdx = j;
+        }
+    }
+
+    node.sourceIdx = closestIdx;
+
+    if (closestIdx < 0) {
+        node.path = [];
+        node.pathLengths = undefined;
+        node.totalPathLength = undefined;
+        return;
+    }
+
+    const sourceNode = allNodes[closestIdx];
+    const basePath = routeOrthogonal(
+        sourceNode.connectionPoint,
+        node.connectionPoint,
+        obstacles,
+        margin,
+    );
+
+    if (node.lineStyle === 'snake') {
+        node.path = applySnakeToPath(
+            basePath,
+            snakeAmplitude,
+            SNAKE_COILS,
+            snakeMinLen,
+            SNAKE_LENGTH_RATIO,
+        );
+    } else {
+        node.path = basePath;
+    }
+
+    const path = node.path;
+    if (path.length >= 2) {
+        const lengths: number[] = [0];
+        let total = 0;
+        for (let k = 1; k < path.length; k++) {
+            total += Math.hypot(path[k].x - path[k - 1].x, path[k].y - path[k - 1].y);
+            lengths.push(total);
+        }
+        node.pathLengths = lengths;
+        node.totalPathLength = total;
+    } else {
+        node.pathLengths = undefined;
+        node.totalPathLength = undefined;
+    }
+};
+
+/**
+ * Перестраивает маршруты для всех узлов.
+ * Используется только при начальной генерации или полном сбросе сцены.
+ *
+ * @param nodes - Массив узлов для перестроения маршрутов.
+ * @param scaleFactor - Коэффициент масштабирования.
+ * @returns Ничего не возвращает (мутирует элементы переданного массива).
+ */
+const rebuildRoutes = (nodes: Node2D[], scaleFactor: number): void => {
+    for (const node of nodes) {
+        buildRouteForNode(node, nodes, scaleFactor);
+    }
+};
+
+/**
+ * Находит случайную позицию для нового узла, не пересекающуюся с существующими.
+ *
+ * @param nodes - Массив существующих узлов для проверки пересечений.
+ * @param width - Ширина канваса в CSS-пикселях.
+ * @param height - Высота канваса в CSS-пикселях.
+ * @param scaleFactor - Коэффициент масштабирования.
+ * @param label - Текст подписи узла (пустая строка для пустых узлов).
+ * @param isEmpty - Флаг, является ли узел пустым (без иконки и текста).
+ * @returns Объект с координатами {x, y} для нового узла.
+ */
+const findRandomPosition = (
+    nodes: Node2D[],
+    width: number,
+    height: number,
+    scaleFactor: number,
+    label: string,
+    isEmpty: boolean,
+): {x: number; y: number} => {
+    const paddingX = width * CANVAS_PADDING_PERCENT;
+    const paddingY = height * CANVAS_PADDING_PERCENT;
+    const usableW = width - paddingX * 2;
+    const usableH = height - paddingY * 2;
+
+    const spacing = NODE_SPACING * scaleFactor;
+
+    for (let attempt = 0; attempt < POSITION_SEARCH_ATTEMPTS; attempt++) {
+        const x = paddingX + Math.random() * usableW;
+        const y = paddingY + Math.random() * usableH;
+
+        let testBBox: BBox;
+        if (isEmpty) {
+            const connRadius = CONNECTION_POINT_RADIUS * scaleFactor;
+            testBBox = {
+                x: x - connRadius - spacing,
+                y: y - connRadius - spacing,
+                w: (connRadius + spacing) * 2,
+                h: (connRadius + spacing) * 2,
+            };
+        } else {
+            const realBBox = computeBBox(x, y, scaleFactor, label);
+            testBBox = {
+                x: realBBox.x - spacing,
+                y: realBBox.y - spacing,
+                w: realBBox.w + spacing * 2,
+                h: realBBox.h + spacing * 2,
+            };
+        }
+
+        let hasIntersection = false;
+        for (const node of nodes) {
+            const expandedNodeBBox = {
+                x: node.bbox.x - spacing,
+                y: node.bbox.y - spacing,
+                w: node.bbox.w + spacing * 2,
+                h: node.bbox.h + spacing * 2,
+            };
+            if (intersects(testBBox, expandedNodeBBox)) {
+                hasIntersection = true;
+                break;
+            }
+        }
+
+        if (!hasIntersection) {
+            return {x, y};
+        }
+    }
+
+    return {
+        x: paddingX + Math.random() * usableW,
+        y: paddingY + Math.random() * usableH,
+    };
+};
+
+/**
+ * Создаёт один новый узел и сразу строит его маршрут.
+ *
+ * @param nodes - Массив существующих узлов (используется для поиска позиции и построения маршрута).
+ * @param width - Ширина канваса в CSS-пикселях.
+ * @param height - Высота канваса в CSS-пикселях.
+ * @param scaleFactor - Коэффициент масштабирования.
+ * @param currentTime - Текущее время анимации (мс), используется для установки createdAt.
+ * @param availableLabels - Массив доступных подписей (мутируется: использованная подпись удаляется).
+ * @returns Новый созданный и инициализированный узел Node2D.
+ */
+export const spawnNewNode = (
+    nodes: Node2D[],
+    width: number,
+    height: number,
+    scaleFactor: number,
+    currentTime: number,
+    availableLabels: string[],
+): Node2D => {
+    const shouldBeEmpty = Math.random() < EMPTY_NODE_COUNT / (NODE_COUNT + EMPTY_NODE_COUNT);
+    const lineStyle = getRandomLineStyle();
+
+    let newNode: Node2D;
+
+    if (shouldBeEmpty || availableLabels.length === 0) {
+        const {x, y} = findRandomPosition(nodes, width, height, scaleFactor, '', true);
+        const connRadius = CONNECTION_POINT_RADIUS * scaleFactor;
+
+        newNode = {
+            x,
+            y,
+            label: '',
+            iconKey: '',
+            bbox: {
+                x: x - connRadius,
+                y: y - connRadius,
+                w: connRadius * 2,
+                h: connRadius * 2,
+            },
+            connectionPoint: {x, y},
+            isEmpty: true,
+            lineStyle,
+            path: [],
+            createdAt: currentTime,
+            fadeStart: null,
+            sourceIdx: -1,
+        };
+    } else {
+        const labelIdx = Math.floor(Math.random() * availableLabels.length);
+        const label = availableLabels[labelIdx];
+        availableLabels.splice(labelIdx, 1);
+
+        const iconKey = getIconKeyByLabel(label) || 'servers';
+        const {x, y} = findRandomPosition(nodes, width, height, scaleFactor, label, false);
+        const bbox = computeBBox(x, y, scaleFactor, label);
+
+        const iconHalfH = (BASE_ICON_SIZE / 2) * scaleFactor;
+        const textTopY = y + iconHalfH + LABEL_GAP * scaleFactor;
+        const textBottomY = textTopY + LABEL_FONT_SIZE * scaleFactor;
+        const connRadius = CONNECTION_POINT_RADIUS * scaleFactor;
+        const connY = textBottomY + CONNECTION_POINT_GAP * scaleFactor + connRadius;
+
+        newNode = {
+            x,
+            y,
+            label,
+            iconKey,
+            bbox,
+            connectionPoint: {x, y: connY},
+            isEmpty: false,
+            lineStyle,
+            path: [],
+            createdAt: currentTime,
+            fadeStart: null,
+            sourceIdx: -1,
+        };
+    }
+
+    buildRouteForNode(newNode, nodes, scaleFactor);
+
+    return newNode;
+};
+
+/**
+ * Сортирует узлы по расстоянию до центра и назначает им время появления (createdAt).
+ *
+ * @param nodes - Массив узлов для сортировки.
+ * @param width - Ширина канваса в CSS-пикселях.
+ * @param height - Высота канваса в CSS-пикселях.
+ * @returns Новый отсортированный массив узлов с назначенными временами появления.
+ */
+const sortNodesByDistanceAndAssignTimes = (
     nodes: Node2D[],
     width: number,
     height: number,
@@ -53,77 +323,27 @@ const sortNodesByDistanceAndAssignDelays = (
 
     return nodesWithDistance.map((item, index) => ({
         ...item.node,
-        spawnDelay: index * SPAWN_DELAY_STEP,
+        createdAt: index * SPAWN_DELAY_STEP,
+        fadeStart: null,
+        sourceIdx: -1,
     }));
 };
 
-const buildRoutes = (nodes: Node2D[], scaleFactor: number): void => {
-    const obstacles: BBox[] = nodes
-        .filter((n) => !n.isEmpty && n.bbox.w > 0 && n.bbox.h > 0)
-        .map((n) => n.bbox);
-
-    const margin = NODE_AVOIDANCE_MARGIN * scaleFactor;
-    const snakeAmplitude = SNAKE_AMPLITUDE * scaleFactor;
-    const snakeMinLen = SNAKE_MIN_SEGMENT_LEN * scaleFactor;
-
-    for (let i = 0; i < nodes.length; i++) {
-        const node = nodes[i];
-
-        let closestIdx = -1;
-        let minDist = Infinity;
-        for (let j = 0; j < i; j++) {
-            const d = distanceBetween(
-                node.connectionPoint.x,
-                node.connectionPoint.y,
-                nodes[j].connectionPoint.x,
-                nodes[j].connectionPoint.y,
-            );
-            if (d < minDist) {
-                minDist = d;
-                closestIdx = j;
-            }
-        }
-
-        if (closestIdx < 0) {
-            node.path = [];
-            continue;
-        }
-
-        const basePath = routeOrthogonal(
-            nodes[closestIdx].connectionPoint,
-            node.connectionPoint,
-            obstacles,
-            margin,
-        );
-
-        if (node.lineStyle === 'snake') {
-            node.path = applySnakeToPath(
-                basePath,
-                snakeAmplitude,
-                SNAKE_COILS,
-                snakeMinLen,
-                SNAKE_LENGTH_RATIO,
-            );
-        } else {
-            node.path = basePath;
-        }
-
-        // Оптимизация: предвычисляем длины сегментов для анимации
-        const path = node.path;
-        if (path.length >= 2) {
-            const lengths: number[] = [0];
-            let total = 0;
-            for (let k = 1; k < path.length; k++) {
-                total += Math.hypot(path[k].x - path[k - 1].x, path[k].y - path[k - 1].y);
-                lengths.push(total);
-            }
-            node.pathLengths = lengths;
-            node.totalPathLength = total;
-        }
-    }
-};
-
-export const generateNodes2D = (width: number, height: number, scaleFactor: number): Node2D[] => {
+/**
+ * Генерирует начальное состояние всех узлов на сцене.
+ *
+ * @param width - Ширина канваса в CSS-пикселях.
+ * @param height - Высота канваса в CSS-пикселях.
+ * @param scaleFactor - Коэффициент масштабирования.
+ * @param availableLabels - Массив доступных подписей (мутируется: использованные подписи удаляются).
+ * @returns Массив сгенерированных узлов Node2D.
+ */
+export const generateNodes2D = (
+    width: number,
+    height: number,
+    scaleFactor: number,
+    availableLabels: string[],
+): Node2D[] => {
     const paddingX = width * CANVAS_PADDING_PERCENT;
     const paddingY = height * CANVAS_PADDING_PERCENT;
     const usableW = width - paddingX * 2;
@@ -151,10 +371,15 @@ export const generateNodes2D = (width: number, height: number, scaleFactor: numb
         ...Array(EMPTY_NODE_COUNT).fill('empty'),
     ];
     const shuffledTypes = shuffleArray(nodeTypes);
-    const shuffledLabels = [...LABELS].sort(() => 0.5 - Math.random());
+    const shuffledLabels = [...availableLabels].sort(() => 0.5 - Math.random());
     const selectedLabels = shuffledLabels.slice(0, NODE_COUNT);
-    let iconIndex = 0;
 
+    for (const label of selectedLabels) {
+        const idx = availableLabels.indexOf(label);
+        if (idx !== -1) availableLabels.splice(idx, 1);
+    }
+
+    let iconIndex = 0;
     const nodes: Node2D[] = [];
 
     for (let i = 0; i < totalNodes; i++) {
@@ -186,7 +411,6 @@ export const generateNodes2D = (width: number, height: number, scaleFactor: numb
             nodes.push({
                 x,
                 y,
-                spawnDelay: 0,
                 label,
                 iconKey,
                 bbox,
@@ -194,13 +418,15 @@ export const generateNodes2D = (width: number, height: number, scaleFactor: numb
                 isEmpty: false,
                 lineStyle,
                 path: [],
+                createdAt: 0,
+                fadeStart: null,
+                sourceIdx: -1,
             });
         } else {
             const connRadius = CONNECTION_POINT_RADIUS * scaleFactor;
             nodes.push({
                 x,
                 y,
-                spawnDelay: 0,
                 label: '',
                 iconKey: '',
                 bbox: {
@@ -213,12 +439,15 @@ export const generateNodes2D = (width: number, height: number, scaleFactor: numb
                 isEmpty: true,
                 lineStyle,
                 path: [],
+                createdAt: 0,
+                fadeStart: null,
+                sourceIdx: -1,
             });
         }
     }
 
-    const sorted = sortNodesByDistanceAndAssignDelays(nodes, width, height);
-    buildRoutes(sorted, scaleFactor);
+    const sorted = sortNodesByDistanceAndAssignTimes(nodes, width, height);
+    rebuildRoutes(sorted, scaleFactor);
 
     return sorted;
 };

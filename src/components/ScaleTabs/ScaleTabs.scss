@@ -50,11 +50,12 @@
         padding: 2.5vw 0.83vw 0.83vw;
         transition:
             background-color 0.2s ease,
-            color 0.2s ease;
+            color 0.2s ease,
+            opacity 0.2s ease;
         width: 100%;
 
         &:hover {
-            background: var(--g-color-base-brand);
+            background: #000000;
             color: var(--g-color-text-primary-inverted);
 
             .scale-tabs__button-text {
@@ -66,13 +67,12 @@
             }
         }
 
-        // Активное состояние — голубой фон и белый текст
         &_active {
-            background: var(--g-color-base-brand);
+            background: #000000;
             color: var(--g-color-text-primary-inverted);
 
             &:hover {
-                background: var(--g-color-base-brand); // при наведении фон не меняется
+                background: #000000;
             }
 
             .scale-tabs__button-text {
@@ -81,6 +81,25 @@
 
             .scale-tabs__button-arrow {
                 color: var(--g-color-text-primary-inverted);
+            }
+        }
+
+        // Стили для неактивных кнопок (после заморозки)
+        &_disabled {
+            cursor: default;
+            pointer-events: none; // Отключаем все события мыши
+
+            &:hover {
+                background: inherit;
+                color: inherit;
+
+                .scale-tabs__button-text {
+                    color: inherit;
+                }
+
+                .scale-tabs__button-arrow {
+                    color: inherit;
+                }
             }
         }
     }

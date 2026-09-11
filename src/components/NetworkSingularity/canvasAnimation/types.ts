@@ -15,17 +15,24 @@ export type LineStyle = 'solid' | 'dashed' | 'snake';
 export interface Node2D {
     x: number;
     y: number;
-    spawnDelay: number;
     label: string;
     iconKey: string;
     bbox: BBox;
     connectionPoint: {x: number; y: number};
-    isEmpty: boolean; // Убрано '?', так как значение всегда присваивается
+    isEmpty: boolean;
     lineStyle: LineStyle;
     path: Point[];
-    // Оптимизация: кэш длин сегментов для анимации появления
     pathLengths?: number[];
     totalPathLength?: number;
+
+    // ===== ПОЛЯ ДЛЯ ЖИЗНЕННОГО ЦИКЛА =====
+
+    /** Время появления узла (время анимации, мс). Может быть > текущего t, если узел отложен. */
+    createdAt: number;
+    /** Время начала исчезновения (null, если ещё не начал исчезать) */
+    fadeStart: number | null;
+    /** Индекс узла-источника линии (-1, если нет источника) */
+    sourceIdx: number;
 }
 
 export interface NodeWithDistance {

@@ -2,7 +2,6 @@
 
 import {getIcon} from '../../InfrastructureChoose/canvasAnimation/icons';
 import {
-    APPEAR_DURATION,
     BASE_ICON_SIZE,
     BASE_LINE_WIDTH,
     CONNECTION_POINT_RADIUS,
@@ -113,8 +112,6 @@ export const drawNode = (
             ctx.drawImage(img, iconX, iconY, iconW, iconH);
 
             const textY = iconY + iconH + LABEL_GAP * scaleFactor;
-
-            // Исправление: явно устанавливаем чёрный цвет перед рисованием текста
             ctx.fillStyle = '#000000';
             ctx.fillText(node.label, node.x, textY);
         }
@@ -132,14 +129,6 @@ export const drawNode = (
     ctx.stroke();
 
     ctx.globalAlpha = 1;
-};
-
-export const calculateAppearOpacity = (currentTime: number, spawnDelay: number): number => {
-    if (currentTime < spawnDelay) return 0;
-
-    const appearElapsed = currentTime - spawnDelay;
-    const appearProgress = Math.min(1, appearElapsed / APPEAR_DURATION);
-    return 1 - Math.pow(1 - appearProgress, 3);
 };
 
 export const prepareCanvas = (

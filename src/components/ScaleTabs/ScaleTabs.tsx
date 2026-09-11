@@ -23,14 +23,25 @@ const actions: ActionItem[] = [
 interface ScaleTabsProps {
     activeIndex?: number;
     onActionClick?: (index: number) => void;
+    isFrozen?: boolean;
 }
 
-export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionClick}) => {
+export const ScaleTabs: React.FC<ScaleTabsProps> = ({
+    activeIndex = -1,
+    onActionClick,
+    isFrozen = false,
+}) => {
+    const handleButtonClick = (index: number) => {
+        // Если уже заморожено — игнорируем клики
+        if (isFrozen) return;
+        onActionClick?.(index);
+    };
+
     return (
         <div className={b()}>
             <div className={b('content')}>
                 <div className={b('panel')}>
-                    <NetworkSingularity />
+                    <NetworkSingularity isFrozen={isFrozen} />
                 </div>
             </div>
 
@@ -47,9 +58,13 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
                     {actions.map((action, index) => (
                         <button
                             key={action.value}
-                            className={b('button', {active: activeIndex === index})}
+                            className={b('button', {
+                                active: activeIndex === index,
+                                disabled: isFrozen,
+                            })}
                             type="button"
-                            onClick={() => onActionClick?.(index)}
+                            onClick={() => handleButtonClick(index)}
+                            disabled={isFrozen}
                         >
                             <span className={b('button-text')}>{action.label}</span>
                             <span className={b('button-arrow')}>

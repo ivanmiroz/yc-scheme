@@ -1,7 +1,7 @@
 export {useNetworkAnimation} from './useNetworkAnimation';
-export {generateNodes2D} from './nodeGenerator';
+export {generateNodes2D, buildRouteForNode, spawnNewNode} from './nodeGenerator';
 export {routeOrthogonal} from './route';
-export {drawNode, drawGrowingPath, calculateAppearOpacity, prepareCanvas} from './renderer';
+export {drawNode, drawGrowingPath, prepareCanvas} from './renderer';
 export {
     computeBBox,
     intersects,
