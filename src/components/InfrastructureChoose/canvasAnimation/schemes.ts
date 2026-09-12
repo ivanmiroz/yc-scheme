@@ -1,6 +1,7 @@
 export interface PositionConfig {
     positionNumber: string;
     iconKey?: string;
+    iconKeys?: string[]; // Поддержка нескольких иконок для одной позиции
     label?: string;
 }
 
@@ -154,7 +155,11 @@ export const scheme3: PlatformScheme[] = [
             {positionNumber: '3.1', iconKey: 'storage', label: 'Object\n Storage'},
             {positionNumber: '3.2', iconKey: 'dwn', label: 'DWN'},
             {positionNumber: '3.3', iconKey: 'servers', label: 'Серверы\n и СХД'},
-            {positionNumber: '3.4', iconKey: 'dwn', label: 'Yandex Managed\ndatabase'},
+            {
+                positionNumber: '3.4',
+                iconKeys: ['code', 'elephant', 'sticks'], // Три иконки в ряд
+                label: 'Yandex Managed\ndatabase',
+            },
             {positionNumber: '3.5'},
             {positionNumber: '3.6', iconKey: 'storage', label: 'Object\n Storage'},
         ],
@@ -217,7 +222,11 @@ export const scheme4: PlatformScheme[] = [
             {positionNumber: '3.2', iconKey: 'dwn', label: 'DWN'},
             {positionNumber: '3.3', iconKey: 'storage', label: 'Object\n Storage'},
             {positionNumber: '3.4', iconKey: 'storage', label: 'Object\n Storage'},
-            {positionNumber: '3.5', iconKey: 'dwn', label: 'Yandex Managed\ndatabase'},
+            {
+                positionNumber: '3.5',
+                iconKeys: ['code', 'elephant', 'sticks'], // Три иконки в ряд
+                label: 'Yandex Managed\ndatabase',
+            },
             {positionNumber: '3.6'},
         ],
     },
@@ -233,7 +242,7 @@ export const scheme4: PlatformScheme[] = [
             {positionNumber: '2.3', iconKey: 'stackland', label: 'Yandex Cloud\n Stackland'},
             {
                 positionNumber: '2.4',
-                iconKey: 'mfsk', // <-- Изменено с 'kubernetes' на 'mfsk'
+                iconKey: 'mfsk',
                 label: 'Managed Service\n for Kubernetes®',
             },
             {
@@ -241,7 +250,7 @@ export const scheme4: PlatformScheme[] = [
                 iconKey: 'baremetal',
                 label: 'BareMetal\n Extend:\n Virtualization',
             },
-            {positionNumber: '2.6', iconKey: 'cloudcdn', label: 'Cloud Cdn'}, // <-- Изменено с 'network' на 'cloudcdn'
+            {positionNumber: '2.6', iconKey: 'cloudcdn', label: 'Cloud Cdn'},
         ],
     },
     {

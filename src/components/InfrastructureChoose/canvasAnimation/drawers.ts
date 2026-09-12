@@ -1,4 +1,3 @@
-/* eslint-disable no-param-reassign */
 import {Position} from './types';
 import {getPositionConfig} from './schemes';
 import {getIcon} from './icons';
@@ -30,6 +29,7 @@ export const drawPositions = (
     const labelFontSize = canvasWidth * 0.007;
     const lineHeight = labelFontSize * 1.4;
 
+    // eslint-disable-next-line no-param-reassign
     ctx.font = `bold ${labelFontSize}px "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif`;
 
     positions.forEach((pos, index) => {
@@ -40,6 +40,7 @@ export const drawPositions = (
         if (opacity <= 0) return;
 
         ctx.save();
+        // eslint-disable-next-line no-param-reassign
         ctx.globalAlpha = opacity;
 
         const isBottomPosition =
@@ -65,24 +66,40 @@ export const drawPositions = (
             labelY = iconBottomY;
         }
 
-        // Рисуем саму иконку
-        if (config.iconKey) {
-            const icon = getIcon(config.iconKey);
-            if (icon && icon.complete) {
-                drawIcon(ctx, icon, adjustedX, iconCenterY, iconSize);
-            }
+        // Рисуем иконки (поддержка как одной, так и нескольких иконок в ряд)
+        let iconsToDraw: string[] = [];
+        if (config.iconKeys && config.iconKeys.length > 0) {
+            iconsToDraw = config.iconKeys;
+        } else if (config.iconKey) {
+            iconsToDraw = [config.iconKey];
+        }
+
+        if (iconsToDraw.length > 0) {
+            const totalIcons = iconsToDraw.length;
+            const step = totalIcons > 1 ? iconSize * 0.75 : iconSize;
+            const totalWidth = (totalIcons - 1) * step;
+
+            const startX = adjustedX - totalWidth / 2;
+
+            iconsToDraw.forEach((key, idx) => {
+                const icon = getIcon(key);
+                if (icon && icon.complete) {
+                    drawIcon(ctx, icon, startX + idx * step, iconCenterY, iconSize);
+                }
+            });
         }
 
         // Рисуем текст
         const label = config.label;
         const lines = label.split('\n');
 
-        // Высота блока текста без лишних отступов
         const labelHeight = labelFontSize + (lines.length - 1) * lineHeight;
 
-        // Сам текст
+        // eslint-disable-next-line no-param-reassign
         ctx.fillStyle = 'rgba(0, 0, 0, 1)';
+        // eslint-disable-next-line no-param-reassign
         ctx.textAlign = 'center';
+        // eslint-disable-next-line no-param-reassign
         ctx.textBaseline = 'middle';
 
         let currentY = labelY + labelHeight / 2 - ((lines.length - 1) * lineHeight) / 2;

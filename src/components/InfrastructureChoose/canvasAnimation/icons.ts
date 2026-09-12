@@ -13,6 +13,9 @@ import datalensSrc from '@/assets/icons/datalens.png';
 import aistudioSrc from '@/assets/icons/aistudio.png';
 import mfskSrc from '@/assets/icons/msfk.png';
 import cloudcdnSrc from '@/assets/icons/cloudcdn.png';
+import codeSrc from '@/assets/icons/code.png';
+import elephantSrc from '@/assets/icons/elephant.png';
+import sticksSrc from '@/assets/icons/sticks.png';
 
 // Маппинг: ключ → путь к иконке
 export const ICON_MAP: Record<string, string> = {
@@ -31,6 +34,9 @@ export const ICON_MAP: Record<string, string> = {
     aistudio: aistudioSrc.src,
     mfsk: mfskSrc.src,
     cloudcdn: cloudcdnSrc.src,
+    code: codeSrc.src,
+    elephant: elephantSrc.src,
+    sticks: sticksSrc.src,
 };
 
 // Кэш загруженных изображений
@@ -84,9 +90,10 @@ export const LABELS: string[] = [
     'AI Studio',
     'Managed Service for Kubernetes®',
     'Cloud CDN',
+    'Yandex Managed database',
 ];
 
-// Сопоставление названий (labels) с ключами иконок
+// Сопоставление названий (labels) с ключами иконок (используется как фоллбэк)
 export const LABEL_TO_ICON_KEY: Record<string, string> = {
     Кластер: 'kubernetes',
     'База данных': 'dwn',
@@ -113,6 +120,7 @@ export const LABEL_TO_ICON_KEY: Record<string, string> = {
     'AI Studio': 'aistudio',
     'Managed Service for Kubernetes®': 'msfk',
     'Cloud CDN': 'cloudcdn',
+    'Yandex Managed database': 'code',
 };
 
 // Функция получения ключа иконки по названию
