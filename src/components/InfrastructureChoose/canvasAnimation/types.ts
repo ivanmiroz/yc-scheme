@@ -8,12 +8,6 @@ export interface PodiumState {
     scaledHeight: number;
 }
 
-export interface TextDataItem {
-    id: number;
-    number: string;
-    text: string;
-}
-
 export interface Position {
     x: number;
     y: number;

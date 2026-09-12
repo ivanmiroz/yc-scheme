@@ -62,7 +62,7 @@ export const SPAWN_DELAY_STEP = 150;
 export const APPEAR_DURATION = 600;
 
 /** Максимальное случайное смещение внутри ячейки (40%) */
-export const CELL_RANDOM_OFFSET = 0.4;
+export const CELL_RANDOM_OFFSET = 0.15;
 
 /** Цвет соединительных линий */
 export const LINE_COLOR = '#334155';
@@ -91,7 +91,7 @@ export const CORE_NODE_COUNT = 4;
  * Радиус расположения core-узлов от центра канваса.
  * Задаётся как доля от меньшей стороны канваса.
  */
-export const CORE_RADIUS_RATIO = 0.18;
+export const CORE_RADIUS_RATIO = 0.3;
 
 /** Подписи для core-узлов (должны быть устойчивыми «якорными» понятиями). */
 export const CORE_LABELS = ['Core', 'Hub', 'Router', 'Switch'];
@@ -147,3 +147,15 @@ export const FROZEN_TIME_SCALE = 4;
  * Время (в мс), за которое нужно достичь лимита узлов при входе в замороженный режим.
  */
 export const FROZEN_FILL_DURATION = 2000;
+
+// ===== КОНСТАНТЫ ДЛЯ АНИМАЦИИ РАЗЛЁТА (SCATTER) =====
+
+/**
+ * Длительность анимации разлёта объектов при клике на кнопку (мс).
+ */
+export const SCATTER_DURATION = 500;
+
+/**
+ * Максимальное расстояние разлёта объектов от их исходной позиции (в пикселях).
+ */
+export const SCATTER_DISTANCE = 200;

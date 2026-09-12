@@ -11,16 +11,15 @@ import {
 } from './nodeGenerator';
 import {drawGrowingPath, drawNode, prepareCanvas} from './renderer';
 import {calculateCanvasDimensions, calculateScaleFactor} from './utils';
-import {Node2D} from './types';
+import {Node2D, Point} from './types';
 import {
     APPEAR_DURATION,
     FADE_DURATION,
-    FROZEN_FILL_DURATION,
-    FROZEN_TIME_SCALE,
     LABEL_FONT_SIZE,
-    MAX_FROZEN_COUNT,
     MIN_AGE_FOR_FADE,
     RESPAWN_DELAY,
+    SCATTER_DISTANCE,
+    SCATTER_DURATION,
     TARGET_TOTAL_COUNT,
 } from './constants';
 import {LABELS, loadAllIcons} from '../../InfrastructureChoose/canvasAnimation/icons';
@@ -56,39 +55,6 @@ const findOldestMatureNode = (nodes: Node2D[], currentTime: number): Node2D | nu
     }
 
     return oldest;
-};
-
-const handleFrozenSpawning = (
-    coreNodes: Node2D[],
-    dynamicNodes: Node2D[],
-    width: number,
-    height: number,
-    scaleFactor: number,
-    currentTime: number,
-    availableLabels: string[],
-    lastSpawnTimeRef: React.MutableRefObject<number>,
-    frozenSpawnIntervalRef: React.MutableRefObject<number>,
-): void => {
-    const spawnInterval = frozenSpawnIntervalRef.current;
-    const totalCount = coreNodes.length + dynamicNodes.length;
-
-    if (
-        isFinite(spawnInterval) &&
-        currentTime - lastSpawnTimeRef.current > spawnInterval &&
-        totalCount < MAX_FROZEN_COUNT
-    ) {
-        const allNodes = [...coreNodes, ...dynamicNodes];
-        const newNode = spawnNewNode(
-            allNodes,
-            width,
-            height,
-            scaleFactor,
-            currentTime,
-            availableLabels,
-        );
-        dynamicNodes.push(newNode);
-        lastSpawnTimeRef.current = currentTime;
-    }
 };
 
 const removeFadedNodes = (
@@ -157,18 +123,6 @@ const removeFadedNodes = (
     return filteredDynamic;
 };
 
-/**
- * Находит динамические узлы, оставшиеся без связей, и запускает их исчезновение.
- * Узел считается изолированным, если:
- *   - у него нет sourceIdx (он ни к кому не подключён), И
- *   - ни один другой узел не подключён к нему.
- * Core-узлы не проверяются — они всегда соединены кольцом.
- *
- * @param coreNodes - Массив core-узлов (используются для вычисления глобальных индексов).
- * @param dynamicNodes - Массив динамических узлов для проверки изоляции.
- * @param currentTime - Текущее время анимации (мс), используется для установки fadeStart.
- * @returns Ничего не возвращает (мутирует элементы переданного массива dynamicNodes).
- */
 const fadeDisconnectedNodes = (
     coreNodes: Node2D[],
     dynamicNodes: Node2D[],
@@ -176,7 +130,6 @@ const fadeDisconnectedNodes = (
 ): void => {
     const coreCount = coreNodes.length;
 
-    // Множество индексов узлов, к которым кто-то подключён (в общей нумерации)
     const connectedTargets = new Set<number>();
     for (const node of dynamicNodes) {
         if (node.sourceIdx >= 0) {
@@ -186,7 +139,7 @@ const fadeDisconnectedNodes = (
 
     for (let i = 0; i < dynamicNodes.length; i++) {
         const node = dynamicNodes[i];
-        if (node.fadeStart !== null) continue; // уже исчезает
+        if (node.fadeStart !== null) continue;
 
         const globalIdx = coreCount + i;
 
@@ -194,7 +147,6 @@ const fadeDisconnectedNodes = (
         const hasIncoming = connectedTargets.has(globalIdx);
 
         if (!hasOutgoing && !hasIncoming) {
-            // Узел полностью изолирован — запускаем fade
             node.fadeStart = currentTime;
         }
     }
@@ -216,62 +168,160 @@ const handleNormalLifecycle = (dynamicNodes: Node2D[], currentTime: number): voi
     }
 };
 
-const drawLines = (
+// Детерминированный расчёт вектора разлёта узла
+const getScatterOffset = (node: Node2D, progress: number): {x: number; y: number} => {
+    const seed = node.createdAt + (node.isCore ? 10000 : 0) + (node.isEmpty ? 5000 : 0);
+    const angle = (seed * 137.508) % 360;
+    const rad = angle * (Math.PI / 180);
+    const distance = SCATTER_DISTANCE * progress;
+    return {
+        x: Math.cos(rad) * distance,
+        y: Math.sin(rad) * distance,
+    };
+};
+
+// Обновление жизненного цикла узлов (вне режима разлёта)
+const updateLifecycle = (
+    coreNodes: Node2D[],
+    dynamicNodes: Node2D[],
+    availableLabels: string[],
+    scaleFactor: number,
+    width: number,
+    height: number,
+    t: number,
+): void => {
+    handleNormalLifecycle(dynamicNodes, t);
+
+    const afterRemoval = removeFadedNodes(coreNodes, dynamicNodes, scaleFactor, t, availableLabels);
+
+    const activeCount = afterRemoval.filter((n) => n.fadeStart === null).length;
+    const countToAdd = TARGET_TOTAL_COUNT - activeCount;
+
+    if (countToAdd > 0) {
+        for (let i = 0; i < countToAdd; i++) {
+            const allNodesForSpawn = [...coreNodes, ...afterRemoval];
+            const newNode = spawnNewNode(
+                allNodesForSpawn,
+                width,
+                height,
+                scaleFactor,
+                t + RESPAWN_DELAY,
+                availableLabels,
+            );
+            afterRemoval.push(newNode);
+        }
+    }
+
+    fadeDisconnectedNodes(coreNodes, afterRemoval, t);
+};
+
+// Отрисовка всех линий между узлами
+const renderLines = (
     ctx: CanvasRenderingContext2D,
     allNodes: Node2D[],
     opacities: number[],
     scaleFactor: number,
-    currentTime: number,
-    timeScale: number,
+    renderTime: number,
+    isScatteringNow: boolean,
+    scatterProgress: number,
 ): void => {
     for (let i = 0; i < allNodes.length; i++) {
         const node = allNodes[i];
         if (node.sourceIdx < 0 || node.path.length < 2) continue;
-
         const sourceNode = allNodes[node.sourceIdx];
-        if (sourceNode === null || sourceNode === undefined) continue;
+        if (!sourceNode) continue;
 
-        const targetOpacity = opacities[i];
-        const sourceOpacity = opacities[node.sourceIdx];
-        const lineOpacity = Math.min(sourceOpacity, targetOpacity);
+        let lineOpacity = Math.min(opacities[i], opacities[node.sourceIdx]);
+        if (isScatteringNow) {
+            lineOpacity *= 1 - scatterProgress;
+        }
 
         if (lineOpacity <= 0) continue;
 
-        const age = (currentTime - node.createdAt) * timeScale;
+        const age = (renderTime - node.createdAt) * 1;
         const appearProgress = Math.min(1, age / APPEAR_DURATION);
 
         ctx.globalAlpha = lineOpacity;
-        drawGrowingPath(
-            ctx,
-            node.path,
-            scaleFactor,
-            appearProgress,
-            node.lineStyle,
-            node.pathLengths,
-            node.totalPathLength,
-        );
+
+        if (isScatteringNow) {
+            const targetOffset = getScatterOffset(node, scatterProgress);
+            const scatteredPath: Point[] = node.path.map((p) => ({
+                x: p.x + targetOffset.x,
+                y: p.y + targetOffset.y,
+            }));
+
+            drawGrowingPath(
+                ctx,
+                scatteredPath,
+                scaleFactor,
+                appearProgress,
+                node.lineStyle,
+                node.pathLengths,
+                node.totalPathLength,
+            );
+        } else {
+            drawGrowingPath(
+                ctx,
+                node.path,
+                scaleFactor,
+                appearProgress,
+                node.lineStyle,
+                node.pathLengths,
+                node.totalPathLength,
+            );
+        }
         ctx.globalAlpha = 1;
     }
 };
 
-const drawNodes = (
+// Отрисовка всех узлов
+const renderNodes = (
     ctx: CanvasRenderingContext2D,
     allNodes: Node2D[],
     opacities: number[],
     scaleFactor: number,
+    isScatteringNow: boolean,
+    scatterProgress: number,
 ): void => {
     for (let i = 0; i < allNodes.length; i++) {
         const node = allNodes[i];
-        const opacity = opacities[i];
-        if (opacity === 0) continue;
+        let opacity = opacities[i];
 
-        drawNode(ctx, node, scaleFactor, opacity);
+        if (isScatteringNow) {
+            opacity *= 1 - scatterProgress;
+        }
+
+        if (opacity <= 0) continue;
+
+        if (isScatteringNow) {
+            const offset = getScatterOffset(node, scatterProgress);
+
+            const scatteredNode = {
+                ...node,
+                x: node.x + offset.x,
+                y: node.y + offset.y,
+                connectionPoint: {
+                    x: node.connectionPoint.x + offset.x,
+                    y: node.connectionPoint.y + offset.y,
+                },
+                bbox: {
+                    x: node.bbox.x + offset.x,
+                    y: node.bbox.y + offset.y,
+                    w: node.bbox.w,
+                    h: node.bbox.h,
+                },
+            };
+            drawNode(ctx, scatteredNode, scaleFactor, opacity);
+        } else {
+            drawNode(ctx, node, scaleFactor, opacity);
+        }
     }
 };
 
 export const useNetworkAnimation = (
     canvasRef: React.RefObject<HTMLCanvasElement | null>,
-    isFrozen = false,
+    isScattering = false,
+    onScatterComplete?: () => void,
 ): void => {
     const animationRef = useRef<number>(0);
     const startTimeRef = useRef<number>(0);
@@ -282,16 +332,50 @@ export const useNetworkAnimation = (
     const sizeRef = useRef({width: 0, height: 0});
     const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const availableLabelsRef = useRef<string[]>([...LABELS]);
-    const lastSpawnTimeRef = useRef<number>(0);
 
-    const frozenSpawnIntervalRef = useRef<number>(RESPAWN_DELAY / 2);
+    const isScatteringRef = useRef(isScattering);
+    const scatterStartTimeRef = useRef<number | null>(null);
+    const frozenTimeRef = useRef<number>(0);
 
-    const isFrozenRef = useRef(isFrozen);
-    const prevFrozenRef = useRef(isFrozen);
+    const isScatterCompletedRef = useRef(false);
+    const onScatterCompleteRef = useRef(onScatterComplete);
+    const animateRef = useRef<(time: number) => void>(() => {});
 
     useEffect(() => {
-        isFrozenRef.current = isFrozen;
-    }, [isFrozen]);
+        onScatterCompleteRef.current = onScatterComplete;
+    }, [onScatterComplete]);
+
+    useEffect(() => {
+        if (isScattering && !isScatteringRef.current) {
+            scatterStartTimeRef.current = null;
+            isScatterCompletedRef.current = false;
+        } else if (!isScattering && isScatteringRef.current) {
+            isScatterCompletedRef.current = false;
+            scatterStartTimeRef.current = null;
+            startTimeRef.current = performance.now();
+
+            const cssWidth = sizeRef.current.width;
+            const cssHeight = sizeRef.current.height;
+            const scaleFactor = scaleFactorRef.current;
+
+            const coreNodes = generateCoreNodes(cssWidth, cssHeight, scaleFactor);
+            buildCoreRingRoutes(coreNodes, scaleFactor);
+            coreNodesRef.current = coreNodes;
+
+            availableLabelsRef.current = [...LABELS];
+            nodesRef.current = generateNodes2D(
+                cssWidth,
+                cssHeight,
+                scaleFactor,
+                availableLabelsRef.current,
+                coreNodes,
+            );
+
+            cancelAnimationFrame(animationRef.current);
+            animationRef.current = requestAnimationFrame(animateRef.current);
+        }
+        isScatteringRef.current = isScattering;
+    }, [isScattering]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -340,6 +424,7 @@ export const useNetworkAnimation = (
 
         const animate = (time: number) => {
             if (isMounted === false) return;
+            if (isScatterCompletedRef.current) return;
 
             const {width, height} = sizeRef.current;
             const dpr = dprRef.current;
@@ -350,83 +435,65 @@ export const useNetworkAnimation = (
             const t = time - startTimeRef.current;
             const coreNodes = coreNodesRef.current;
             const dynamicNodes = nodesRef.current;
-            const frozen = isFrozenRef.current;
-            const timeScale = frozen ? FROZEN_TIME_SCALE : 1;
+            const isScatteringNow = isScatteringRef.current;
 
-            if (frozen && prevFrozenRef.current === false) {
-                const nodesToAdd = MAX_FROZEN_COUNT - (coreNodes.length + dynamicNodes.length);
-                if (nodesToAdd > 0) {
-                    frozenSpawnIntervalRef.current = FROZEN_FILL_DURATION / nodesToAdd;
-                } else {
-                    frozenSpawnIntervalRef.current = Infinity;
+            let scatterProgress = 0;
+
+            if (isScatteringNow) {
+                if (scatterStartTimeRef.current === null) {
+                    scatterStartTimeRef.current = t;
+                    frozenTimeRef.current = t;
                 }
-                lastSpawnTimeRef.current = t;
-            }
-            prevFrozenRef.current = frozen;
 
-            if (frozen) {
-                handleFrozenSpawning(
+                const scatterElapsed = t - (scatterStartTimeRef.current || t);
+                scatterProgress = Math.min(1, scatterElapsed / SCATTER_DURATION);
+
+                if (scatterProgress >= 1 && !isScatterCompletedRef.current) {
+                    isScatterCompletedRef.current = true;
+                    if (onScatterCompleteRef.current) {
+                        onScatterCompleteRef.current();
+                    }
+                    return;
+                }
+            } else {
+                scatterStartTimeRef.current = null;
+                updateLifecycle(
                     coreNodes,
                     dynamicNodes,
+                    availableLabelsRef.current,
+                    scaleFactor,
                     width,
                     height,
-                    scaleFactor,
                     t,
-                    availableLabelsRef.current,
-                    lastSpawnTimeRef,
-                    frozenSpawnIntervalRef,
                 );
-            } else {
-                handleNormalLifecycle(dynamicNodes, t);
-
-                nodesRef.current = removeFadedNodes(
-                    coreNodes,
-                    dynamicNodes,
-                    scaleFactor,
-                    t,
-                    availableLabelsRef.current,
-                );
-
-                // Спавн новых динамических узлов на основе активных
-                const currentDynamic = nodesRef.current;
-                const activeCount = currentDynamic.filter((n) => n.fadeStart === null).length;
-                const countToAdd = TARGET_TOTAL_COUNT - activeCount;
-
-                if (countToAdd > 0) {
-                    for (let i = 0; i < countToAdd; i++) {
-                        const allNodesForSpawn = [...coreNodes, ...currentDynamic];
-                        const newNode = spawnNewNode(
-                            allNodesForSpawn,
-                            width,
-                            height,
-                            scaleFactor,
-                            t + RESPAWN_DELAY,
-                            availableLabelsRef.current,
-                        );
-                        currentDynamic.push(newNode);
-                    }
-                }
-
-                // Удаляем узлы, оставшиеся без связей
-                fadeDisconnectedNodes(coreNodes, nodesRef.current, t);
+                nodesRef.current = dynamicNodes;
             }
 
             const allNodes = [...coreNodesRef.current, ...nodesRef.current];
-            const opacities: number[] = [];
-            for (const node of allNodes) {
-                opacities.push(getNodeOpacity(node, t, timeScale));
-            }
+            const renderTime = isScatteringNow ? frozenTimeRef.current : t;
+
+            const opacities: number[] = allNodes.map((node) => getNodeOpacity(node, renderTime, 1));
 
             ctx.font = `500 ${LABEL_FONT_SIZE * scaleFactor}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
             ctx.fillStyle = '#000000';
 
-            drawLines(ctx, allNodes, opacities, scaleFactor, t, timeScale);
-            drawNodes(ctx, allNodes, opacities, scaleFactor);
+            renderLines(
+                ctx,
+                allNodes,
+                opacities,
+                scaleFactor,
+                renderTime,
+                isScatteringNow,
+                scatterProgress,
+            );
+            renderNodes(ctx, allNodes, opacities, scaleFactor, isScatteringNow, scatterProgress);
 
             animationRef.current = requestAnimationFrame(animate);
         };
+
+        animateRef.current = animate;
 
         const init = async () => {
             await loadAllIcons();

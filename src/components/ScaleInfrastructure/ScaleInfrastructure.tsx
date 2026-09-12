@@ -10,21 +10,15 @@ const b = block('scale-infrastructure');
 
 export const ScaleInfrastructure: React.FC = () => {
     const [selectedIndex, setSelectedIndex] = useState(-1);
-    const [isFrozen, setIsFrozen] = useState(false);
 
     const handleActionClick = (index: number) => {
         setSelectedIndex(index);
-        setIsFrozen((prev) => !prev);
     };
 
     return (
         <div className={b()}>
             <div className={b('screen', {scale: true})}>
-                <ScaleTabs
-                    activeIndex={selectedIndex}
-                    onActionClick={handleActionClick}
-                    isFrozen={isFrozen}
-                />
+                <ScaleTabs activeIndex={selectedIndex} onActionClick={handleActionClick} />
             </div>
         </div>
     );

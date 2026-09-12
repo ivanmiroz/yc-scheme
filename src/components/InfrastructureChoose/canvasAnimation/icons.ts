@@ -1,5 +1,5 @@
 import serversSrc from '@/assets/icons/servers.png';
-import dwhSrc from '@/assets/icons/dwh.png';
+import dwnSrc from '@/assets/icons/dwn.png';
 import storageSrc from '@/assets/icons/storage.png';
 import kubernetesSrc from '@/assets/icons/kubernetes.png';
 import hypervisorSrc from '@/assets/icons/hypervisor.png';
@@ -13,7 +13,7 @@ import appsSrc from '@/assets/icons/apps.png';
 // Маппинг: ключ → путь к иконке
 export const ICON_MAP: Record<string, string> = {
     servers: serversSrc.src,
-    dwh: dwhSrc.src,
+    dwn: dwnSrc.src,
     storage: storageSrc.src,
     kubernetes: kubernetesSrc.src,
     hypervisor: hypervisorSrc.src,
@@ -59,7 +59,7 @@ export const LABELS: string[] = [
     'Backup',
     'Серверы',
     'Гипервизор',
-    'DWH',
+    'DWN',
     'Виртуальная машина',
     'Cloud Compute',
     'Приложения',
@@ -78,14 +78,14 @@ export const LABELS: string[] = [
 // Сопоставление названий (labels) с ключами иконок
 export const LABEL_TO_ICON_KEY: Record<string, string> = {
     Кластер: 'kubernetes',
-    'База данных': 'dwh',
+    'База данных': 'dwn',
     IAM: 'apps',
     GPU: 'compute',
     Kubernetes: 'kubernetes',
     Backup: 'backup',
     Серверы: 'servers',
     Гипервизор: 'hypervisor',
-    DWH: 'dwh',
+    DWN: 'dwn',
     'Виртуальная машина': 'hypervisor',
     'Cloud Compute': 'compute',
     Приложения: 'apps',

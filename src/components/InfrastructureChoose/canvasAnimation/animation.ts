@@ -1,7 +1,7 @@
 import {PodiumState, Position} from './types';
-import {ANIMATION_CONFIG, POSITION_ANIMATION_CONFIG, TEXT_DATA} from './constants';
+import {ANIMATION_CONFIG, POSITION_ANIMATION_CONFIG} from './constants';
 import {calculatePositions} from './positions';
-import {drawPositions, drawTextBlocks} from './drawers';
+import {drawPositions} from './drawers';
 import {loadAllIcons} from './icons';
 
 interface PositionAnimationParams {
@@ -17,12 +17,12 @@ export const createPodiumAnimator = (
     let podiums: PodiumState[] = [];
     let animationFrameId: number | null = null;
     let startTime: number | null = null;
-    let textOpacities: number[] = new Array(TEXT_DATA.length).fill(0);
-    let textAnimationStarted = false;
-    let textStartTime = 0;
+
     let positions: Position[] = [];
     let positionAnimParams: PositionAnimationParams[] = [];
     let positionOpacities: number[] = [];
+    let positionsAnimationStarted = false;
+    let positionsStartTime = 0;
     let iconsLoaded = false;
 
     const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
@@ -57,11 +57,11 @@ export const createPodiumAnimator = (
             ctx.drawImage(podiumImage, p.currentX, p.currentY, p.scaledWidth, p.scaledHeight);
         }
 
-        if (allPlatformsFinished && !textAnimationStarted) {
-            textAnimationStarted = true;
-            textStartTime = timestamp;
+        // Запускаем анимацию позиций сразу после завершения платформ
+        if (allPlatformsFinished && !positionsAnimationStarted) {
+            positionsAnimationStarted = true;
+            positionsStartTime = timestamp;
 
-            // Инициализируем позиции и их случайные параметры появления
             positions = calculatePositions(podiums);
             positionAnimParams = positions.map(() => {
                 const randomDelay = Math.random() * POSITION_ANIMATION_CONFIG.MAX_RANDOM_DELAY;
@@ -73,29 +73,15 @@ export const createPodiumAnimator = (
             positionOpacities = new Array(positions.length).fill(0);
         }
 
-        if (textAnimationStarted) {
-            const textElapsed = timestamp - textStartTime;
+        if (positionsAnimationStarted) {
+            const positionElapsed = timestamp - positionsStartTime;
 
-            // Расчёт прозрачности для каждого текста
-            textOpacities = TEXT_DATA.map((_, index) => {
-                const delay = index * ANIMATION_CONFIG.TEXT_STAGGER_DELAY;
-                const localElapsed = Math.max(0, textElapsed - delay);
-                const localProgress = Math.min(localElapsed / ANIMATION_CONFIG.TEXT_DURATION, 1);
-                return easeOutCubic(localProgress);
-            });
-
-            // Расчёт прозрачности для каждой позиции
             positionOpacities = positions.map((_, index) => {
                 const {delay, duration} = positionAnimParams[index];
-                const localElapsed = Math.max(0, textElapsed - delay);
+                const localElapsed = Math.max(0, positionElapsed - delay);
                 const localProgress = Math.min(localElapsed / duration, 1);
                 return easeOutCubic(localProgress);
             });
-        }
-
-        // Рисуем тексты с их индивидуальной прозрачностью
-        if (textAnimationStarted) {
-            drawTextBlocks(ctx, podiums, TEXT_DATA, textOpacities, width);
         }
 
         // Рисуем позиции с индивидуальной прозрачностью
@@ -104,13 +90,9 @@ export const createPodiumAnimator = (
         }
 
         // Проверяем, завершены ли все анимации
-        const allTextsFinished = textOpacities.every((op) => op >= 1);
         const allPositionsFinished = positionOpacities.every((op) => op >= 1);
         const allAnimationsFinished =
-            allPlatformsFinished &&
-            textAnimationStarted &&
-            allTextsFinished &&
-            allPositionsFinished;
+            allPlatformsFinished && positionsAnimationStarted && allPositionsFinished;
 
         if (allAnimationsFinished) {
             animationFrameId = null;
@@ -120,13 +102,11 @@ export const createPodiumAnimator = (
     };
 
     const redrawIfComplete = () => {
-        const allTextsFinished = textOpacities.every((op) => op >= 1);
         const allPositionsFinished = positionOpacities.every((op) => op >= 1);
-        if (textAnimationStarted && allTextsFinished && allPositionsFinished && iconsLoaded) {
+        if (positionsAnimationStarted && allPositionsFinished && iconsLoaded) {
             const dpr = window.devicePixelRatio || 1;
             const width = canvas.width / dpr;
             ctx.clearRect(0, 0, width, canvas.height / dpr);
-            drawTextBlocks(ctx, podiums, TEXT_DATA, textOpacities, width);
             drawPositions(ctx, positions, positionOpacities, width);
         }
     };
@@ -136,9 +116,8 @@ export const createPodiumAnimator = (
             cancelAnimationFrame(animationFrameId);
         }
 
-        textOpacities = new Array(TEXT_DATA.length).fill(0);
-        textAnimationStarted = false;
-        textStartTime = 0;
+        positionsAnimationStarted = false;
+        positionsStartTime = 0;
         positions = [];
         positionAnimParams = [];
         positionOpacities = [];
@@ -156,13 +135,16 @@ export const createPodiumAnimator = (
         let scaledWidth = imgWidth * scale;
         let scaledHeight = slotHeight;
 
+        // Ограничиваем максимальную ширину платформы 90% от ширины канваса для адаптивности
         if (scaledWidth > width * 0.9) {
             scale = (width * 0.9) / imgWidth;
             scaledWidth = imgWidth * scale;
             scaledHeight = imgHeight * scale;
         }
 
-        const targetX = width * 0.6 - scaledWidth / 2;
+        // === ИЗМЕНЕНИЕ ЗДЕСЬ: Идеальное центрирование по горизонтали ===
+        const targetX = (width - scaledWidth) / 2;
+
         const centerY = height / 2;
         const verticalOffset = height * 0.025;
 
@@ -187,10 +169,8 @@ export const createPodiumAnimator = (
         animationFrameId = requestAnimationFrame(animate);
     };
 
-    // Загружаем иконки параллельно с анимацией платформ
     loadAllIcons().then(() => {
         iconsLoaded = true;
-        // Если анимация уже завершилась, перерисовываем с иконками
         redrawIfComplete();
     });
 

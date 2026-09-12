@@ -27,7 +27,7 @@ export const currentScheme: PlatformScheme[] = [
         platformId: 1, // Платформа 3 (Данные и интеграции)
         positions: [
             {positionNumber: '3.1', iconKey: 'servers', label: 'Серверы и СХД'},
-            {positionNumber: '3.2', iconKey: 'dwh', label: 'DWH'},
+            {positionNumber: '3.2', iconKey: 'dwn', label: 'DWN'},
             {positionNumber: '3.3'},
             {positionNumber: '3.4'},
             {positionNumber: '3.5', iconKey: 'storage', label: 'Object Storage'},
@@ -64,8 +64,8 @@ export const currentScheme: PlatformScheme[] = [
                 iconKey: 'baremetal',
                 label: 'Yandex BareMetal\nНезависимый ДЦ',
             },
-            {positionNumber: '1.5', iconKey: 'servers', label: 'Серверы и СХД'},
-            {positionNumber: '1.6'},
+            {positionNumber: '1.5'},
+            {positionNumber: '1.6', iconKey: 'servers', label: 'Серверы и СХД'},
         ],
     },
 ];

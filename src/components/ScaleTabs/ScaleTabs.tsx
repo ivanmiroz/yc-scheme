@@ -5,7 +5,6 @@ import block from 'bem-cn-lite';
 
 import {NetworkSingularity} from '../NetworkSingularity/NetworkSingularity';
 
-// Импортируем иконки, так как теперь они рендерятся здесь
 import legend1Src from '@/assets/icons/legend1.png';
 import legend2Src from '@/assets/icons/legend2.png';
 import legend3Src from '@/assets/icons/legend3.png';
@@ -41,32 +40,26 @@ const listItems = [
 interface ScaleTabsProps {
     activeIndex?: number;
     onActionClick?: (index: number) => void;
-    isFrozen?: boolean;
 }
 
-export const ScaleTabs: React.FC<ScaleTabsProps> = ({
-    activeIndex = -1,
-    onActionClick,
-    isFrozen = false,
-}) => {
+export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionClick}) => {
     const [localActiveIndex, setLocalActiveIndex] = useState(0);
 
     const handleButtonClick = (index: number) => {
-        if (isFrozen) return;
         onActionClick?.(index);
     };
+
+    const isSidebarActive = activeIndex !== -1;
 
     return (
         <div className={b()}>
             <div className={b('content')}>
                 <div className={b('panel')}>
-                    <NetworkSingularity isFrozen={isFrozen} />
+                    <NetworkSingularity isScattering={isSidebarActive} />
                 </div>
             </div>
 
-            {/* Контейнер сайдбара с анимацией */}
-            <div className={b('sidebar', {frozen: isFrozen})}>
-                {/* 1. Первый див: исходный контент (улетает влево) */}
+            <div className={b('sidebar', {frozen: isSidebarActive})}>
                 <div className={b('sidebar-scale')}>
                     <div className={b('header')}>
                         <h2 className={b('title')}>Платформа для гибридных решений</h2>
@@ -82,7 +75,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
                                 key={action.value}
                                 className={b('button', {
                                     active: activeIndex === index,
-                                    disabled: isFrozen,
                                 })}
                                 type="button"
                                 onClick={() => handleButtonClick(index)}
@@ -110,8 +102,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
                     </div>
                 </div>
 
-                {/* 2. Второй див: контент InfrastructureChoose (появляется справа) */}
-                {/* Объединяем классы: анимационная обёртка + стилевая обёртка */}
                 <div className={`${b('sidebar-infra')} infrastructure-choose__sidebar`}>
                     <h2 className="infrastructure-choose__title">Выбери инфраструктуру:</h2>
 
