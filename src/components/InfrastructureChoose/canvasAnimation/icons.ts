@@ -9,6 +9,10 @@ import backupSrc from '@/assets/icons/backup.png';
 import computeSrc from '@/assets/icons/compute.png';
 import networkSrc from '@/assets/icons/network.png';
 import appsSrc from '@/assets/icons/apps.png';
+import datalensSrc from '@/assets/icons/datalens.png';
+import aistudioSrc from '@/assets/icons/aistudio.png';
+import mfskSrc from '@/assets/icons/msfk.png'; // <-- Добавлено
+import cloudcdnSrc from '@/assets/icons/cloudcdn.png'; // <-- Добавлено
 
 // Маппинг: ключ → путь к иконке
 export const ICON_MAP: Record<string, string> = {
@@ -23,6 +27,10 @@ export const ICON_MAP: Record<string, string> = {
     compute: computeSrc.src,
     network: networkSrc.src,
     apps: appsSrc.src,
+    datalens: datalensSrc.src,
+    aistudio: aistudioSrc.src,
+    mfsk: mfskSrc.src, // <-- Добавлено
+    cloudcdn: cloudcdnSrc.src, // <-- Добавлено
 };
 
 // Кэш загруженных изображений
@@ -44,7 +52,7 @@ export const loadAllIcons = (): Promise<Record<string, HTMLImageElement>> => {
     return Promise.all(promises).then(() => iconCache);
 };
 
-// Получить иконку из кэша (может быть undefined, если ещё не загружена)
+// Получить иконку из кэша
 export const getIcon = (key: string): HTMLImageElement | undefined => {
     return iconCache[key];
 };
@@ -73,6 +81,10 @@ export const LABELS: string[] = [
     'CDN',
     'Cloud Back',
     'Object Storage',
+    'DataLens',
+    'AI Studio',
+    'Managed Service for Kubernetes®', // <-- Добавлено
+    'Cloud CDN', // <-- Добавлено
 ];
 
 // Сопоставление названий (labels) с ключами иконок
@@ -99,6 +111,10 @@ export const LABEL_TO_ICON_KEY: Record<string, string> = {
     CDN: 'network',
     'Cloud Back': 'backup',
     'Object Storage': 'storage',
+    DataLens: 'datalens',
+    'AI Studio': 'aistudio',
+    'Managed Service for Kubernetes®': 'msfk', // <-- Добавлено
+    'Cloud CDN': 'cloudcdn', // <-- Добавлено
 };
 
 // Функция получения ключа иконки по названию

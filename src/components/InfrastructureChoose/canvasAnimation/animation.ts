@@ -142,7 +142,7 @@ export const createPodiumAnimator = (
             scaledHeight = imgHeight * scale;
         }
 
-        // === ИЗМЕНЕНИЕ ЗДЕСЬ: Идеальное центрирование по горизонтали ===
+        // Идеальное центрирование по горизонтали
         const targetX = (width - scaledWidth) / 2;
 
         const centerY = height / 2;
@@ -169,6 +169,30 @@ export const createPodiumAnimator = (
         animationFrameId = requestAnimationFrame(animate);
     };
 
+    // Обновление схемы без перезапуска анимации платформ
+    const refreshScheme = () => {
+        // Пересчитываем позиции на основе НОВОЙ активной схемы
+        positions = calculatePositions(podiums);
+
+        // Сбрасываем параметры анимации появления для новых позиций
+        positionAnimParams = positions.map(() => {
+            const randomDelay = Math.random() * POSITION_ANIMATION_CONFIG.MAX_RANDOM_DELAY;
+            return {
+                delay: POSITION_ANIMATION_CONFIG.BASE_DELAY + randomDelay,
+                duration: POSITION_ANIMATION_CONFIG.DURATION,
+            };
+        });
+        positionOpacities = new Array(positions.length).fill(0);
+        positionsAnimationStarted = true;
+        positionsStartTime = performance.now();
+
+        // ВАЖНО: перезапускаем цикл анимации, если он был остановлен после завершения
+        // предыдущей отрисовки. Без этого новые иконки не появятся на канвасе.
+        if (!animationFrameId) {
+            animationFrameId = requestAnimationFrame(animate);
+        }
+    };
+
     loadAllIcons().then(() => {
         iconsLoaded = true;
         redrawIfComplete();
@@ -177,5 +201,6 @@ export const createPodiumAnimator = (
     return {
         initPodiums,
         getAnimationFrameId: () => animationFrameId,
+        refreshScheme,
     };
 };

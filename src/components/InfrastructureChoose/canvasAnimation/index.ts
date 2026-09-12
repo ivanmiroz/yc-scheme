@@ -3,12 +3,14 @@ import podiumSrc from '@/assets/images/podium.png';
 import {CanvasAnimationCleanup} from './types';
 import {createPodiumAnimator} from './animation';
 
-export const initCanvasAnimation = (canvas: HTMLCanvasElement): CanvasAnimationCleanup | void => {
+export const initCanvasAnimation = (canvas: HTMLCanvasElement): CanvasAnimationCleanup => {
     const ctx = canvas.getContext('2d');
     if (!ctx) {
         // eslint-disable-next-line no-console
         console.warn('Не удалось получить 2D контекст для canvas');
-        return () => {};
+        const cleanup = () => {};
+        cleanup.refreshScheme = () => {};
+        return cleanup;
     }
 
     const podiumImage = new Image();
@@ -51,13 +53,20 @@ export const initCanvasAnimation = (canvas: HTMLCanvasElement): CanvasAnimationC
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    return () => {
+    // Создаем функцию очистки и добавляем к ней метод refreshScheme
+    const cleanup: CanvasAnimationCleanup = () => {
         window.removeEventListener('resize', resizeCanvas);
         const frameId = animator.getAnimationFrameId();
         if (frameId) {
             cancelAnimationFrame(frameId);
         }
     };
+
+    cleanup.refreshScheme = () => {
+        animator.refreshScheme?.();
+    };
+
+    return cleanup;
 };
 
 export * from './types';

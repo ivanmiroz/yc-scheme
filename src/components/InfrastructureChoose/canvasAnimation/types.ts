@@ -17,4 +17,5 @@ export interface Position {
 
 export interface CanvasAnimationCleanup {
     (): void;
+    refreshScheme?: () => void; // <-- Добавлено
 }

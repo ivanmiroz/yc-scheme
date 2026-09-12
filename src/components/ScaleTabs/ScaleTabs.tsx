@@ -4,6 +4,7 @@ import React, {useState} from 'react';
 import block from 'bem-cn-lite';
 
 import {NetworkSingularity} from '../NetworkSingularity/NetworkSingularity';
+import {setActiveScheme} from '../InfrastructureChoose/canvasAnimation/schemes';
 
 import legend1Src from '@/assets/icons/legend1.png';
 import legend2Src from '@/assets/icons/legend2.png';
@@ -16,10 +17,10 @@ import './ScaleTabs.scss';
 const b = block('scale-tabs');
 
 const actions = [
-    {value: 'scale', label: 'Масштабируйтесь безопасно'},
-    {value: 'time-to-market', label: 'Ускорение Time to Market'},
-    {value: 'ai', label: 'Разработка ИИ-приложений'},
-    {value: 'security', label: 'Обеспечение безопасной работы сервисов'},
+    {value: 'scale', label: 'Масштабирование без ограничений'},
+    {value: 'time-to-market', label: 'Разработка ИИ-приложений'},
+    {value: 'ai', label: 'Стабильная работа сервисов'},
+    {value: 'security', label: 'Ускорение time-to-market'},
 ];
 
 const infraTabs = [
@@ -45,8 +46,16 @@ interface ScaleTabsProps {
 export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionClick}) => {
     const [localActiveIndex, setLocalActiveIndex] = useState(0);
 
+    // СНАЧАЛА определяем handleInfraTabClick, чтобы он был доступен ниже
+    const handleInfraTabClick = (index: number) => {
+        setLocalActiveIndex(index);
+        setActiveScheme(index);
+    };
+
+    // Теперь handleButtonClick может безопасно использовать handleInfraTabClick
     const handleButtonClick = (index: number) => {
         onActionClick?.(index);
+        handleInfraTabClick(index);
     };
 
     const isSidebarActive = activeIndex !== -1;
@@ -55,7 +64,10 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
         <div className={b()}>
             <div className={b('content')}>
                 <div className={b('panel')}>
-                    <NetworkSingularity isScattering={isSidebarActive} />
+                    <NetworkSingularity
+                        activeSchemeIndex={localActiveIndex}
+                        isScattering={isSidebarActive}
+                    />
                 </div>
             </div>
 
@@ -111,7 +123,7 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
                                 key={tab.value}
                                 type="button"
                                 className={`infrastructure-choose__tab ${localActiveIndex === index ? 'infrastructure-choose__tab_active' : ''}`}
-                                onClick={() => setLocalActiveIndex(index)}
+                                onClick={() => handleInfraTabClick(index)}
                             >
                                 {tab.label}
                             </button>
