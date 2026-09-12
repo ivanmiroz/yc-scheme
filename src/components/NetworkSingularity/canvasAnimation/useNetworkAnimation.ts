@@ -1,13 +1,14 @@
-/* eslint-disable no-param-reassign --
-   Намеренная мутация свойств ref-объектов (lastSpawnTimeRef.current) и
-   CanvasRenderingContext2D (ctx.globalAlpha, ctx.font и т.д.) — это
-   идиоматичный подход для Canvas-анимаций, так как создание новых объектов
-   в каждом кадре вызывало бы лишнюю нагрузку на GC и микро-фризы.
-*/
+/* eslint-disable no-param-reassign */
 
 import {useEffect, useRef} from 'react';
 
-import {buildRouteForNode, generateNodes2D, spawnNewNode} from './nodeGenerator';
+import {
+    buildCoreRingRoutes,
+    buildRouteForNode,
+    generateCoreNodes,
+    generateNodes2D,
+    spawnNewNode,
+} from './nodeGenerator';
 import {drawGrowingPath, drawNode, prepareCanvas} from './renderer';
 import {calculateCanvasDimensions, calculateScaleFactor} from './utils';
 import {Node2D} from './types';
@@ -24,14 +25,6 @@ import {
 } from './constants';
 import {LABELS, loadAllIcons} from '../../InfrastructureChoose/canvasAnimation/icons';
 
-/**
- * Вычисляет opacity узла с учётом появления и исчезновения.
- *
- * @param node - Узел, для которого вычисляется прозрачность.
- * @param currentTime - Текущее время анимации (мс).
- * @param timeScale - Множитель скорости (1 = обычная, FROZEN_TIME_SCALE = ускоренная).
- * @returns Прозрачность узла от 0 до 1.
- */
 const getNodeOpacity = (node: Node2D, currentTime: number, timeScale: number): number => {
     if (currentTime < node.createdAt) return 0;
 
@@ -43,20 +36,13 @@ const getNodeOpacity = (node: Node2D, currentTime: number, timeScale: number): n
     if (node.fadeStart !== null) {
         const fadeElapsed = (currentTime - node.fadeStart) * timeScale;
         const fadeProgress = Math.min(1, fadeElapsed / FADE_DURATION);
-        const fadeOpacity = 1 - fadeProgress;
+        const fadeOpacity = 1 - Math.pow(fadeProgress, 2);
         return Math.min(appearOpacity, fadeOpacity);
     }
 
     return appearOpacity;
 };
 
-/**
- * Находит самый старый "зрелый" узел, который можно начать скрывать.
- *
- * @param nodes - Массив всех узлов на сцене.
- * @param currentTime - Текущее время анимации (мс).
- * @returns Самый старый зрелый узел или null, если такого нет.
- */
 const findOldestMatureNode = (nodes: Node2D[], currentTime: number): Node2D | null => {
     let oldest: Node2D | null = null;
 
@@ -72,21 +58,9 @@ const findOldestMatureNode = (nodes: Node2D[], currentTime: number): Node2D | nu
     return oldest;
 };
 
-/**
- * Обрабатывает спавн узлов в замороженном режиме.
- *
- * @param nodes - Массив текущих узлов (мутируется: добавляются новые узлы).
- * @param width - Ширина канваса в CSS-пикселях.
- * @param height - Высота канваса в CSS-пикселях.
- * @param scaleFactor - Коэффициент масштабирования.
- * @param currentTime - Текущее время анимации (мс).
- * @param availableLabels - Массив доступных подписей.
- * @param lastSpawnTimeRef - Ref с временем последнего спавна.
- * @param frozenSpawnIntervalRef - Ref с вычисленным интервалом спавна.
- * @returns Ничего не возвращает.
- */
 const handleFrozenSpawning = (
-    nodes: Node2D[],
+    coreNodes: Node2D[],
+    dynamicNodes: Node2D[],
     width: number,
     height: number,
     scaleFactor: number,
@@ -96,139 +70,165 @@ const handleFrozenSpawning = (
     frozenSpawnIntervalRef: React.MutableRefObject<number>,
 ): void => {
     const spawnInterval = frozenSpawnIntervalRef.current;
+    const totalCount = coreNodes.length + dynamicNodes.length;
 
     if (
         isFinite(spawnInterval) &&
         currentTime - lastSpawnTimeRef.current > spawnInterval &&
-        nodes.length < MAX_FROZEN_COUNT
+        totalCount < MAX_FROZEN_COUNT
     ) {
+        const allNodes = [...coreNodes, ...dynamicNodes];
         const newNode = spawnNewNode(
-            nodes,
+            allNodes,
             width,
             height,
             scaleFactor,
             currentTime,
             availableLabels,
         );
-        nodes.push(newNode);
+        dynamicNodes.push(newNode);
         lastSpawnTimeRef.current = currentTime;
     }
 };
 
-/**
- * Обрабатывает удаление исчезнувших узлов и переподключение оставшихся.
- *
- * @param nodes - Массив текущих узлов.
- * @param scaleFactor - Коэффициент масштабирования.
- * @param currentTime - Текущее время анимации (мс).
- * @param availableLabels - Массив доступных подписей (мутируется).
- * @returns Новый массив узлов после удаления исчезнувших.
- */
 const removeFadedNodes = (
-    nodes: Node2D[],
+    coreNodes: Node2D[],
+    dynamicNodes: Node2D[],
     scaleFactor: number,
     currentTime: number,
     availableLabels: string[],
 ): Node2D[] => {
     const nodesToRemove: number[] = [];
-    for (let i = 0; i < nodes.length; i++) {
-        const opacity = getNodeOpacity(nodes[i], currentTime, 1);
-        if (opacity === 0 && nodes[i].fadeStart !== null) {
+    for (let i = 0; i < dynamicNodes.length; i++) {
+        const opacity = getNodeOpacity(dynamicNodes[i], currentTime, 1);
+        if (opacity === 0 && dynamicNodes[i].fadeStart !== null) {
             nodesToRemove.push(i);
         }
     }
 
-    if (nodesToRemove.length === 0) return nodes;
+    if (nodesToRemove.length === 0) return dynamicNodes;
 
     const removedSet = new Set(nodesToRemove);
+    const coreCount = coreNodes.length;
 
-    // Возвращаем labels удалённых узлов в пул
     for (const idx of nodesToRemove) {
-        const node = nodes[idx];
+        const node = dynamicNodes[idx];
         if (node.isEmpty === false && node.label) {
             availableLabels.push(node.label);
         }
     }
 
-    // Переподключаем узлы, которые ссылались на удаляемые
-    for (let i = 0; i < nodes.length; i++) {
+    const allNodesBefore = [...coreNodes, ...dynamicNodes];
+
+    for (let i = 0; i < dynamicNodes.length; i++) {
         if (removedSet.has(i)) continue;
-        const node = nodes[i];
-        if (node.sourceIdx >= 0 && removedSet.has(node.sourceIdx)) {
-            buildRouteForNode(node, nodes, scaleFactor);
+        const node = dynamicNodes[i];
+        if (node.sourceIdx >= coreCount) {
+            const sourceDynamicIdx = node.sourceIdx - coreCount;
+            if (removedSet.has(sourceDynamicIdx)) {
+                buildRouteForNode(node, allNodesBefore, scaleFactor);
+            }
         }
     }
 
-    // Строим карту старых индексов -> новых
-    const indexMap = new Map<number, number>();
+    const filteredDynamic = dynamicNodes.filter((_, i) => !removedSet.has(i));
+
+    const dynamicIndexMap = new Map<number, number>();
     let newIdx = 0;
-    for (let oldIdx = 0; oldIdx < nodes.length; oldIdx++) {
-        if (removedSet.has(oldIdx) === false) {
-            indexMap.set(oldIdx, newIdx);
+    for (let oldIdx = 0; oldIdx < dynamicNodes.length; oldIdx++) {
+        if (!removedSet.has(oldIdx)) {
+            dynamicIndexMap.set(oldIdx, newIdx);
             newIdx++;
         }
     }
 
-    const filteredNodes = nodes.filter((_, i) => removedSet.has(i) === false);
-
-    // Обновляем sourceIdx у оставшихся узлов
-    for (const node of filteredNodes) {
+    for (const node of filteredDynamic) {
         if (node.sourceIdx >= 0) {
-            const mapped = indexMap.get(node.sourceIdx);
-            node.sourceIdx = mapped === undefined ? -1 : mapped;
+            if (node.sourceIdx < coreCount) {
+                // Указывает на core — индекс не меняется
+            } else {
+                const oldDynamicIdx = node.sourceIdx - coreCount;
+                const mapped = dynamicIndexMap.get(oldDynamicIdx);
+                node.sourceIdx = mapped === undefined ? -1 : coreCount + mapped;
+            }
         }
     }
 
-    return filteredNodes;
+    return filteredDynamic;
 };
 
 /**
- * Обрабатывает обычный жизненный цикл: запускает fade у старых узлов.
+ * Находит динамические узлы, оставшиеся без связей, и запускает их исчезновение.
+ * Узел считается изолированным, если:
+ *   - у него нет sourceIdx (он ни к кому не подключён), И
+ *   - ни один другой узел не подключён к нему.
+ * Core-узлы не проверяются — они всегда соединены кольцом.
  *
- * @param nodes - Массив текущих узлов.
- * @param currentTime - Текущее время анимации (мс).
- * @returns Ничего не возвращает.
+ * @param coreNodes - Массив core-узлов (используются для вычисления глобальных индексов).
+ * @param dynamicNodes - Массив динамических узлов для проверки изоляции.
+ * @param currentTime - Текущее время анимации (мс), используется для установки fadeStart.
+ * @returns Ничего не возвращает (мутирует элементы переданного массива dynamicNodes).
  */
-const handleNormalLifecycle = (nodes: Node2D[], currentTime: number): void => {
-    let aliveCount = 0;
-    for (const node of nodes) {
-        if (node.fadeStart === null && currentTime >= node.createdAt) {
-            aliveCount++;
+const fadeDisconnectedNodes = (
+    coreNodes: Node2D[],
+    dynamicNodes: Node2D[],
+    currentTime: number,
+): void => {
+    const coreCount = coreNodes.length;
+
+    // Множество индексов узлов, к которым кто-то подключён (в общей нумерации)
+    const connectedTargets = new Set<number>();
+    for (const node of dynamicNodes) {
+        if (node.sourceIdx >= 0) {
+            connectedTargets.add(node.sourceIdx);
         }
     }
 
-    if (aliveCount >= TARGET_TOTAL_COUNT) {
-        const oldest = findOldestMatureNode(nodes, currentTime);
+    for (let i = 0; i < dynamicNodes.length; i++) {
+        const node = dynamicNodes[i];
+        if (node.fadeStart !== null) continue; // уже исчезает
+
+        const globalIdx = coreCount + i;
+
+        const hasOutgoing = node.sourceIdx >= 0;
+        const hasIncoming = connectedTargets.has(globalIdx);
+
+        if (!hasOutgoing && !hasIncoming) {
+            // Узел полностью изолирован — запускаем fade
+            node.fadeStart = currentTime;
+        }
+    }
+};
+
+const handleNormalLifecycle = (dynamicNodes: Node2D[], currentTime: number): void => {
+    let activeCount = 0;
+    for (const node of dynamicNodes) {
+        if (node.fadeStart === null && currentTime >= node.createdAt) {
+            activeCount++;
+        }
+    }
+
+    if (activeCount >= TARGET_TOTAL_COUNT) {
+        const oldest = findOldestMatureNode(dynamicNodes, currentTime);
         if (oldest !== null) {
             oldest.fadeStart = currentTime;
         }
     }
 };
 
-/**
- * Отрисовывает все линии соединений на канвасе.
- *
- * @param ctx - 2D-контекст канваса.
- * @param nodes - Массив узлов для отрисовки.
- * @param opacities - Массив прозрачностей узлов.
- * @param scaleFactor - Коэффициент масштабирования.
- * @param currentTime - Текущее время анимации (мс).
- * @param timeScale - Множитель скорости анимации.
- * @returns Ничего не возвращает.
- */
 const drawLines = (
     ctx: CanvasRenderingContext2D,
-    nodes: Node2D[],
+    allNodes: Node2D[],
     opacities: number[],
     scaleFactor: number,
     currentTime: number,
     timeScale: number,
 ): void => {
-    for (let i = 0; i < nodes.length; i++) {
-        const node = nodes[i];
+    for (let i = 0; i < allNodes.length; i++) {
+        const node = allNodes[i];
         if (node.sourceIdx < 0 || node.path.length < 2) continue;
 
-        const sourceNode = nodes[node.sourceIdx];
+        const sourceNode = allNodes[node.sourceIdx];
         if (sourceNode === null || sourceNode === undefined) continue;
 
         const targetOpacity = opacities[i];
@@ -254,23 +254,14 @@ const drawLines = (
     }
 };
 
-/**
- * Отрисовывает все узлы на канвасе.
- *
- * @param ctx - 2D-контекст канваса.
- * @param nodes - Массив узлов для отрисовки.
- * @param opacities - Массив прозрачностей узлов.
- * @param scaleFactor - Коэффициент масштабирования.
- * @returns Ничего не возвращает.
- */
 const drawNodes = (
     ctx: CanvasRenderingContext2D,
-    nodes: Node2D[],
+    allNodes: Node2D[],
     opacities: number[],
     scaleFactor: number,
 ): void => {
-    for (let i = 0; i < nodes.length; i++) {
-        const node = nodes[i];
+    for (let i = 0; i < allNodes.length; i++) {
+        const node = allNodes[i];
         const opacity = opacities[i];
         if (opacity === 0) continue;
 
@@ -278,13 +269,6 @@ const drawNodes = (
     }
 };
 
-/**
- * Хук для управления анимацией сети узлов на Canvas.
- *
- * @param canvasRef - Ref на HTMLCanvasElement.
- * @param isFrozen - Флаг замороженного режима (по умолчанию false).
- * @returns Ничего не возвращает.
- */
 export const useNetworkAnimation = (
     canvasRef: React.RefObject<HTMLCanvasElement | null>,
     isFrozen = false,
@@ -293,6 +277,7 @@ export const useNetworkAnimation = (
     const startTimeRef = useRef<number>(0);
     const dprRef = useRef(1);
     const scaleFactorRef = useRef(1);
+    const coreNodesRef = useRef<Node2D[]>([]);
     const nodesRef = useRef<Node2D[]>([]);
     const sizeRef = useRef({width: 0, height: 0});
     const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -334,15 +319,21 @@ export const useNetworkAnimation = (
                 canvas.height = dimensions.height;
                 dprRef.current = dimensions.dpr;
 
-                scaleFactorRef.current = calculateScaleFactor(cssWidth);
+                const scaleFactor = calculateScaleFactor(cssWidth);
+                scaleFactorRef.current = scaleFactor;
                 sizeRef.current = {width: cssWidth, height: cssHeight};
+
+                const coreNodes = generateCoreNodes(cssWidth, cssHeight, scaleFactor);
+                buildCoreRingRoutes(coreNodes, scaleFactor);
+                coreNodesRef.current = coreNodes;
 
                 availableLabelsRef.current = [...LABELS];
                 nodesRef.current = generateNodes2D(
                     cssWidth,
                     cssHeight,
-                    scaleFactorRef.current,
+                    scaleFactor,
                     availableLabelsRef.current,
+                    coreNodes,
                 );
             }, 150);
         };
@@ -357,13 +348,13 @@ export const useNetworkAnimation = (
             prepareCanvas(ctx, width, height, dpr);
 
             const t = time - startTimeRef.current;
-            const nodes = nodesRef.current;
+            const coreNodes = coreNodesRef.current;
+            const dynamicNodes = nodesRef.current;
             const frozen = isFrozenRef.current;
             const timeScale = frozen ? FROZEN_TIME_SCALE : 1;
 
-            // Детектим вход в frozen режим и вычисляем адаптивный интервал спавна
             if (frozen && prevFrozenRef.current === false) {
-                const nodesToAdd = MAX_FROZEN_COUNT - nodes.length;
+                const nodesToAdd = MAX_FROZEN_COUNT - (coreNodes.length + dynamicNodes.length);
                 if (nodesToAdd > 0) {
                     frozenSpawnIntervalRef.current = FROZEN_FILL_DURATION / nodesToAdd;
                 } else {
@@ -375,7 +366,8 @@ export const useNetworkAnimation = (
 
             if (frozen) {
                 handleFrozenSpawning(
-                    nodes,
+                    coreNodes,
+                    dynamicNodes,
                     width,
                     height,
                     scaleFactor,
@@ -385,35 +377,43 @@ export const useNetworkAnimation = (
                     frozenSpawnIntervalRef,
                 );
             } else {
-                handleNormalLifecycle(nodes, t);
+                handleNormalLifecycle(dynamicNodes, t);
+
                 nodesRef.current = removeFadedNodes(
-                    nodes,
+                    coreNodes,
+                    dynamicNodes,
                     scaleFactor,
                     t,
                     availableLabelsRef.current,
                 );
 
-                // Добавляем новые узлы на место удалённых
-                const currentCount = nodesRef.current.length;
-                const countToAdd = TARGET_TOTAL_COUNT - currentCount;
+                // Спавн новых динамических узлов на основе активных
+                const currentDynamic = nodesRef.current;
+                const activeCount = currentDynamic.filter((n) => n.fadeStart === null).length;
+                const countToAdd = TARGET_TOTAL_COUNT - activeCount;
+
                 if (countToAdd > 0) {
                     for (let i = 0; i < countToAdd; i++) {
+                        const allNodesForSpawn = [...coreNodes, ...currentDynamic];
                         const newNode = spawnNewNode(
-                            nodesRef.current,
+                            allNodesForSpawn,
                             width,
                             height,
                             scaleFactor,
                             t + RESPAWN_DELAY,
                             availableLabelsRef.current,
                         );
-                        nodesRef.current.push(newNode);
+                        currentDynamic.push(newNode);
                     }
                 }
+
+                // Удаляем узлы, оставшиеся без связей
+                fadeDisconnectedNodes(coreNodes, nodesRef.current, t);
             }
 
-            const currentNodes = nodesRef.current;
+            const allNodes = [...coreNodesRef.current, ...nodesRef.current];
             const opacities: number[] = [];
-            for (const node of currentNodes) {
+            for (const node of allNodes) {
                 opacities.push(getNodeOpacity(node, t, timeScale));
             }
 
@@ -422,8 +422,8 @@ export const useNetworkAnimation = (
             ctx.textBaseline = 'top';
             ctx.fillStyle = '#000000';
 
-            drawLines(ctx, currentNodes, opacities, scaleFactor, t, timeScale);
-            drawNodes(ctx, currentNodes, opacities, scaleFactor);
+            drawLines(ctx, allNodes, opacities, scaleFactor, t, timeScale);
+            drawNodes(ctx, allNodes, opacities, scaleFactor);
 
             animationRef.current = requestAnimationFrame(animate);
         };

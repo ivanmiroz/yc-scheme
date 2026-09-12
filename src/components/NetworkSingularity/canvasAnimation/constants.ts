@@ -4,11 +4,11 @@ export const BASE_CANVAS_SIZE = 1920;
 /** Максимальный физический размер канваса (для ограничения DPR на 4K+ экранах) */
 export const MAX_CANVAS_DIMENSION = 3840;
 
-/** Количество отображаемых иконок */
+/** Количество отображаемых иконок (динамических) */
 export const NODE_COUNT = 20;
 
-/** Количество дополнительных узлов без иконок и текста */
-export const EMPTY_NODE_COUNT = 20;
+/** Количество дополнительных узлов без иконок и текста (динамических) */
+export const EMPTY_NODE_COUNT = 1;
 
 /** Целевой FPS для анимации */
 export const TARGET_FPS = 60;
@@ -79,37 +79,55 @@ export const CONNECTION_POINT_RADIUS = 4;
 /** Отступ точки соединения от нижнего края текста в пикселях */
 export const CONNECTION_POINT_GAP = 8;
 
+// ===== КОНСТАНТЫ ДЛЯ КОСТЯКА (CORE) =====
+
+/**
+ * Количество постоянных узлов «костяка» в центре сцены.
+ * Эти узлы не исчезают и всегда соединены между собой кольцом.
+ */
+export const CORE_NODE_COUNT = 4;
+
+/**
+ * Радиус расположения core-узлов от центра канваса.
+ * Задаётся как доля от меньшей стороны канваса.
+ */
+export const CORE_RADIUS_RATIO = 0.18;
+
+/** Подписи для core-узлов (должны быть устойчивыми «якорными» понятиями). */
+export const CORE_LABELS = ['Core', 'Hub', 'Router', 'Switch'];
+
+/** Ключи иконок для core-узлов (соответствуют CORE_LABELS по порядку). */
+export const CORE_ICON_KEYS = ['servers', 'cloud', 'database', 'network'];
+
 // ===== КОНСТАНТЫ ДЛЯ ЖИЗНЕННОГО ЦИКЛА =====
 
 /**
  * Минимальное время, которое узел должен быть полностью виден
  * после появления, прежде чем он сможет начать исчезать (мс).
  */
-export const MIN_VISIBLE_TIME = 3000;
+export const MIN_VISIBLE_TIME = 1500;
 
-/** Длительность плавного исчезновения узла и его связи (мс) */
-export const FADE_DURATION = 800;
+/** Длительность плавного исчезновения узла и его связи (мс). */
+export const FADE_DURATION = 600;
 
-/** Задержка перед появлением нового узла после удаления старого (мс) */
-export const RESPAWN_DELAY = 300;
+/** Задержка перед появлением нового узла после начала исчезновения старого (мс). */
+export const RESPAWN_DELAY = 100;
 
-/** Максимальное количество попыток найти свободную позицию для нового узла */
-export const POSITION_SEARCH_ATTEMPTS = 50;
+/** Максимальное количество попыток найти свободную позицию для нового узла. */
+export const POSITION_SEARCH_ATTEMPTS = 150;
 
 /**
  * Минимальный отступ между узлами (в пикселях, умножается на scaleFactor).
- * Гарантирует, что новые узлы не будут спавниться вплотную к существующим.
  */
-export const NODE_SPACING = 20;
+export const NODE_SPACING = 50;
 
 // ===== ПРОИЗВОДНЫЕ КОНСТАНТЫ =====
 
-/** Общее целевое количество узлов (иконки + пустые) */
+/** Общее целевое количество динамических узлов (иконки + пустые) */
 export const TARGET_TOTAL_COUNT = NODE_COUNT + EMPTY_NODE_COUNT;
 
 /**
  * Минимальный возраст узла (от createdAt), при котором он может начать исчезать.
- * Узел должен полностью появиться (APPEAR_DURATION) и прожить минимум MIN_VISIBLE_TIME.
  */
 export const MIN_AGE_FOR_FADE = APPEAR_DURATION + MIN_VISIBLE_TIME;
 
@@ -117,18 +135,15 @@ export const MIN_AGE_FOR_FADE = APPEAR_DURATION + MIN_VISIBLE_TIME;
 
 /**
  * Максимальное количество узлов в "замороженном" состоянии.
- * В 4 раза больше обычного (TARGET_TOTAL_COUNT * 4 = 160).
  */
 export const MAX_FROZEN_COUNT = TARGET_TOTAL_COUNT * 4;
 
 /**
  * Множитель скорости анимации в замороженном режиме.
- * Значение 4 означает, что анимация появления/исчезновения идёт в 4 раза быстрее.
  */
 export const FROZEN_TIME_SCALE = 4;
 
 /**
  * Время (в мс), за которое нужно достичь лимита узлов при входе в замороженный режим.
- * Интервал спавна вычисляется адаптивно: FROZEN_FILL_DURATION / (MAX_FROZEN_COUNT - текущее_количество).
  */
 export const FROZEN_FILL_DURATION = 2000;

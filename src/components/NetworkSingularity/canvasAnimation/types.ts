@@ -31,8 +31,10 @@ export interface Node2D {
     createdAt: number;
     /** Время начала исчезновения (null, если ещё не начал исчезать) */
     fadeStart: number | null;
-    /** Индекс узла-источника линии (-1, если нет источника) */
+    /** Индекс узла-источника линии (-1, если нет источника). Индекс в общем массиве [core, ...dynamic]. */
     sourceIdx: number;
+    /** Флаг постоянного core-узла «костяка». Такие узлы никогда не исчезают. */
+    isCore?: boolean;
 }
 
 export interface NodeWithDistance {

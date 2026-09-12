@@ -122,8 +122,11 @@ export const drawNode = (
 
     ctx.beginPath();
     ctx.arc(node.x, connY, connRadius, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffffff';
+
+    // ИЗМЕНЕНИЕ: Точка теперь закрашивается основным цветом линии (LINE_COLOR) вместо белого ('#ffffff')
+    ctx.fillStyle = LINE_COLOR;
     ctx.fill();
+
     ctx.strokeStyle = LINE_COLOR;
     ctx.lineWidth = BASE_LINE_WIDTH * scaleFactor;
     ctx.stroke();
