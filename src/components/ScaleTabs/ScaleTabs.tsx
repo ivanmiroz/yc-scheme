@@ -170,35 +170,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
                             </button>
                         ))}
                     </div>
-
-                    <div className="infrastructure-choose__hint">
-                        <svg
-                            width="17"
-                            height="17"
-                            viewBox="0 0 17 17"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                        >
-                            <g clipPath="url(#clip0_386_46687)">
-                                <path
-                                    d="M9.21244 0.527343L16.4688 0.527344L16.4687 7.78365M16.4688 0.527344L9.21244 7.78365"
-                                    stroke="black"
-                                    strokeLinecap="round"
-                                />
-                                <path
-                                    d="M7.78756 16.4727L0.53125 16.4727L0.531251 9.21635M0.53125 16.4727L6.43276 10.5712L7.78756 9.21635"
-                                    stroke="black"
-                                    strokeLinecap="round"
-                                />
-                            </g>
-                            <defs>
-                                <clipPath id="clip0_386_46687">
-                                    <rect width="17" height="17" fill="white" />
-                                </clipPath>
-                            </defs>
-                        </svg>
-                        <span>Увеличивай чтобы рассмотреть</span>
-                    </div>
                 </div>
             </div>
         </div>
