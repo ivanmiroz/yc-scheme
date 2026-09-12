@@ -240,13 +240,6 @@
         }
     }
 
-    &__divider {
-        border: none;
-        border-top: 1px solid var(--g-color-line-generic);
-        margin: 0.75vw 0.5vw;
-        width: calc(100% - 1vw);
-    }
-
     &__architect-button {
         align-items: center;
         background: var(--g-color-base-generic-accent);

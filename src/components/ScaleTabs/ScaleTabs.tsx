@@ -130,8 +130,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
                         ))}
                     </div>
 
-                    <hr className="infrastructure-choose__divider" />
-
                     <button className="infrastructure-choose__architect-button" type="button">
                         <span className="infrastructure-choose__architect-button-text">
                             Комментарии архитектора
@@ -153,8 +151,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
                             />
                         </svg>
                     </button>
-
-                    <hr className="infrastructure-choose__divider" />
 
                     <h3 className="infrastructure-choose__section-title">Легенда</h3>
 
