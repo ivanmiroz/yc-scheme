@@ -1,6 +1,6 @@
 'use client';
 
-import React, {useState} from 'react';
+import React, {useCallback, useState} from 'react';
 import block from 'bem-cn-lite';
 
 import {NetworkSingularity} from '../NetworkSingularity/NetworkSingularity';
@@ -45,9 +45,23 @@ interface ScaleTabsProps {
 
 export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionClick}) => {
     const [localActiveIndex, setLocalActiveIndex] = useState(0);
+    // Иконки на канвасе ещё не дорисованы — табы заблокированы.
+    // Сбрасывается в false при каждом перезапуске анимации (в т.ч. на ресайзе).
+    const [isCanvasReady, setIsCanvasReady] = useState(false);
+
+    // useCallback, чтобы ссылки не менялись между рендерами —
+    // иначе NetworkSingularity будет лишний раз переинициализировать канвас.
+    const handleCanvasStart = useCallback(() => {
+        setIsCanvasReady(false);
+    }, []);
+
+    const handleCanvasReady = useCallback(() => {
+        setIsCanvasReady(true);
+    }, []);
 
     // СНАЧАЛА определяем handleInfraTabClick, чтобы он был доступен ниже
     const handleInfraTabClick = (index: number) => {
+        if (!isCanvasReady) return;
         setLocalActiveIndex(index);
         setActiveScheme(index);
     };
@@ -67,6 +81,8 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
                     <NetworkSingularity
                         activeSchemeIndex={localActiveIndex}
                         isScattering={isSidebarActive}
+                        onStart={handleCanvasStart}
+                        onReady={handleCanvasReady}
                     />
                 </div>
             </div>
@@ -122,6 +138,7 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
                             <button
                                 key={tab.value}
                                 type="button"
+                                disabled={!isCanvasReady}
                                 className={`infrastructure-choose__tab ${localActiveIndex === index ? 'infrastructure-choose__tab_active' : ''}`}
                                 onClick={() => handleInfraTabClick(index)}
                             >

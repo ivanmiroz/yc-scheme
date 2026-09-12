@@ -10,10 +10,26 @@ interface PositionAnimationParams {
     duration: number;
 }
 
+export interface ViewState {
+    scale: number;
+    x: number;
+    y: number;
+}
+
+export interface PodiumAnimatorCallbacks {
+    // Вызывается при каждом запуске/перезапуске анимации
+    // (первый initPodiums, ресайз, смена изображения подиума и т.п.)
+    onStart?: () => void;
+    // Вызывается при каждом завершении анимации — платформы отрисованы
+    // и все иконки появились.
+    onReady?: () => void;
+}
+
 export const createPodiumAnimator = (
     canvas: HTMLCanvasElement,
     ctx: CanvasRenderingContext2D,
     podiumImage: HTMLImageElement,
+    callbacks: PodiumAnimatorCallbacks = {},
 ) => {
     let podiums: PodiumState[] = [];
     let animationFrameId: number | null = null;
@@ -26,9 +42,22 @@ export const createPodiumAnimator = (
     let positionsStartTime = 0;
     let iconsLoaded = false;
 
+    // Сбрасывается в initPodiums, чтобы onReady сработал после каждого цикла.
+    let readyNotified = false;
+
+    // Текущее состояние зума/панорамирования (мировые координаты относительно canvas).
+    const view: ViewState = {scale: 1, x: 0, y: 0};
+
     const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
 
-    const animate = (timestamp: number) => {
+    // Обратное преобразование экранных (CSS px внутри canvas) в мировые.
+    const screenToWorld = (sx: number, sy: number) => ({
+        x: (sx - view.x) / view.scale,
+        y: (sy - view.y) / view.scale,
+    });
+
+    // Одна отрисовка кадра. Возвращает true, если все анимации завершены.
+    const renderFrame = (timestamp: number): boolean => {
         if (!startTime) startTime = timestamp;
         const elapsed = timestamp - startTime;
 
@@ -36,7 +65,12 @@ export const createPodiumAnimator = (
         const width = canvas.width / dpr;
         const height = canvas.height / dpr;
 
+        // Сначала сбрасываем трансформ на «чистый» DPR и очищаем весь canvas.
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.clearRect(0, 0, width, height);
+
+        // Затем применяем зум/панорамирование.
+        ctx.setTransform(dpr * view.scale, 0, 0, dpr * view.scale, dpr * view.x, dpr * view.y);
 
         let allPlatformsFinished = true;
 
@@ -90,25 +124,46 @@ export const createPodiumAnimator = (
             drawPositions(ctx, positions, positionOpacities, width);
         }
 
-        // Проверяем, завершены ли все анимации
         const allPositionsFinished = positionOpacities.every((op) => op >= 1);
-        const allAnimationsFinished =
-            allPlatformsFinished && positionsAnimationStarted && allPositionsFinished;
+        return allPlatformsFinished && positionsAnimationStarted && allPositionsFinished;
+    };
 
-        if (allAnimationsFinished) {
+    const animate = (timestamp: number) => {
+        const allFinished = renderFrame(timestamp);
+
+        if (allFinished) {
             animationFrameId = null;
+
+            if (!readyNotified) {
+                readyNotified = true;
+                callbacks.onReady?.();
+            }
         } else {
             animationFrameId = requestAnimationFrame(animate);
         }
     };
 
+    // Однократная перерисовка (например, после зума/панорамирования).
+    // Если цикл анимации уже запущен — no-op, следующий кадр сам всё отрисует.
+    const requestRedraw = () => {
+        if (animationFrameId) return;
+        renderFrame(performance.now());
+    };
+
+    const setView = (next: Partial<ViewState>) => {
+        if (typeof next.scale === 'number') view.scale = next.scale;
+        if (typeof next.x === 'number') view.x = next.x;
+        if (typeof next.y === 'number') view.y = next.y;
+        requestRedraw();
+    };
+
+    const getView = (): ViewState => ({...view});
+
     const redrawIfComplete = () => {
+        if (!positionsAnimationStarted) return;
         const allPositionsFinished = positionOpacities.every((op) => op >= 1);
-        if (positionsAnimationStarted && allPositionsFinished && iconsLoaded) {
-            const dpr = window.devicePixelRatio || 1;
-            const width = canvas.width / dpr;
-            ctx.clearRect(0, 0, width, canvas.height / dpr);
-            drawPositions(ctx, positions, positionOpacities, width);
+        if (allPositionsFinished && iconsLoaded) {
+            requestRedraw();
         }
     };
 
@@ -116,6 +171,11 @@ export const createPodiumAnimator = (
         if (animationFrameId) {
             cancelAnimationFrame(animationFrameId);
         }
+
+        // Уведомляем о старте и сбрасываем флаг, чтобы onReady снова сработал,
+        // когда анимация завершится.
+        readyNotified = false;
+        callbacks.onStart?.();
 
         positionsAnimationStarted = false;
         positionsStartTime = 0;
@@ -205,6 +265,8 @@ export const createPodiumAnimator = (
         const iconSize = canvasWidth * (baseIconSize / baseWidth);
         const labelFontSize = canvasWidth * 0.007;
 
+        const world = screenToWorld(mouseX, mouseY);
+
         for (let i = 0; i < positions.length; i++) {
             const pos = positions[i];
             const opacity = positionOpacities[i] ?? 0;
@@ -215,8 +277,8 @@ export const createPodiumAnimator = (
 
             if (
                 isPointOverPosition(
-                    mouseX,
-                    mouseY,
+                    world.x,
+                    world.y,
                     pos,
                     config,
                     iconSize,
@@ -242,6 +304,8 @@ export const createPodiumAnimator = (
         const iconSize = canvasWidth * (baseIconSize / baseWidth);
         const labelFontSize = canvasWidth * 0.007;
 
+        const world = screenToWorld(mouseX, mouseY);
+
         for (let i = 0; i < positions.length; i++) {
             const pos = positions[i];
             const opacity = positionOpacities[i] ?? 0;
@@ -252,8 +316,8 @@ export const createPodiumAnimator = (
 
             if (
                 isPointOverPosition(
-                    mouseX,
-                    mouseY,
+                    world.x,
+                    world.y,
                     pos,
                     config,
                     iconSize,
@@ -279,5 +343,8 @@ export const createPodiumAnimator = (
         refreshScheme,
         checkHover,
         getClickedPosition,
+        setView,
+        getView,
+        requestRedraw,
     };
 };

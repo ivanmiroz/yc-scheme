@@ -9,10 +9,15 @@
     &__canvas {
         width: 100%;
         height: 100%;
+        cursor: grab;
         display: block;
         touch-action: none;
         background: transparent;
         transform: translateZ(0);
         will-change: contents;
+
+        &:active {
+            cursor: grabbing;
+        }
     }
 }

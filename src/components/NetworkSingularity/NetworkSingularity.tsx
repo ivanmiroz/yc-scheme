@@ -12,15 +12,30 @@ const b = block('network-singularity');
 interface NetworkSingularityProps {
     isScattering?: boolean;
     activeSchemeIndex?: number;
+    onStart?: () => void;
+    onReady?: () => void;
 }
 
 export const NetworkSingularity: React.FC<NetworkSingularityProps> = ({
     isScattering = false,
     activeSchemeIndex = 0,
+    onStart,
+    onReady,
 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [startInfrastructure, setStartInfrastructure] = useState(false);
     const cleanupRef = useRef<CanvasAnimationCleanup | void>(undefined);
+
+    // Храним колбэки в ref, чтобы useEffect с initCanvasAnimation
+    // не пересоздавался при каждом ре-рендере родителя.
+    const onStartRef = useRef(onStart);
+    const onReadyRef = useRef(onReady);
+    useEffect(() => {
+        onStartRef.current = onStart;
+    }, [onStart]);
+    useEffect(() => {
+        onReadyRef.current = onReady;
+    }, [onReady]);
 
     useNetworkAnimation(canvasRef, isScattering, () => {
         setStartInfrastructure(true);
@@ -37,7 +52,10 @@ export const NetworkSingularity: React.FC<NetworkSingularityProps> = ({
             if (cleanupRef.current) {
                 cleanupRef.current();
             }
-            cleanupRef.current = initCanvasAnimation(canvasRef.current);
+            cleanupRef.current = initCanvasAnimation(canvasRef.current, {
+                onStart: () => onStartRef.current?.(),
+                onReady: () => onReadyRef.current?.(),
+            });
         }
 
         return () => {
