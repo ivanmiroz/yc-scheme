@@ -11,8 +11,8 @@ import networkSrc from '@/assets/icons/network.png';
 import appsSrc from '@/assets/icons/apps.png';
 import datalensSrc from '@/assets/icons/datalens.png';
 import aistudioSrc from '@/assets/icons/aistudio.png';
-import mfskSrc from '@/assets/icons/msfk.png'; // <-- Добавлено
-import cloudcdnSrc from '@/assets/icons/cloudcdn.png'; // <-- Добавлено
+import mfskSrc from '@/assets/icons/msfk.png';
+import cloudcdnSrc from '@/assets/icons/cloudcdn.png';
 
 // Маппинг: ключ → путь к иконке
 export const ICON_MAP: Record<string, string> = {
@@ -29,8 +29,8 @@ export const ICON_MAP: Record<string, string> = {
     apps: appsSrc.src,
     datalens: datalensSrc.src,
     aistudio: aistudioSrc.src,
-    mfsk: mfskSrc.src, // <-- Добавлено
-    cloudcdn: cloudcdnSrc.src, // <-- Добавлено
+    mfsk: mfskSrc.src,
+    cloudcdn: cloudcdnSrc.src,
 };
 
 // Кэш загруженных изображений
@@ -61,7 +61,6 @@ export const getIcon = (key: string): HTMLImageElement | undefined => {
 export const LABELS: string[] = [
     'Кластер',
     'База данных',
-    'IAM',
     'GPU',
     'Kubernetes',
     'Backup',
@@ -83,15 +82,14 @@ export const LABELS: string[] = [
     'Object Storage',
     'DataLens',
     'AI Studio',
-    'Managed Service for Kubernetes®', // <-- Добавлено
-    'Cloud CDN', // <-- Добавлено
+    'Managed Service for Kubernetes®',
+    'Cloud CDN',
 ];
 
 // Сопоставление названий (labels) с ключами иконок
 export const LABEL_TO_ICON_KEY: Record<string, string> = {
     Кластер: 'kubernetes',
     'База данных': 'dwn',
-    IAM: 'apps',
     GPU: 'compute',
     Kubernetes: 'kubernetes',
     Backup: 'backup',
@@ -113,8 +111,8 @@ export const LABEL_TO_ICON_KEY: Record<string, string> = {
     'Object Storage': 'storage',
     DataLens: 'datalens',
     'AI Studio': 'aistudio',
-    'Managed Service for Kubernetes®': 'msfk', // <-- Добавлено
-    'Cloud CDN': 'cloudcdn', // <-- Добавлено
+    'Managed Service for Kubernetes®': 'msfk',
+    'Cloud CDN': 'cloudcdn',
 };
 
 // Функция получения ключа иконки по названию

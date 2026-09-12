@@ -180,7 +180,10 @@ const getScatterOffset = (node: Node2D, progress: number): {x: number; y: number
     };
 };
 
-// Обновление жизненного цикла узлов (вне режима разлёта)
+// Обновление жизненного цикла узлов (вне режима разлёта).
+// ВАЖНО: возвращает актуальный массив динамических узлов — вызывающая сторона
+// обязана присвоить его обратно в nodesRef.current, иначе спавн и удаление
+// будут «теряться» и анимация застынет.
 const updateLifecycle = (
     coreNodes: Node2D[],
     dynamicNodes: Node2D[],
@@ -189,7 +192,7 @@ const updateLifecycle = (
     width: number,
     height: number,
     t: number,
-): void => {
+): Node2D[] => {
     handleNormalLifecycle(dynamicNodes, t);
 
     const afterRemoval = removeFadedNodes(coreNodes, dynamicNodes, scaleFactor, t, availableLabels);
@@ -213,6 +216,8 @@ const updateLifecycle = (
     }
 
     fadeDisconnectedNodes(coreNodes, afterRemoval, t);
+
+    return afterRemoval;
 };
 
 // Отрисовка всех линий между узлами
@@ -398,6 +403,10 @@ export const useNetworkAnimation = (
                 const cssWidth = rect.width;
                 const cssHeight = rect.height;
 
+                // Пропускаем «нулевые» размеры — если контейнер ещё не отдал габариты,
+                // повторять попытку через 150 мс бессмысленно, но безопасно.
+                if (cssWidth === 0 || cssHeight === 0) return;
+
                 const dimensions = calculateCanvasDimensions(cssWidth, cssHeight);
                 canvas.width = dimensions.width;
                 canvas.height = dimensions.height;
@@ -430,6 +439,14 @@ export const useNetworkAnimation = (
             const dpr = dprRef.current;
             const scaleFactor = scaleFactorRef.current;
 
+            // Не рисуем и не спавним узлы, пока канвас не получил реальные размеры.
+            // Иначе при нулевых width/height спавн попадает в (0,0) и на кадр
+            // «мелькает» в левом верхнем углу.
+            if (width === 0 || height === 0) {
+                animationRef.current = requestAnimationFrame(animate);
+                return;
+            }
+
             prepareCanvas(ctx, width, height, dpr);
 
             const t = time - startTimeRef.current;
@@ -457,7 +474,10 @@ export const useNetworkAnimation = (
                 }
             } else {
                 scatterStartTimeRef.current = null;
-                updateLifecycle(
+
+                // Сохраняем возвращённый массив обратно в ref, иначе новые узлы
+                // теряются, а исчезнувшие не удаляются — анимация застывает.
+                nodesRef.current = updateLifecycle(
                     coreNodes,
                     dynamicNodes,
                     availableLabelsRef.current,
@@ -466,7 +486,6 @@ export const useNetworkAnimation = (
                     height,
                     t,
                 );
-                nodesRef.current = dynamicNodes;
             }
 
             const allNodes = [...coreNodesRef.current, ...nodesRef.current];
