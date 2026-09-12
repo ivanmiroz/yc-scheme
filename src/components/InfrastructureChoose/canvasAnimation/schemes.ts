@@ -28,7 +28,7 @@ export const scheme1: PlatformScheme[] = [
     {
         platformId: 1,
         positions: [
-            {positionNumber: '3.1', iconKey: 'servers', label: 'Серверы и СХД'},
+            {positionNumber: '3.1', iconKey: 'servers', label: 'Серверы\n и СХД'},
             {positionNumber: '3.2', iconKey: 'dwn', label: 'DWN'},
             {positionNumber: '3.3'},
             {positionNumber: '3.4'},
@@ -43,23 +43,23 @@ export const scheme1: PlatformScheme[] = [
             {
                 positionNumber: '2.2',
                 iconKey: 'hypervisor',
-                label: 'Гипервизор,\n виртуальные машины',
+                label: 'Гипервизор,\n виртуальные\n машины',
             },
-            {positionNumber: '2.3', iconKey: 'stackland', label: 'Yandex Cloud Stackland'},
+            {positionNumber: '2.3', iconKey: 'stackland', label: 'Yandex Cloud\n Stackland'},
             {
                 positionNumber: '2.4',
                 iconKey: 'baremetal',
                 label: 'BareMetal\n Extend: Virtualization',
             },
-            {positionNumber: '2.5', iconKey: 'backup', label: 'Cloud Backup'},
-            {positionNumber: '2.6', iconKey: 'compute', label: 'Cloud Compute'},
+            {positionNumber: '2.5', iconKey: 'backup', label: 'Cloud\n Backup'},
+            {positionNumber: '2.6', iconKey: 'compute', label: 'Cloud\n Compute'},
         ],
     },
     {
         platformId: 3,
         positions: [
-            {positionNumber: '1.1', iconKey: 'servers', label: 'Серверы и СХД'},
-            {positionNumber: '1.2', iconKey: 'network', label: 'Сетевое подключение'},
+            {positionNumber: '1.1', iconKey: 'servers', label: 'Серверы\n и СХД'},
+            {positionNumber: '1.2', iconKey: 'network', label: 'Сетевое\n подключение'},
             {positionNumber: '1.3'},
             {
                 positionNumber: '1.4',
@@ -67,7 +67,7 @@ export const scheme1: PlatformScheme[] = [
                 label: 'BareMetal\n Extend:\n Virtualization',
             },
             {positionNumber: '1.5'},
-            {positionNumber: '1.6', iconKey: 'servers', label: 'Серверы и СХД'},
+            {positionNumber: '1.6', iconKey: 'servers', label: 'Серверы\n и СХД'},
         ],
     },
 ];
@@ -107,7 +107,7 @@ export const scheme2: PlatformScheme[] = [
                 iconKey: 'hypervisor',
                 label: 'Гипервизор,\n виртуальные\n машины',
             },
-            {positionNumber: '2.3', iconKey: 'stackland', label: 'Yandex Cloud Stackland'},
+            {positionNumber: '2.3', iconKey: 'stackland', label: 'Yandex Cloud\n Stackland'},
             {
                 positionNumber: '2.4',
                 iconKey: 'baremetal',
@@ -173,7 +173,7 @@ export const scheme3: PlatformScheme[] = [
                 iconKey: 'hypervisor',
                 label: 'Гипервизор,\n виртуальные\n машины',
             },
-            {positionNumber: '2.3', iconKey: 'stackland', label: 'Yandex Cloud Stackland'},
+            {positionNumber: '2.3', iconKey: 'stackland', label: 'Yandex Cloud\n Stackland'},
             {
                 positionNumber: '2.4',
                 iconKey: 'baremetal',
