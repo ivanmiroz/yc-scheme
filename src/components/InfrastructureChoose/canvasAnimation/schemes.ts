@@ -1,7 +1,7 @@
 export interface PositionConfig {
     positionNumber: string;
     iconKey?: string;
-    iconKeys?: string[]; // Поддержка нескольких иконок для одной позиции
+    iconKeys?: string[];
     label?: string;
 }
 
@@ -64,10 +64,10 @@ export const scheme1: PlatformScheme[] = [
             {
                 positionNumber: '1.4',
                 iconKey: 'baremetal',
-                label: 'Yandex BareMetal\nНезависимый ДЦ',
+                label: 'BareMetal\n Extend:\n Virtualization',
             },
-            {positionNumber: '1.5', iconKey: 'servers', label: 'Серверы и СХД'},
-            {positionNumber: '1.6'},
+            {positionNumber: '1.5'},
+            {positionNumber: '1.6', iconKey: 'servers', label: 'Серверы и СХД'},
         ],
     },
 ];
@@ -157,7 +157,7 @@ export const scheme3: PlatformScheme[] = [
             {positionNumber: '3.3', iconKey: 'servers', label: 'Серверы\n и СХД'},
             {
                 positionNumber: '3.4',
-                iconKeys: ['code', 'elephant', 'sticks'], // Три иконки в ряд
+                iconKeys: ['code', 'elephant', 'sticks'],
                 label: 'Yandex Managed\ndatabase',
             },
             {positionNumber: '3.5'},
@@ -224,7 +224,7 @@ export const scheme4: PlatformScheme[] = [
             {positionNumber: '3.4', iconKey: 'storage', label: 'Object\n Storage'},
             {
                 positionNumber: '3.5',
-                iconKeys: ['code', 'elephant', 'sticks'], // Три иконки в ряд
+                iconKeys: ['code', 'elephant', 'sticks'],
                 label: 'Yandex Managed\ndatabase',
             },
             {positionNumber: '3.6'},

@@ -1,7 +1,8 @@
 import {PodiumState, Position} from './types';
 import {ANIMATION_CONFIG, POSITION_ANIMATION_CONFIG} from './constants';
 import {calculatePositions} from './positions';
-import {drawPositions} from './drawers';
+import {drawPositions, isPointOverPosition} from './drawers';
+import {getPositionConfig} from './schemes';
 import {loadAllIcons} from './icons';
 
 interface PositionAnimationParams {
@@ -193,6 +194,80 @@ export const createPodiumAnimator = (
         }
     };
 
+    // Проверка, находится ли курсор над иконкой или текстом
+    const checkHover = (mouseX: number, mouseY: number): boolean => {
+        if (!positionsAnimationStarted || positions.length === 0) return false;
+
+        const dpr = window.devicePixelRatio || 1;
+        const canvasWidth = canvas.width / dpr;
+        const baseWidth = 1920;
+        const baseIconSize = 53 * 1.5;
+        const iconSize = canvasWidth * (baseIconSize / baseWidth);
+        const labelFontSize = canvasWidth * 0.007;
+
+        for (let i = 0; i < positions.length; i++) {
+            const pos = positions[i];
+            const opacity = positionOpacities[i] ?? 0;
+            if (opacity <= 0) continue;
+
+            const config = getPositionConfig(pos.positionNumber);
+            if (!config || !config.label) continue;
+
+            if (
+                isPointOverPosition(
+                    mouseX,
+                    mouseY,
+                    pos,
+                    config,
+                    iconSize,
+                    labelFontSize,
+                    canvasWidth,
+                )
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    };
+
+    // Получение позиции, на которую кликнули
+    const getClickedPosition = (mouseX: number, mouseY: number): Position | null => {
+        if (!positionsAnimationStarted || positions.length === 0) return null;
+
+        const dpr = window.devicePixelRatio || 1;
+        const canvasWidth = canvas.width / dpr;
+        const baseWidth = 1920;
+        const baseIconSize = 53 * 1.5;
+        const iconSize = canvasWidth * (baseIconSize / baseWidth);
+        const labelFontSize = canvasWidth * 0.007;
+
+        for (let i = 0; i < positions.length; i++) {
+            const pos = positions[i];
+            const opacity = positionOpacities[i] ?? 0;
+            if (opacity <= 0) continue;
+
+            const config = getPositionConfig(pos.positionNumber);
+            if (!config || !config.label) continue;
+
+            if (
+                isPointOverPosition(
+                    mouseX,
+                    mouseY,
+                    pos,
+                    config,
+                    iconSize,
+                    labelFontSize,
+                    canvasWidth,
+                )
+            ) {
+                return pos;
+            }
+        }
+
+        return null;
+    };
+
     loadAllIcons().then(() => {
         iconsLoaded = true;
         redrawIfComplete();
@@ -202,5 +277,7 @@ export const createPodiumAnimator = (
         initPodiums,
         getAnimationFrameId: () => animationFrameId,
         refreshScheme,
+        checkHover,
+        getClickedPosition,
     };
 };
