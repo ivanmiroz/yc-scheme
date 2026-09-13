@@ -1,7 +1,9 @@
-import {getActiveSchemeLines} from '../schemes';
+import {LEGEND_TO_LINE_KIND, LegendValue, getActiveSchemeLines, getLineKind} from '../schemes';
 import {Position} from '../types';
 import {
+    CONNECTION_COLOR,
     CONNECTION_DOT_RADIUS_RATIO,
+    CONNECTION_HIGHLIGHT_COLOR,
     CONNECTION_LINE_WIDTH_RATIO,
     DASH_GAP_RATIO,
     DASH_LENGTH_RATIO,
@@ -24,11 +26,13 @@ import {applyConnectionStroke} from './stroke';
 
 // Линии, специфичные для активной схемы.
 // progresses[i] — прогресс 0..1 для i-й линии (по порядку из getActiveSchemeLines()).
+// activeLegend — если задан, линии соответствующего типа рисуются цветом подсветки.
 export const drawSchemeLines = (
     ctx: CanvasRenderingContext2D,
     positions: Position[],
     progresses: number[],
     canvasWidth: number,
+    activeLegend: LegendValue | null,
 ) => {
     const lines = getActiveSchemeLines();
     if (lines.length === 0 || positions.length === 0) return;
@@ -45,8 +49,10 @@ export const drawSchemeLines = (
     const cornerRadius = canvasWidth * SCHEME_SERPENTINE_CORNER_RADIUS_RATIO;
     const arcBulge = canvasWidth * SCHEME_ARC_BULGE_RATIO;
 
+    // Какой тип линий сейчас подсвечиваем (null — не подсвечиваем ничего).
+    const activeKind = activeLegend ? LEGEND_TO_LINE_KIND[activeLegend] : null;
+
     ctx.save();
-    applyConnectionStroke(ctx, {lineWidth});
 
     lines.forEach((line, index) => {
         const progress = progresses[index] ?? 0;
@@ -59,6 +65,12 @@ export const drawSchemeLines = (
         const A = getAnchorPoint(fromPos, canvasWidth, line.fromAnchor ?? 'center');
         const B = getAnchorPoint(toPos, canvasWidth, line.toAnchor ?? 'center');
         if (!A || !B) return;
+
+        // Подходит ли эта линия под активный тип легенды
+        const isHighlighted = activeKind !== null && getLineKind(line) === activeKind;
+        const color = isHighlighted ? CONNECTION_HIGHLIGHT_COLOR : CONNECTION_COLOR;
+
+        applyConnectionStroke(ctx, {lineWidth, color});
 
         if (line.dashed) {
             ctx.setLineDash([dash, gap]);

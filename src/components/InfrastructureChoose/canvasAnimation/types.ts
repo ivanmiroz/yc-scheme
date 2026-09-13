@@ -1,21 +1,21 @@
+export interface Position {
+    positionNumber: string;
+    x: number;
+    y: number;
+}
+
 export interface PodiumState {
     id: number;
-    targetY: number;
-    currentY: number;
     targetX: number;
+    targetY: number;
     currentX: number;
+    currentY: number;
     scaledWidth: number;
     scaledHeight: number;
 }
 
-export interface Position {
-    x: number;
-    y: number;
-    platformId: number;
-    positionNumber: string;
-}
-
 export interface CanvasAnimationCleanup {
     (): void;
-    refreshScheme?: () => void; // <-- Добавлено
+    refreshScheme?: () => void;
+    setActiveLegend?: (legend: import('./schemes').LegendValue | null) => void;
 }

@@ -3,22 +3,53 @@ import podium2Src from '@/assets/images/podium2.png';
 import podium3Src from '@/assets/images/podium3.png';
 import podium4Src from '@/assets/images/podium4.png';
 import {CanvasAnimationCleanup} from './types';
+import {getEffectiveDpr} from './constants';
 import {createPodiumAnimator} from './animation';
-import {getPositionConfig} from './schemes';
+import {LegendValue, getPositionConfig} from './schemes';
 import {getDescription, getQr} from './descriptions';
 import {getPositionAnchor} from './drawers';
 import './popup.scss';
 
-// Небольшой зазор между кончиком арки и верхом иконки
 const POPUP_ICON_GAP = 4;
-// Отступ от краёв вьюпорта при клэмпе
 const POPUP_VIEWPORT_MARGIN = 8;
 
-// Границы зума
 const MIN_SCALE = 1;
 const MAX_SCALE = 5;
-// Порог движения (в px), после которого тап/клик считается перетаскиванием
 const DRAG_THRESHOLD = 5;
+
+// Кэш изображений подиумов на уровне модуля.
+// Живёт всё время жизни страницы — при пересоздании initCanvasAnimation
+// (переключение схемы, ремаунт компонента) картинки берутся отсюда,
+// поэтому нет «пустого кадра» и мерцания.
+let podiumImagesCache: HTMLImageElement[] | null = null;
+let podiumImagesPromise: Promise<HTMLImageElement[]> | null = null;
+
+// Играл ли уже intro-эффект въезда платформ за жизнь страницы.
+// При пересоздании аниматора (переключение схемы) intro пропускаем,
+// чтобы платформы не «улетали» за верх canvas.
+let hasPlayedIntro = false;
+
+const PODIUM_SOURCES = [podium4Src.src, podium3Src.src, podium2Src.src, podium1Src.src];
+
+const loadImage = (src: string): Promise<HTMLImageElement> =>
+    new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error(`Не удалось загрузить ${src}`));
+        img.src = src;
+    });
+
+const loadPodiumImages = (): Promise<HTMLImageElement[]> => {
+    if (podiumImagesCache) return Promise.resolve(podiumImagesCache);
+    if (podiumImagesPromise) return podiumImagesPromise;
+
+    podiumImagesPromise = Promise.all(PODIUM_SOURCES.map(loadImage)).then((images) => {
+        podiumImagesCache = images;
+        return images;
+    });
+
+    return podiumImagesPromise;
+};
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
@@ -37,15 +68,11 @@ export const initCanvasAnimation = (
         console.warn('Не удалось получить 2D контекст для canvas');
         const cleanup = () => {};
         cleanup.refreshScheme = () => {};
+        cleanup.setActiveLegend = () => {};
         return cleanup;
     }
 
-    // Четыре изображения подиумов, по одному на платформу.
-    // Порядок: podium1 → самый верхний, podium4 → самый нижний.
-    // Массив мутируется после загрузки — аниматор читает его по ссылке.
     const podiumImages: HTMLImageElement[] = [];
-    const podiumSources = [podium4Src.src, podium3Src.src, podium2Src.src, podium1Src.src];
-
     let isLoaded = false;
 
     const animator = createPodiumAnimator(canvas, ctx, podiumImages, {
@@ -53,33 +80,30 @@ export const initCanvasAnimation = (
         onReady: options.onReady,
     });
 
-    // Загружаем все подиумы параллельно, стартуем после загрузки всех.
-    const loadImage = (src: string): Promise<HTMLImageElement> =>
-        new Promise((resolve, reject) => {
-            const img = new Image();
-            img.onload = () => resolve(img);
-            img.onerror = () => reject(new Error(`Не удалось загрузить ${src}`));
-            img.src = src;
-        });
+    if (podiumImagesCache) {
+        // Кэш есть — наполняем массив синхронно и сразу запускаем аниматор.
+        podiumImages.push(...podiumImagesCache);
+        isLoaded = true;
+        animator.initPodiums({skipIntro: hasPlayedIntro});
+        hasPlayedIntro = true;
+    } else {
+        loadPodiumImages()
+            .then((images) => {
+                podiumImages.length = 0;
+                podiumImages.push(...images);
+                isLoaded = true;
+                animator.initPodiums({skipIntro: hasPlayedIntro});
+                hasPlayedIntro = true;
+            })
+            .catch((err) => {
+                // eslint-disable-next-line no-console
+                console.error('Ошибка загрузки подиумов', err);
+            });
+    }
 
-    Promise.all(podiumSources.map(loadImage))
-        .then((images) => {
-            podiumImages.length = 0;
-            podiumImages.push(...images);
-            isLoaded = true;
-            animator.initPodiums();
-        })
-        .catch((err) => {
-            // eslint-disable-next-line no-console
-            console.error('Ошибка загрузки подиумов', err);
-        });
-
-    // Отключаем нативные жесты (scroll, pinch-zoom) на canvas,
-    // чтобы браузер не перехватывал жесты у нас.
     // eslint-disable-next-line no-param-reassign
     canvas.style.touchAction = 'none';
 
-    // Контейнер для подложки и попапа.
     const popupContainer = document.createElement('div');
     popupContainer.style.position = 'fixed';
     popupContainer.style.inset = '0';
@@ -87,12 +111,10 @@ export const initCanvasAnimation = (
     popupContainer.style.display = 'none';
     popupContainer.style.pointerEvents = 'none';
 
-    // Создание подложки (backdrop)
     const backdrop = document.createElement('div');
     backdrop.className = 'scheme-popup-backdrop';
     backdrop.style.pointerEvents = 'auto';
 
-    // Создание попапа
     const popup = document.createElement('div');
     popup.className = 'scheme-popup';
     popup.style.pointerEvents = 'auto';
@@ -147,7 +169,7 @@ export const initCanvasAnimation = (
     let currentOffsetY = 0;
 
     const clampOffsets = () => {
-        const dpr = window.devicePixelRatio || 1;
+        const dpr = getEffectiveDpr();
         const cssW = canvas.width / dpr;
         const cssH = canvas.height / dpr;
         const scaledW = cssW * currentScale;
@@ -329,13 +351,22 @@ export const initCanvasAnimation = (
 
         hidePopup();
 
-        const dpr = window.devicePixelRatio || 1;
+        const dpr = getEffectiveDpr();
         const rect = parentEl.getBoundingClientRect();
+        const nextWidth = Math.round(rect.width * dpr);
+        const nextHeight = Math.round(rect.height * dpr);
+
+        // Присваивание canvas.width/height очищает canvas — если размеры
+        // не изменились физически, ничего не трогаем, иначе на 1 кадр
+        // canvas окажется пустым (мигание).
+        if (canvas.width === nextWidth && canvas.height === nextHeight) {
+            return;
+        }
 
         // eslint-disable-next-line no-param-reassign
-        canvas.width = rect.width * dpr;
+        canvas.width = nextWidth;
         // eslint-disable-next-line no-param-reassign
-        canvas.height = rect.height * dpr;
+        canvas.height = nextHeight;
         // eslint-disable-next-line no-param-reassign
         canvas.style.width = `${rect.width}px`;
         // eslint-disable-next-line no-param-reassign
@@ -348,7 +379,8 @@ export const initCanvasAnimation = (
         applyView();
 
         if (isLoaded) {
-            animator.initPodiums();
+            animator.initPodiums({skipIntro: hasPlayedIntro});
+            hasPlayedIntro = true;
         }
     };
 
@@ -402,7 +434,7 @@ export const initCanvasAnimation = (
         popup.style.visibility = 'hidden';
         popupContainer.style.display = 'block';
 
-        const dpr = window.devicePixelRatio || 1;
+        const dpr = getEffectiveDpr();
         const canvasWidth = canvas.width / dpr;
         const anchor = getPositionAnchor(clickedPosition, canvasWidth);
 
@@ -472,10 +504,8 @@ export const initCanvasAnimation = (
         backdrop.removeEventListener('click', handleBackdropClick);
         popupClose.removeEventListener('click', handleCloseClick);
 
-        const frameId = animator.getAnimationFrameId();
-        if (frameId) {
-            cancelAnimationFrame(frameId);
-        }
+        // Отменяет и основной RAF-цикл, и отложенную перерисовку.
+        animator.dispose();
 
         if (popupContainer.parentElement) {
             popupContainer.parentElement.removeChild(popupContainer);
@@ -484,6 +514,10 @@ export const initCanvasAnimation = (
 
     cleanup.refreshScheme = () => {
         animator.refreshScheme?.();
+    };
+
+    cleanup.setActiveLegend = (legend: LegendValue | null) => {
+        animator.setActiveLegend(legend);
     };
 
     return cleanup;

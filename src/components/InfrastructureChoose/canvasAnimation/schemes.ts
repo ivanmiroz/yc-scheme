@@ -22,8 +22,7 @@ export type LineAnchor =
     | 'text-top'
     | 'text-bottom';
 
-// Линия между двумя объектами схемы. Координаты вычисляются
-// на этапе отрисовки — здесь только описание "откуда-куда".
+// Линия между двумя объектами схемы.
 export interface SchemeLine {
     from: string; // positionNumber, например '2.4'
     to: string; // positionNumber, например '2.6'
@@ -33,18 +32,10 @@ export interface SchemeLine {
     // Если true — середина линии рисуется змейкой
     serpentine?: boolean;
     // Если true — углы змейки остаются прямыми (без скругления).
-    // Работает только вместе с serpentine: true.
     sharpCorners?: boolean;
     // Переопределяет SCHEME_SERPENTINE.STRAIGHT_FRACTION для этой линии.
-    // 0.25 (по умолчанию) — прямые участки по 25%, змейка на центральные 50%.
-    // 0 — змейка на всю длину линии, без прямых участков.
     serpentineStraightFraction?: number;
     // Если true — линия рисуется по круговой дуге.
-    // Направление выпуклости определяется геометрией A→B автоматически:
-    //   A→B вправо → дуга вниз
-    //   A→B влево  → дуга вверх
-    //   A→B вниз   → дуга влево
-    //   A→B вверх  → дуга вправо
     arc?: boolean;
 }
 
@@ -53,6 +44,52 @@ export interface Scheme {
     platforms: PlatformScheme[];
     lines: SchemeLine[];
 }
+
+// ==========================================
+//  Тип линии и связь с легендой
+// ==========================================
+
+// Ключи кнопок легенды. Совпадают с value в listItems в ScaleTabs.
+export type LegendValue =
+    | 'network'
+    | 'vps-pe'
+    | 'cloud-interconnect'
+    | 'vps'
+    | 'cloud-router'
+    | 'data-transfer';
+
+// Визуальный тип линии.
+export type LineKind =
+    | 'sharp-serpentine'
+    | 'rounded-serpentine'
+    | 'sharp-dashed-serpentine'
+    | 'straight'
+    | 'dashed'
+    | 'arc';
+
+// Какая легенда какому типу линии соответствует.
+export const LEGEND_TO_LINE_KIND: Record<LegendValue, LineKind> = {
+    network: 'sharp-serpentine',
+    'vps-pe': 'rounded-serpentine',
+    'cloud-interconnect': 'straight',
+    vps: 'dashed',
+    'cloud-router': 'arc',
+    'data-transfer': 'sharp-dashed-serpentine',
+};
+
+// Тип линии по её описанию.
+// Приоритет: sharp-dashed-serpentine > dashed > serpentine > arc > straight.
+export const getLineKind = (line: SchemeLine): LineKind => {
+    if (line.dashed && line.serpentine && line.sharpCorners) {
+        return 'sharp-dashed-serpentine';
+    }
+    if (line.dashed && !line.serpentine) return 'dashed';
+    if (line.serpentine) {
+        return line.sharpCorners ? 'sharp-serpentine' : 'rounded-serpentine';
+    }
+    if (line.arc) return 'arc';
+    return 'straight';
+};
 
 // ==========================================
 // Схема 1 (Оригинальная)
@@ -117,10 +154,7 @@ export const scheme1Platforms: PlatformScheme[] = [
 ];
 
 export const scheme1Lines: SchemeLine[] = [
-    // 1. Прямая от правого края 2.4 к левому краю 2.6
     {from: '2.4', fromAnchor: 'right', to: '2.6', toAnchor: 'left'},
-    // 2. От верхнего края иконки 2.5 к низу текста под 3.5.
-    //    Середина — змейка со скруглёнными углами.
     {
         from: '2.5',
         fromAnchor: 'top',
@@ -128,8 +162,6 @@ export const scheme1Lines: SchemeLine[] = [
         toAnchor: 'text-bottom',
         serpentine: true,
     },
-    // 3. От правого края 2.5 к левому краю 2.6.
-    //    Визуально как вторая — со змейкой и скруглёнными углами.
     {
         from: '2.5',
         fromAnchor: 'right',
@@ -202,12 +234,8 @@ export const scheme2Platforms: PlatformScheme[] = [
 ];
 
 export const scheme2Lines: SchemeLine[] = [
-    // 1. Прямая от правого края 1.4 к левому краю 1.6
     {from: '1.4', fromAnchor: 'right', to: '1.6', toAnchor: 'left'},
-    // 2. Круговая дуга от правого края 2.4 к левому краю 2.6.
-    //    A→B направлено вправо — дуга выгибается вниз.
     {from: '2.4', fromAnchor: 'right', to: '2.6', toAnchor: 'left', arc: true},
-    // 3. Змейка от верхнего края 2.6 к низу текста под 3.6.
     {
         from: '2.6',
         fromAnchor: 'top',
@@ -284,11 +312,8 @@ export const scheme3Platforms: PlatformScheme[] = [
 ];
 
 export const scheme3Lines: SchemeLine[] = [
-    // 1. Прямая от правого края 1.4 к левому краю 1.6 (как в схеме 2)
     {from: '1.4', fromAnchor: 'right', to: '1.6', toAnchor: 'left'},
-    // 2. Круговая дуга от правого края 2.4 к левому краю 2.6 (как в схеме 2)
     {from: '2.4', fromAnchor: 'right', to: '2.6', toAnchor: 'left', arc: true},
-    // 3. Змейка от верхнего края 2.6 к низу текста под 3.6 (как в схеме 2)
     {
         from: '2.6',
         fromAnchor: 'top',
@@ -296,7 +321,6 @@ export const scheme3Lines: SchemeLine[] = [
         toAnchor: 'text-bottom',
         serpentine: true,
     },
-    // 4. Змейка от правого края 2.5 к левому краю 2.6
     {
         from: '2.5',
         fromAnchor: 'right',
@@ -304,8 +328,6 @@ export const scheme3Lines: SchemeLine[] = [
         toAnchor: 'left',
         serpentine: true,
     },
-    // 5. Пунктирная змейка с прямыми углами на всю длину линии —
-    //    от правого края 3.3 к левому краю 3.4.
     {
         from: '3.3',
         fromAnchor: 'right',
@@ -389,9 +411,7 @@ export const scheme4Platforms: PlatformScheme[] = [
 ];
 
 export const scheme4Lines: SchemeLine[] = [
-    // 1. Прямая от правого края 1.4 к левому краю 1.6
     {from: '1.4', fromAnchor: 'right', to: '1.6', toAnchor: 'left'},
-    // 2. Пунктирная от правого края 2.4 к левому краю 2.6
     {
         from: '2.4',
         fromAnchor: 'right',
@@ -399,7 +419,6 @@ export const scheme4Lines: SchemeLine[] = [
         toAnchor: 'left',
         dashed: true,
     },
-    // 3. Змейка со скруглёнными углами от верхнего края 2.5 к низу текста под 3.5
     {
         from: '2.5',
         fromAnchor: 'top',
@@ -419,20 +438,16 @@ export const schemes: Scheme[] = [
     {platforms: scheme4Platforms, lines: scheme4Lines},
 ];
 
-// Глобальное состояние текущей схемы
 let activeSchemeIndex = 0;
 
-// Функция для переключения схемы извне
 export const setActiveScheme = (index: number) => {
     activeSchemeIndex = Math.max(0, Math.min(index, schemes.length - 1));
 };
 
 export const getActiveScheme = (): Scheme => schemes[activeSchemeIndex];
 
-// Линии текущей активной схемы
 export const getActiveSchemeLines = (): SchemeLine[] => schemes[activeSchemeIndex]?.lines ?? [];
 
-// Функция для получения конфигурации позиции (использует активную схему)
 export const getPositionConfig = (positionNumber: string): PositionConfig | null => {
     const platformNumber = parseInt(positionNumber.split('.')[0], 10);
     const platformId = 4 - platformNumber;
@@ -444,4 +459,33 @@ export const getPositionConfig = (positionNumber: string): PositionConfig | null
     if (!platform) return null;
 
     return platform.positions.find((p) => p.positionNumber === positionNumber) || null;
+};
+
+// ==========================================
+//  Доступные значения легенды для схемы
+//  (объявлено после `schemes`, чтобы не было use-before-define)
+// ==========================================
+
+// Типы линий, которые всегда присутствуют на канвасе (статичные соединения
+// между платформами + базовые линии схемы). Эти кнопки легенды показываем всегда.
+export const STATIC_LEGEND_KINDS: LineKind[] = [
+    'sharp-serpentine',
+    'rounded-serpentine',
+    'straight',
+    'dashed',
+    'arc',
+];
+
+// Список значений легенды, релевантных для схемы с указанным индексом.
+// К базовым типам добавляются те, что встречаются в линиях самой схемы.
+export const getAvailableLegendValues = (schemeIndex: number): LegendValue[] => {
+    const scheme = schemes[schemeIndex];
+    if (!scheme) return [];
+
+    const availableKinds = new Set<LineKind>(STATIC_LEGEND_KINDS);
+    scheme.lines.forEach((line) => availableKinds.add(getLineKind(line)));
+
+    return (Object.keys(LEGEND_TO_LINE_KIND) as LegendValue[]).filter((value) =>
+        availableKinds.has(LEGEND_TO_LINE_KIND[value]),
+    );
 };

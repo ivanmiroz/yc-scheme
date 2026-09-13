@@ -5,6 +5,7 @@ import block from 'bem-cn-lite';
 
 import {useNetworkAnimation} from './canvasAnimation';
 import {CanvasAnimationCleanup, initCanvasAnimation} from '../InfrastructureChoose/canvasAnimation';
+import {LegendValue} from '../InfrastructureChoose/canvasAnimation/schemes';
 import './NetworkSingularity.scss';
 
 const b = block('network-singularity');
@@ -12,6 +13,7 @@ const b = block('network-singularity');
 interface NetworkSingularityProps {
     isScattering?: boolean;
     activeSchemeIndex?: number;
+    activeLegend?: LegendValue | null;
     onStart?: () => void;
     onReady?: () => void;
 }
@@ -19,6 +21,7 @@ interface NetworkSingularityProps {
 export const NetworkSingularity: React.FC<NetworkSingularityProps> = ({
     isScattering = false,
     activeSchemeIndex = 0,
+    activeLegend = null,
     onStart,
     onReady,
 }) => {
@@ -26,8 +29,6 @@ export const NetworkSingularity: React.FC<NetworkSingularityProps> = ({
     const [startInfrastructure, setStartInfrastructure] = useState(false);
     const cleanupRef = useRef<CanvasAnimationCleanup | void>(undefined);
 
-    // Храним колбэки в ref, чтобы useEffect с initCanvasAnimation
-    // не пересоздавался при каждом ре-рендере родителя.
     const onStartRef = useRef(onStart);
     const onReadyRef = useRef(onReady);
     useEffect(() => {
@@ -70,6 +71,13 @@ export const NetworkSingularity: React.FC<NetworkSingularityProps> = ({
             cleanupRef.current.refreshScheme();
         }
     }, [activeSchemeIndex]);
+
+    // Клик по легенде — обновляем подсветку без перезапуска анимации.
+    useEffect(() => {
+        if (cleanupRef.current && cleanupRef.current.setActiveLegend) {
+            cleanupRef.current.setActiveLegend(activeLegend);
+        }
+    }, [activeLegend]);
 
     return (
         <div className={b()}>
