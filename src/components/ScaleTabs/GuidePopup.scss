@@ -1,0 +1,129 @@
+.guide-popup {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2vw;
+
+    &__backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        cursor: pointer;
+    }
+
+    &__panel {
+        position: relative;
+        background: var(--g-color-base-generic);
+        border-radius: 1.2vw;
+        padding: 2vw 2.2vw;
+        max-width: 40vw;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 1.2vw 4vw rgba(0, 0, 0, 0.25);
+    }
+
+    &__close {
+        position: absolute;
+        top: 1vw;
+        right: 1vw;
+        width: 2vw;
+        height: 2vw;
+        border-radius: 50%;
+        border: none;
+        background: var(--g-color-base-generic-light);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s ease;
+
+        &:hover {
+            background: var(--g-color-base-generic-hover);
+        }
+
+        // Крестик из двух линий
+        &::before,
+        &::after {
+            content: '';
+            position: absolute;
+            width: 45%;
+            height: 0.15vw;
+            background: var(--g-color-text-primary);
+            border-radius: 0.1vw;
+        }
+
+        &::before {
+            transform: rotate(45deg);
+        }
+
+        &::after {
+            transform: rotate(-45deg);
+        }
+    }
+
+    &__title {
+        color: var(--g-color-text-primary);
+        font-size: var(--g-text-size-2xl);
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        line-height: 1.1;
+        margin: 0 0 1.5vw;
+    }
+
+    &__card {
+        background: var(--g-color-base-generic);
+        border: 1px solid rgba(176, 189, 217, 1);
+        border-radius: 1vw;
+        padding: 1.5vw 1.6vw;
+
+        & + & {
+            margin-top: 1.2vw;
+        }
+    }
+
+    &__card-title {
+        color: var(--g-color-text-primary);
+        font-size: var(--g-text-size-sm);
+        font-weight: 800;
+        margin: 0 0 0.8vw;
+    }
+
+    &__list {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 0.8vw;
+    }
+
+    &__list-item {
+        position: relative;
+        padding-left: 1.1vw;
+        color: var(--g-color-text-primary);
+        font-size: var(--g-text-size-xs);
+        line-height: 1.5;
+
+        &::before {
+            content: '';
+            position: absolute;
+            left: 0.3vw;
+            top: 0.55em;
+            width: 0.3vw;
+            height: 0.3vw;
+            border-radius: 50%;
+            background: var(--g-color-text-primary);
+        }
+
+        & + & {
+            margin-top: 0.5vw;
+        }
+    }
+
+    &__note {
+        color: var(--g-color-text-secondary, #999999);
+        font-size: var(--g-text-size-xs);
+        line-height: 1.5;
+        margin: 0.8vw 0 0;
+    }
+}

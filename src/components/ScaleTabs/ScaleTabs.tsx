@@ -1,6 +1,6 @@
 'use client';
 
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import block from 'bem-cn-lite';
 
 import {NetworkSingularity} from '../NetworkSingularity/NetworkSingularity';
@@ -9,6 +9,9 @@ import {
     getAvailableLegendValues,
     setActiveScheme,
 } from '../InfrastructureChoose/canvasAnimation/schemes';
+import {GuidePopup} from './GuidePopup';
+import {ZoomHintPopup} from './ZoomHintPopup';
+import {InactivityTimer} from './InactivityTimer';
 
 import legend1Src from '@/assets/icons/legend1.png';
 import legend2Src from '@/assets/icons/legend2.png';
@@ -20,6 +23,10 @@ import legend6Src from '@/assets/icons/legend6.png';
 import './ScaleTabs.scss';
 
 const b = block('scale-tabs');
+
+const INACTIVITY_DELAY_MS = 15000;
+const COUNTDOWN_FROM = 59;
+const RESET_DELAY_MS = 800;
 
 const actions = [
     {value: 'scale', label: 'Масштабирование без ограничений'},
@@ -41,8 +48,6 @@ interface LegendItem {
     text: string;
 }
 
-// Полный набор кнопок легенды. Показ фильтруется по активной схеме —
-// кнопки, соответствующие отсутствующим типам линий, не рендерятся.
 const allLegendItems: LegendItem[] = [
     {
         value: 'network',
@@ -76,6 +81,17 @@ const allLegendItems: LegendItem[] = [
     },
 ];
 
+type OnboardingStep = 'closed' | 'guide' | 'zoom';
+
+const ACTIVITY_EVENTS: (keyof WindowEventMap)[] = [
+    'mousemove',
+    'mousedown',
+    'pointerdown',
+    'keydown',
+    'wheel',
+    'touchstart',
+];
+
 interface ScaleTabsProps {
     activeIndex?: number;
     onActionClick?: (index: number) => void;
@@ -84,23 +100,23 @@ interface ScaleTabsProps {
 export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionClick}) => {
     const [localActiveIndex, setLocalActiveIndex] = useState(0);
     const [isCanvasReady, setIsCanvasReady] = useState(false);
-
     const [activeLegend, setActiveLegend] = useState<LegendValue | null>(null);
 
-    // Список легенд, релевантных текущей схеме. Чистая функция, дешёвая —
-    // можно вызывать на каждом рендере.
+    const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('closed');
+    const [isOnboardingDone, setIsOnboardingDone] = useState(false);
+
+    const [timerSeconds, setTimerSeconds] = useState<number | null>(null);
+
+    const hasShownOnboardingRef = useRef(false);
+
+    const inactivityTimeoutRef = useRef<number | null>(null);
+    const countdownIntervalRef = useRef<number | null>(null);
+    const reloadTimeoutRef = useRef<number | null>(null);
+
     const availableLegendValues = getAvailableLegendValues(localActiveIndex);
     const visibleLegendItems = allLegendItems.filter((item) =>
         availableLegendValues.includes(item.value),
     );
-
-    // Если при переключении схемы активная легенда стала недоступной —
-    // сбрасываем подсветку, чтобы на канвасе не осталось «мёртвой» подсветки.
-    useEffect(() => {
-        if (activeLegend && !availableLegendValues.includes(activeLegend)) {
-            setActiveLegend(null);
-        }
-    }, [activeLegend, availableLegendValues]);
 
     const handleCanvasStart = useCallback(() => {
         setIsCanvasReady(false);
@@ -108,6 +124,18 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
 
     const handleCanvasReady = useCallback(() => {
         setIsCanvasReady(true);
+        if (hasShownOnboardingRef.current) return;
+        hasShownOnboardingRef.current = true;
+        setOnboardingStep('guide');
+    }, []);
+
+    const handleGuideClose = useCallback(() => {
+        setOnboardingStep('zoom');
+    }, []);
+
+    const handleZoomHintClose = useCallback(() => {
+        setOnboardingStep('closed');
+        setIsOnboardingDone(true);
     }, []);
 
     const handleInfraTabClick = (index: number) => {
@@ -126,6 +154,79 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
     const handleLegendClick = (value: LegendValue) => {
         setActiveLegend((prev) => (prev === value ? null : value));
     };
+
+    // ------------------------------------------------------------
+    //  Таймер без активности
+    // ------------------------------------------------------------
+
+    const clearTimers = useCallback(() => {
+        if (inactivityTimeoutRef.current !== null) {
+            window.clearTimeout(inactivityTimeoutRef.current);
+            inactivityTimeoutRef.current = null;
+        }
+        if (countdownIntervalRef.current !== null) {
+            window.clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+        }
+        if (reloadTimeoutRef.current !== null) {
+            window.clearTimeout(reloadTimeoutRef.current);
+            reloadTimeoutRef.current = null;
+        }
+    }, []);
+
+    const startCountdown = useCallback(() => {
+        setTimerSeconds(COUNTDOWN_FROM);
+        let remaining = COUNTDOWN_FROM;
+
+        countdownIntervalRef.current = window.setInterval(() => {
+            remaining -= 1;
+
+            if (remaining <= 0) {
+                setTimerSeconds(0);
+                if (countdownIntervalRef.current !== null) {
+                    window.clearInterval(countdownIntervalRef.current);
+                    countdownIntervalRef.current = null;
+                }
+                // Небольшая пауза, чтобы пользователь увидел 00:00,
+                // затем перезагружаем страницу — она вернётся в исходное состояние.
+                reloadTimeoutRef.current = window.setTimeout(() => {
+                    reloadTimeoutRef.current = null;
+                    window.location.reload();
+                }, RESET_DELAY_MS);
+                return;
+            }
+            setTimerSeconds(remaining);
+        }, 1000);
+    }, []);
+
+    const resetInactivity = useCallback(() => {
+        clearTimers();
+        setTimerSeconds(null);
+
+        if (!isOnboardingDone) return;
+
+        inactivityTimeoutRef.current = window.setTimeout(() => {
+            startCountdown();
+        }, INACTIVITY_DELAY_MS);
+    }, [clearTimers, isOnboardingDone, startCountdown]);
+
+    useEffect(() => {
+        if (!isOnboardingDone) return undefined;
+
+        const handler = () => resetInactivity();
+
+        ACTIVITY_EVENTS.forEach((eventName) =>
+            window.addEventListener(eventName, handler, {passive: true}),
+        );
+
+        resetInactivity();
+
+        return () => {
+            ACTIVITY_EVENTS.forEach((eventName) => window.removeEventListener(eventName, handler));
+            clearTimers();
+            setTimerSeconds(null);
+        };
+    }, [isOnboardingDone, resetInactivity, clearTimers]);
 
     const isSidebarActive = activeIndex !== -1;
     const activeTabValue = infraTabs[activeIndex]?.value;
@@ -251,6 +352,11 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
                     </div>
                 </div>
             </div>
+
+            <GuidePopup open={onboardingStep === 'guide'} onClose={handleGuideClose} />
+            <ZoomHintPopup open={onboardingStep === 'zoom'} onClose={handleZoomHintClose} />
+
+            {timerSeconds !== null && <InactivityTimer seconds={timerSeconds} />}
         </div>
     );
 };
