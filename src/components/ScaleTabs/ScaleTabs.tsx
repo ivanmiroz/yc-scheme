@@ -16,11 +16,13 @@ import './ScaleTabs.scss';
 
 const b = block('scale-tabs');
 
+// value — общий ключ между actions и infraTabs. По нему однозначно
+// находится соответствующая вкладка независимо от порядка в массиве.
 const actions = [
     {value: 'scale', label: 'Масштабирование без ограничений'},
-    {value: 'time-to-market', label: 'Разработка ИИ-приложений'},
-    {value: 'ai', label: 'Стабильная работа сервисов'},
-    {value: 'security', label: 'Ускорение time-to-market'},
+    {value: 'ai', label: 'Разработка ИИ-приложений'},
+    {value: 'stability', label: 'Стабильная работа сервисов'},
+    {value: 'ttm', label: 'Ускорение time-to-market'},
 ];
 
 const infraTabs = [
@@ -45,12 +47,10 @@ interface ScaleTabsProps {
 
 export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionClick}) => {
     const [localActiveIndex, setLocalActiveIndex] = useState(0);
-    // Иконки на канвасе ещё не дорисованы — табы заблокированы.
-    // Сбрасывается в false при каждом перезапуске анимации (в т.ч. на ресайзе).
+    // isCanvasReady используется только для disabled на табах —
+    // клик по sidebar-кнопке от него не зависит.
     const [isCanvasReady, setIsCanvasReady] = useState(false);
 
-    // useCallback, чтобы ссылки не менялись между рендерами —
-    // иначе NetworkSingularity будет лишний раз переинициализировать канвас.
     const handleCanvasStart = useCallback(() => {
         setIsCanvasReady(false);
     }, []);
@@ -59,20 +59,26 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
         setIsCanvasReady(true);
     }, []);
 
-    // СНАЧАЛА определяем handleInfraTabClick, чтобы он был доступен ниже
+    // СНАЧАЛА определяем handleInfraTabClick, чтобы он был доступен ниже.
+    // Табы и так недоступны, пока isCanvasReady === false (disabled),
+    // поэтому внутренний guard тут не нужен.
     const handleInfraTabClick = (index: number) => {
-        if (!isCanvasReady) return;
         setLocalActiveIndex(index);
         setActiveScheme(index);
     };
 
-    // Теперь handleButtonClick может безопасно использовать handleInfraTabClick
-    const handleButtonClick = (index: number) => {
-        onActionClick?.(index);
-        handleInfraTabClick(index);
+    // Клик по action-кнопке: находим соответствующую вкладку по value
+    // и активируем именно её. Работает независимо от isCanvasReady.
+    const handleButtonClick = (actionValue: string) => {
+        const tabIndex = infraTabs.findIndex((tab) => tab.value === actionValue);
+        if (tabIndex === -1) return;
+        onActionClick?.(tabIndex);
+        setLocalActiveIndex(tabIndex);
+        setActiveScheme(tabIndex);
     };
 
     const isSidebarActive = activeIndex !== -1;
+    const activeTabValue = infraTabs[activeIndex]?.value;
 
     return (
         <div className={b()}>
@@ -98,14 +104,14 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
                     </div>
 
                     <div className={b('actions')}>
-                        {actions.map((action, index) => (
+                        {actions.map((action) => (
                             <button
                                 key={action.value}
                                 className={b('button', {
-                                    active: activeIndex === index,
+                                    active: activeTabValue === action.value,
                                 })}
                                 type="button"
-                                onClick={() => handleButtonClick(index)}
+                                onClick={() => handleButtonClick(action.value)}
                             >
                                 <span className={b('button-text')}>{action.label}</span>
                                 <span className={b('button-arrow')}>

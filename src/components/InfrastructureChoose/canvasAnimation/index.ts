@@ -1,4 +1,7 @@
-import podiumSrc from '@/assets/images/podium.png';
+import podium1Src from '@/assets/images/podium1.png';
+import podium2Src from '@/assets/images/podium2.png';
+import podium3Src from '@/assets/images/podium3.png';
+import podium4Src from '@/assets/images/podium4.png';
 import {CanvasAnimationCleanup} from './types';
 import {createPodiumAnimator} from './animation';
 import {getPositionConfig} from './schemes';
@@ -20,10 +23,7 @@ const DRAG_THRESHOLD = 5;
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
 export interface InitCanvasAnimationOptions {
-    // Вызывается при каждом запуске/перезапуске анимации (первый запуск, ресайз).
     onStart?: () => void;
-    // Вызывается при каждом завершении анимации — платформы отрисованы
-    // и все иконки появились.
     onReady?: () => void;
 }
 
@@ -40,25 +40,39 @@ export const initCanvasAnimation = (
         return cleanup;
     }
 
-    const podiumImage = new Image();
+    // Четыре изображения подиумов, по одному на платформу.
+    // Порядок: podium1 → самый верхний, podium4 → самый нижний.
+    // Массив мутируется после загрузки — аниматор читает его по ссылке.
+    const podiumImages: HTMLImageElement[] = [];
+    const podiumSources = [podium4Src.src, podium3Src.src, podium2Src.src, podium1Src.src];
+
     let isLoaded = false;
 
-    const animator = createPodiumAnimator(canvas, ctx, podiumImage, {
+    const animator = createPodiumAnimator(canvas, ctx, podiumImages, {
         onStart: options.onStart,
         onReady: options.onReady,
     });
 
-    podiumImage.onload = () => {
-        isLoaded = true;
-        animator.initPodiums();
-    };
+    // Загружаем все подиумы параллельно, стартуем после загрузки всех.
+    const loadImage = (src: string): Promise<HTMLImageElement> =>
+        new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = () => reject(new Error(`Не удалось загрузить ${src}`));
+            img.src = src;
+        });
 
-    if (podiumImage.complete) {
-        isLoaded = true;
-        animator.initPodiums();
-    }
-
-    podiumImage.src = podiumSrc.src;
+    Promise.all(podiumSources.map(loadImage))
+        .then((images) => {
+            podiumImages.length = 0;
+            podiumImages.push(...images);
+            isLoaded = true;
+            animator.initPodiums();
+        })
+        .catch((err) => {
+            // eslint-disable-next-line no-console
+            console.error('Ошибка загрузки подиумов', err);
+        });
 
     // Отключаем нативные жесты (scroll, pinch-zoom) на canvas,
     // чтобы браузер не перехватывал жесты у нас.
@@ -66,8 +80,6 @@ export const initCanvasAnimation = (
     canvas.style.touchAction = 'none';
 
     // Контейнер для подложки и попапа.
-    // Крепим к document.body, чтобы transform-предки (.scale-tabs__content)
-    // не создавали containing block для position: fixed.
     const popupContainer = document.createElement('div');
     popupContainer.style.position = 'fixed';
     popupContainer.style.inset = '0';
@@ -84,7 +96,6 @@ export const initCanvasAnimation = (
     const popup = document.createElement('div');
     popup.className = 'scheme-popup';
     popup.style.pointerEvents = 'auto';
-    // Скрываем до того, как вычислим позицию, чтобы не было «мигания»
     popup.style.visibility = 'hidden';
 
     const popupTitle = document.createElement('h4');
@@ -93,18 +104,15 @@ export const initCanvasAnimation = (
     const popupDescription = document.createElement('p');
     popupDescription.className = 'scheme-popup__description';
 
-    // Блок справа от попапа: QR + кнопка закрытия
     const popupAside = document.createElement('div');
     popupAside.className = 'scheme-popup__aside';
 
-    // QR-код
     const popupQr = document.createElement('div');
     popupQr.className = 'scheme-popup__qr';
     const popupQrImage = document.createElement('img');
     popupQrImage.alt = 'QR-код';
     popupQr.appendChild(popupQrImage);
 
-    // Кнопка закрытия
     const popupClose = document.createElement('button');
     popupClose.className = 'scheme-popup__close';
     popupClose.type = 'button';
@@ -113,7 +121,6 @@ export const initCanvasAnimation = (
     popupAside.appendChild(popupQr);
     popupAside.appendChild(popupClose);
 
-    // Декоративная «арка» под попапом (хвостик-указатель)
     const archShape = document.createElement('div');
     archShape.className = 'arch-shape';
 
@@ -122,14 +129,11 @@ export const initCanvasAnimation = (
     popup.appendChild(popupAside);
     popup.appendChild(archShape);
 
-    // Добавляем подложку и попап в один контейнер
     popupContainer.appendChild(backdrop);
     popupContainer.appendChild(popup);
 
-    // Крепим контейнер к body
     document.body.appendChild(popupContainer);
 
-    // Предотвращаем всплытие клика внутри попапа до подложки
     popup.addEventListener('click', (e) => {
         e.stopPropagation();
     });
@@ -142,8 +146,6 @@ export const initCanvasAnimation = (
     let currentOffsetX = 0;
     let currentOffsetY = 0;
 
-    // Держим видимую часть в пределах содержимого.
-    // Если scale <= 1 — контент меньше canvas, центрируем.
     const clampOffsets = () => {
         const dpr = window.devicePixelRatio || 1;
         const cssW = canvas.width / dpr;
@@ -176,7 +178,6 @@ export const initCanvasAnimation = (
 
     const isPopupOpen = () => popupContainer.style.display === 'block';
 
-    // Активные указатели (мышь/тач/стилус)
     const activePointers = new Map<number, {x: number; y: number}>();
 
     let isDragging = false;
@@ -210,7 +211,7 @@ export const initCanvasAnimation = (
         } else if (activePointers.size === 2) {
             isDragging = false;
             isPinching = true;
-            hasMoved = true; // жест точно не тап
+            hasMoved = true;
 
             const [p1, p2] = Array.from(activePointers.values());
             pinchStartDistance = Math.hypot(p2.x - p1.x, p2.y - p1.y);
@@ -255,7 +256,6 @@ export const initCanvasAnimation = (
                 hasMoved = true;
             }
 
-            // Панорамирование имеет смысл только когда увели (scale > 1).
             if (currentScale > 1) {
                 currentOffsetX = dragStartOffsetX + dx;
                 currentOffsetY = dragStartOffsetY + dy;
@@ -269,8 +269,6 @@ export const initCanvasAnimation = (
         activePointers.delete(e.pointerId);
 
         if (activePointers.size === 1) {
-            // Перешли от pinch к drag — переинициализируем старт,
-            // чтобы второй палец продолжил движение без «прыжка».
             isPinching = false;
             isDragging = true;
             const [p] = Array.from(activePointers.values());
@@ -303,7 +301,6 @@ export const initCanvasAnimation = (
         const factor = Math.exp(-e.deltaY * 0.0015);
         const nextScale = clamp(currentScale * factor, MIN_SCALE, MAX_SCALE);
 
-        // Мировая точка под курсором должна остаться под курсором.
         const worldX = (localX - currentOffsetX) / currentScale;
         const worldY = (localY - currentOffsetY) / currentScale;
 
@@ -330,8 +327,6 @@ export const initCanvasAnimation = (
         const parentEl = canvas.parentElement;
         if (!parentEl) return;
 
-        // При ресайзе схема перерисовывается заново — попап,
-        // привязанный к старой геометрии иконки, прячем.
         hidePopup();
 
         const dpr = window.devicePixelRatio || 1;
@@ -349,7 +344,6 @@ export const initCanvasAnimation = (
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.scale(dpr, dpr);
 
-        // После изменения размеров может понадобиться пересчитать offset.
         clampOffsets();
         applyView();
 
@@ -368,7 +362,6 @@ export const initCanvasAnimation = (
     };
 
     const handleClick = (e: MouseEvent) => {
-        // Если это был drag/pinch — не открываем попап.
         if (hasMoved) {
             hasMoved = false;
             return;
@@ -406,45 +399,31 @@ export const initCanvasAnimation = (
             popupQr.style.display = 'none';
         }
 
-        // ВАЖНО: сначала прячем попап (он может быть visible с прошлого открытия),
-        // и только потом показываем контейнер. Иначе на один кадр попап мелькнёт
-        // на старой позиции до того, как мы пересчитаем координаты.
         popup.style.visibility = 'hidden';
         popupContainer.style.display = 'block';
 
-        // Геометрия иконки в МИРОВЫХ координатах канваса.
         const dpr = window.devicePixelRatio || 1;
         const canvasWidth = canvas.width / dpr;
         const anchor = getPositionAnchor(clickedPosition, canvasWidth);
 
-        // Переводим в координаты вьюпорта с учётом зума/панорамирования.
         const view = animator.getView();
         const iconCenterXViewport = rect.left + view.x + anchor.centerX * view.scale;
         const iconCenterYViewport = rect.top + view.y + anchor.centerY * view.scale;
         const iconHalfScreen = (anchor.iconSize / 2) * view.scale;
         const iconTopViewport = iconCenterYViewport - iconHalfScreen;
 
-        // Измеряем попап и арку. getBoundingClientRect() принудительно
-        // пересчитывает layout, поэтому размеры уже актуальны.
         const popupRect = popup.getBoundingClientRect();
         const archRect = archShape.getBoundingClientRect();
 
-        // Смещение кончика арки относительно левого края попапа
         const archTipX = archRect.left - popupRect.left + archRect.width / 2;
-        // Реальная высота арки от низа попапа до её кончика
         const archHeight = archRect.bottom - popupRect.bottom;
 
-        // Попап ВСЕГДА над иконкой: кончик арки касается её верхнего края.
         let popupLeft = iconCenterXViewport - archTipX;
         const popupTop = iconTopViewport - archHeight - popupRect.height - POPUP_ICON_GAP;
 
-        // Клэмп только по горизонтали — по вертикали оставляем как есть,
-        // чтобы попап не «перепрыгивал» под иконку у верхних рядов.
         const maxLeft = window.innerWidth - popupRect.width - POPUP_VIEWPORT_MARGIN;
         popupLeft = Math.max(POPUP_VIEWPORT_MARGIN, Math.min(popupLeft, maxLeft));
 
-        // Aside (QR + close) отрисован абсолютно справа от попапа и не влияет
-        // на popupRect. Если он вылезает за правый край — сдвигаем попап левее.
         popupAside.style.display = 'flex';
         const asideRect = popupAside.getBoundingClientRect();
         const asideOffsetFromPopupLeft = asideRect.left - popupRect.left;
@@ -482,7 +461,6 @@ export const initCanvasAnimation = (
     backdrop.addEventListener('click', handleBackdropClick);
     popupClose.addEventListener('click', handleCloseClick);
 
-    // Создаем функцию очистки и добавляем к ней метод refreshScheme
     const cleanup: CanvasAnimationCleanup = () => {
         window.removeEventListener('resize', resizeCanvas);
         canvas.removeEventListener('pointerdown', handlePointerDown);

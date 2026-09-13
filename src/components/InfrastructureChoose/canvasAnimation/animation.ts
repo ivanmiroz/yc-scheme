@@ -1,11 +1,21 @@
 import {PodiumState, Position} from './types';
-import {ANIMATION_CONFIG, POSITION_ANIMATION_CONFIG} from './constants';
+import {
+    ANIMATION_CONFIG,
+    POSITION_ANIMATION_CONFIG,
+    SCHEME_LINES_ANIMATION_CONFIG,
+} from './constants';
 import {calculatePositions} from './positions';
-import {drawPositions, isPointOverPosition} from './drawers';
-import {getPositionConfig} from './schemes';
+import {
+    drawConnections,
+    drawPositions,
+    drawSchemeLines,
+    getConnectionsTotalDuration,
+    isPointOverPosition,
+} from './drawers';
+import {getActiveSchemeLines, getPositionConfig} from './schemes';
 import {loadAllIcons} from './icons';
 
-interface PositionAnimationParams {
+interface AnimationParams {
     delay: number;
     duration: number;
 }
@@ -17,18 +27,17 @@ export interface ViewState {
 }
 
 export interface PodiumAnimatorCallbacks {
-    // Вызывается при каждом запуске/перезапуске анимации
-    // (первый initPodiums, ресайз, смена изображения подиума и т.п.)
     onStart?: () => void;
-    // Вызывается при каждом завершении анимации — платформы отрисованы
-    // и все иконки появились.
     onReady?: () => void;
 }
 
 export const createPodiumAnimator = (
     canvas: HTMLCanvasElement,
     ctx: CanvasRenderingContext2D,
-    podiumImage: HTMLImageElement,
+    // Массив изображений подиумов. Индексируется по PodiumState.id.
+    // Массив может быть пустым на момент создания аниматора —
+    // картинки докидываются снаружи после загрузки.
+    podiumImages: HTMLImageElement[],
     callbacks: PodiumAnimatorCallbacks = {},
 ) => {
     let podiums: PodiumState[] = [];
@@ -36,43 +45,49 @@ export const createPodiumAnimator = (
     let startTime: number | null = null;
 
     let positions: Position[] = [];
-    let positionAnimParams: PositionAnimationParams[] = [];
+    let positionAnimParams: AnimationParams[] = [];
     let positionOpacities: number[] = [];
     let positionsAnimationStarted = false;
     let positionsStartTime = 0;
     let iconsLoaded = false;
 
-    // Сбрасывается в initPodiums, чтобы onReady сработал после каждого цикла.
+    let connectionsAnimationStarted = false;
+    let connectionsStartTime = 0;
+
+    let schemeLinesAnimationStarted = false;
+    let schemeLinesStartTime = 0;
+    let schemeLineParams: AnimationParams[] = [];
+    let schemeLinesTotalDuration = 0;
+
     let readyNotified = false;
 
-    // Текущее состояние зума/панорамирования (мировые координаты относительно canvas).
     const view: ViewState = {scale: 1, x: 0, y: 0};
 
     const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
 
-    // Обратное преобразование экранных (CSS px внутри canvas) в мировые.
     const screenToWorld = (sx: number, sy: number) => ({
         x: (sx - view.x) / view.scale,
         y: (sy - view.y) / view.scale,
     });
 
-    // Одна отрисовка кадра. Возвращает true, если все анимации завершены.
-    const renderFrame = (timestamp: number): boolean => {
-        if (!startTime) startTime = timestamp;
-        const elapsed = timestamp - startTime;
+    const buildSchemeLineParams = (): AnimationParams[] => {
+        const lines = getActiveSchemeLines();
+        return lines.map(() => {
+            const randomDelay = Math.random() * SCHEME_LINES_ANIMATION_CONFIG.MAX_RANDOM_DELAY;
+            return {
+                delay: SCHEME_LINES_ANIMATION_CONFIG.BASE_DELAY + randomDelay,
+                duration: SCHEME_LINES_ANIMATION_CONFIG.DURATION,
+            };
+        });
+    };
 
-        const dpr = window.devicePixelRatio || 1;
-        const width = canvas.width / dpr;
-        const height = canvas.height / dpr;
+    const calcSchemeLinesTotal = (params: AnimationParams[]) =>
+        params.reduce((max, p) => Math.max(max, p.delay + p.duration), 0);
 
-        // Сначала сбрасываем трансформ на «чистый» DPR и очищаем весь canvas.
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        ctx.clearRect(0, 0, width, height);
-
-        // Затем применяем зум/панорамирование.
-        ctx.setTransform(dpr * view.scale, 0, 0, dpr * view.scale, dpr * view.x, dpr * view.y);
-
-        let allPlatformsFinished = true;
+    // Рисует все подиумы в текущий момент времени.
+    // Возвращает true, если анимация всех подиумов завершена.
+    const updatePodiums = (elapsed: number): boolean => {
+        let allFinished = true;
 
         for (let i = podiums.length - 1; i >= 0; i--) {
             const p = podiums[i];
@@ -83,49 +98,144 @@ export const createPodiumAnimator = (
             const progress = Math.min(adjustedElapsed / ANIMATION_CONFIG.PLATFORM_DURATION, 1);
 
             if (progress < 1) {
-                allPlatformsFinished = false;
+                allFinished = false;
             }
 
             const easedProgress = easeOutCubic(progress);
             p.currentY = startY + (p.targetY - startY) * easedProgress;
 
-            ctx.drawImage(podiumImage, p.currentX, p.currentY, p.scaledWidth, p.scaledHeight);
+            const img = podiumImages[p.id];
+            if (img && img.complete && img.naturalWidth > 0) {
+                ctx.drawImage(img, p.currentX, p.currentY, p.scaledWidth, p.scaledHeight);
+            }
         }
 
-        // Запускаем анимацию позиций сразу после завершения платформ
-        if (allPlatformsFinished && !positionsAnimationStarted) {
-            positionsAnimationStarted = true;
-            positionsStartTime = timestamp;
+        return allFinished;
+    };
 
-            positions = calculatePositions(podiums);
-            positionAnimParams = positions.map(() => {
-                const randomDelay = Math.random() * POSITION_ANIMATION_CONFIG.MAX_RANDOM_DELAY;
-                return {
-                    delay: POSITION_ANIMATION_CONFIG.BASE_DELAY + randomDelay,
-                    duration: POSITION_ANIMATION_CONFIG.DURATION,
-                };
-            });
-            positionOpacities = new Array(positions.length).fill(0);
+    // Запускает анимацию появления иконок, если платформы уже встали.
+    const ensurePositionsStarted = (timestamp: number, allPlatformsFinished: boolean) => {
+        if (!allPlatformsFinished || positionsAnimationStarted) return;
+
+        positionsAnimationStarted = true;
+        positionsStartTime = timestamp;
+        positions = calculatePositions(podiums);
+        positionAnimParams = positions.map(() => {
+            const randomDelay = Math.random() * POSITION_ANIMATION_CONFIG.MAX_RANDOM_DELAY;
+            return {
+                delay: POSITION_ANIMATION_CONFIG.BASE_DELAY + randomDelay,
+                duration: POSITION_ANIMATION_CONFIG.DURATION,
+            };
+        });
+        positionOpacities = new Array(positions.length).fill(0);
+    };
+
+    // Обновляет прозрачности иконок.
+    // Возвращает true, если все иконки полностью проявились.
+    const updatePositionOpacities = (timestamp: number): boolean => {
+        if (!positionsAnimationStarted) return false;
+
+        const positionElapsed = timestamp - positionsStartTime;
+
+        positionOpacities = positions.map((_, index) => {
+            const {delay, duration} = positionAnimParams[index];
+            const localElapsed = Math.max(0, positionElapsed - delay);
+            const localProgress = Math.min(localElapsed / duration, 1);
+            return easeOutCubic(localProgress);
+        });
+
+        return positionOpacities.every((op) => op >= 1);
+    };
+
+    // Запускает анимацию статичных соединений и линий активной схемы,
+    // когда все иконки уже проявились.
+    const ensureConnectionsStarted = (
+        timestamp: number,
+        allPlatformsFinished: boolean,
+        allPositionsFinished: boolean,
+    ) => {
+        if (
+            !allPlatformsFinished ||
+            !positionsAnimationStarted ||
+            !allPositionsFinished ||
+            connectionsAnimationStarted
+        ) {
+            return;
         }
 
-        if (positionsAnimationStarted) {
-            const positionElapsed = timestamp - positionsStartTime;
+        connectionsAnimationStarted = true;
+        connectionsStartTime = timestamp;
 
-            positionOpacities = positions.map((_, index) => {
-                const {delay, duration} = positionAnimParams[index];
-                const localElapsed = Math.max(0, positionElapsed - delay);
+        schemeLinesAnimationStarted = true;
+        schemeLinesStartTime = timestamp;
+        schemeLineParams = buildSchemeLineParams();
+        schemeLinesTotalDuration = calcSchemeLinesTotal(schemeLineParams);
+    };
+
+    // Рисует статичные соединения и линии активной схемы
+    // (каждую — со своим прогрессом).
+    const drawAllConnections = (timestamp: number, width: number) => {
+        if (connectionsAnimationStarted) {
+            const connectionsElapsed = timestamp - connectionsStartTime;
+            drawConnections(ctx, podiums, connectionsElapsed, width);
+        }
+
+        if (schemeLinesAnimationStarted) {
+            const schemeLinesElapsed = timestamp - schemeLinesStartTime;
+            const progresses = schemeLineParams.map(({delay, duration}) => {
+                const localElapsed = Math.max(0, schemeLinesElapsed - delay);
                 const localProgress = Math.min(localElapsed / duration, 1);
                 return easeOutCubic(localProgress);
             });
+            drawSchemeLines(ctx, positions, progresses, width);
         }
+    };
 
-        // Рисуем позиции с индивидуальной прозрачностью
+    // Проверяет завершение соединений и линий схемы.
+    const areConnectionsFinished = (timestamp: number): boolean => {
+        const allConnectionsFinished =
+            connectionsAnimationStarted &&
+            timestamp - connectionsStartTime >= getConnectionsTotalDuration();
+
+        const allSchemeLinesFinished =
+            schemeLinesAnimationStarted &&
+            timestamp - schemeLinesStartTime >= schemeLinesTotalDuration;
+
+        return allConnectionsFinished && allSchemeLinesFinished;
+    };
+
+    const renderFrame = (timestamp: number): boolean => {
+        if (!startTime) startTime = timestamp;
+        const elapsed = timestamp - startTime;
+
+        const dpr = window.devicePixelRatio || 1;
+        const width = canvas.width / dpr;
+        const height = canvas.height / dpr;
+
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, width, height);
+
+        ctx.setTransform(dpr * view.scale, 0, 0, dpr * view.scale, dpr * view.x, dpr * view.y);
+
+        const allPlatformsFinished = updatePodiums(elapsed);
+        ensurePositionsStarted(timestamp, allPlatformsFinished);
+
+        const allPositionsFinished = updatePositionOpacities(timestamp);
+
         if (positions.length > 0 && positionOpacities.length === positions.length) {
             drawPositions(ctx, positions, positionOpacities, width);
         }
 
-        const allPositionsFinished = positionOpacities.every((op) => op >= 1);
-        return allPlatformsFinished && positionsAnimationStarted && allPositionsFinished;
+        ensureConnectionsStarted(timestamp, allPlatformsFinished, allPositionsFinished);
+
+        drawAllConnections(timestamp, width);
+
+        return (
+            allPlatformsFinished &&
+            positionsAnimationStarted &&
+            allPositionsFinished &&
+            areConnectionsFinished(timestamp)
+        );
     };
 
     const animate = (timestamp: number) => {
@@ -143,8 +253,6 @@ export const createPodiumAnimator = (
         }
     };
 
-    // Однократная перерисовка (например, после зума/панорамирования).
-    // Если цикл анимации уже запущен — no-op, следующий кадр сам всё отрисует.
     const requestRedraw = () => {
         if (animationFrameId) return;
         renderFrame(performance.now());
@@ -168,12 +276,12 @@ export const createPodiumAnimator = (
     };
 
     const initPodiums = () => {
+        if (podiumImages.length === 0) return;
+
         if (animationFrameId) {
             cancelAnimationFrame(animationFrameId);
         }
 
-        // Уведомляем о старте и сбрасываем флаг, чтобы onReady снова сработал,
-        // когда анимация завершится.
         readyNotified = false;
         callbacks.onStart?.();
 
@@ -183,12 +291,21 @@ export const createPodiumAnimator = (
         positionAnimParams = [];
         positionOpacities = [];
 
+        connectionsAnimationStarted = false;
+        connectionsStartTime = 0;
+
+        schemeLinesAnimationStarted = false;
+        schemeLinesStartTime = 0;
+        schemeLineParams = [];
+        schemeLinesTotalDuration = 0;
+
         const dpr = window.devicePixelRatio || 1;
         const width = canvas.width / dpr;
         const height = canvas.height / dpr;
 
-        const imgWidth = podiumImage.naturalWidth || podiumImage.width || 100;
-        const imgHeight = podiumImage.naturalHeight || podiumImage.height || 100;
+        const firstImage = podiumImages[0];
+        const imgWidth = firstImage.naturalWidth || firstImage.width || 100;
+        const imgHeight = firstImage.naturalHeight || firstImage.height || 100;
 
         const slotHeight = height / ANIMATION_CONFIG.PLATFORMS_COUNT;
 
@@ -196,14 +313,12 @@ export const createPodiumAnimator = (
         let scaledWidth = imgWidth * scale;
         let scaledHeight = slotHeight;
 
-        // Ограничиваем максимальную ширину платформы 90% от ширины канваса для адаптивности
         if (scaledWidth > width * 0.9) {
             scale = (width * 0.9) / imgWidth;
             scaledWidth = imgWidth * scale;
             scaledHeight = imgHeight * scale;
         }
 
-        // Идеальное центрирование по горизонтали
         const targetX = (width - scaledWidth) / 2;
 
         const centerY = height / 2;
@@ -230,12 +345,9 @@ export const createPodiumAnimator = (
         animationFrameId = requestAnimationFrame(animate);
     };
 
-    // Обновление схемы без перезапуска анимации платформ
     const refreshScheme = () => {
-        // Пересчитываем позиции на основе НОВОЙ активной схемы
         positions = calculatePositions(podiums);
 
-        // Сбрасываем параметры анимации появления для новых позиций
         positionAnimParams = positions.map(() => {
             const randomDelay = Math.random() * POSITION_ANIMATION_CONFIG.MAX_RANDOM_DELAY;
             return {
@@ -247,14 +359,19 @@ export const createPodiumAnimator = (
         positionsAnimationStarted = true;
         positionsStartTime = performance.now();
 
-        // ВАЖНО: перезапускаем цикл анимации, если он был остановлен после завершения
-        // предыдущей отрисовки. Без этого новые иконки не появятся на канвасе.
+        connectionsAnimationStarted = true;
+        connectionsStartTime = performance.now() - getConnectionsTotalDuration();
+
+        schemeLineParams = buildSchemeLineParams();
+        schemeLinesTotalDuration = calcSchemeLinesTotal(schemeLineParams);
+        schemeLinesAnimationStarted = true;
+        schemeLinesStartTime = performance.now();
+
         if (!animationFrameId) {
             animationFrameId = requestAnimationFrame(animate);
         }
     };
 
-    // Проверка, находится ли курсор над иконкой или текстом
     const checkHover = (mouseX: number, mouseY: number): boolean => {
         if (!positionsAnimationStarted || positions.length === 0) return false;
 
@@ -275,17 +392,7 @@ export const createPodiumAnimator = (
             const config = getPositionConfig(pos.positionNumber);
             if (!config || !config.label) continue;
 
-            if (
-                isPointOverPosition(
-                    world.x,
-                    world.y,
-                    pos,
-                    config,
-                    iconSize,
-                    labelFontSize,
-                    canvasWidth,
-                )
-            ) {
+            if (isPointOverPosition(world.x, world.y, pos, config, iconSize, labelFontSize)) {
                 return true;
             }
         }
@@ -293,7 +400,6 @@ export const createPodiumAnimator = (
         return false;
     };
 
-    // Получение позиции, на которую кликнули
     const getClickedPosition = (mouseX: number, mouseY: number): Position | null => {
         if (!positionsAnimationStarted || positions.length === 0) return null;
 
@@ -314,17 +420,7 @@ export const createPodiumAnimator = (
             const config = getPositionConfig(pos.positionNumber);
             if (!config || !config.label) continue;
 
-            if (
-                isPointOverPosition(
-                    world.x,
-                    world.y,
-                    pos,
-                    config,
-                    iconSize,
-                    labelFontSize,
-                    canvasWidth,
-                )
-            ) {
+            if (isPointOverPosition(world.x, world.y, pos, config, iconSize, labelFontSize)) {
                 return pos;
             }
         }
