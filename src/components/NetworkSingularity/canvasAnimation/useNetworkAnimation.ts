@@ -22,7 +22,7 @@ import {
     SCATTER_DURATION,
     TARGET_TOTAL_COUNT,
 } from './constants';
-import {LABELS, loadAllIcons} from '../../InfrastructureChoose/canvasAnimation/icons';
+import {LABELS, loadAllIcons} from './icons';
 
 const getNodeOpacity = (node: Node2D, currentTime: number, timeScale: number): number => {
     if (currentTime < node.createdAt) return 0;

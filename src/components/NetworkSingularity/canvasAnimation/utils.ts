@@ -4,6 +4,8 @@ import {
     LABEL_GAP,
     MAX_CANVAS_DIMENSION,
     NODE_BBOX_PADDING,
+    TEXT_BG_PADDING_X,
+    TEXT_BG_PADDING_Y,
 } from './constants';
 import type {BBox} from './types';
 
@@ -37,9 +39,13 @@ export const computeBBox = (x: number, y: number, scaleFactor: number, label = '
     const pad = NODE_BBOX_PADDING * scaleFactor;
 
     const textWidth = measureLabelWidth(label, scaleFactor);
+    const textBgPadX = TEXT_BG_PADDING_X * scaleFactor;
+    const textBgPadY = TEXT_BG_PADDING_Y * scaleFactor;
 
-    const contentW = Math.max(iconW, textWidth);
-    const contentH = iconH + gap + textH;
+    // ширина контента = максимум из иконки и текста с подложкой
+    const contentW = Math.max(iconW, textWidth + textBgPadX * 2);
+    // высота контента = иконка + gap + текст + вертикальная подложка (сверху и снизу)
+    const contentH = iconH + gap + textH + textBgPadY * 2;
 
     const w = contentW + pad * 2;
     const h = contentH + pad * 2;

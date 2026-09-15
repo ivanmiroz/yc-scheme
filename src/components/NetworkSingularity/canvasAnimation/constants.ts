@@ -55,11 +55,21 @@ export const SNAKE_MIN_SEGMENT_LEN = 80;
 /** Отступы от краёв канваса (10%) */
 export const CANVAS_PADDING_PERCENT = 0.1;
 
+// ===== ГЛОБАЛЬНЫЙ МНОЖИТЕЛЬ СКОРОСТИ АНИМАЦИИ =====
+
+/**
+ * Глобальный множитель скорости анимации.
+ * 1.0 — базовая скорость, 2.0 — всё в 2 раза медленнее, 0.5 — в 2 раза быстрее.
+ * Применяется ко всем временным константам (появление, жизнь, исчезновение,
+ * респавн, разлёт, заморозка).
+ */
+export const ANIMATION_SPEED_MULTIPLIER = 2;
+
 /** Задержка между появлениями иконок при старте (мс) */
-export const SPAWN_DELAY_STEP = 150;
+export const SPAWN_DELAY_STEP = 150 * ANIMATION_SPEED_MULTIPLIER;
 
 /** Длительность появления иконки (мс) */
-export const APPEAR_DURATION = 600;
+export const APPEAR_DURATION = 600 * ANIMATION_SPEED_MULTIPLIER;
 
 /** Максимальное случайное смещение внутри ячейки (40%) */
 export const CELL_RANDOM_OFFSET = 0.15;
@@ -79,6 +89,20 @@ export const CONNECTION_POINT_RADIUS = 4;
 /** Отступ точки соединения от нижнего края текста в пикселях */
 export const CONNECTION_POINT_GAP = 8;
 
+// ===== КОНСТАНТЫ ДЛЯ ПОДЛОЖКИ ПОД ТЕКСТОМ =====
+
+/** Цвет подложки под текстом */
+export const TEXT_BG_COLOR = 'rgba(233, 236, 245, 1)';
+
+/** Радиус скругления подложки под текстом (px) */
+export const TEXT_BG_RADIUS = 8;
+
+/** Горизонтальный внутренний отступ текста в подложке (px) */
+export const TEXT_BG_PADDING_X = 6;
+
+/** Вертикальный внутренний отступ текста в подложке (px) */
+export const TEXT_BG_PADDING_Y = 2;
+
 // ===== КОНСТАНТЫ ДЛЯ КОСТЯКА (CORE) =====
 
 /**
@@ -97,7 +121,7 @@ export const CORE_RADIUS_RATIO = 0.3;
 export const CORE_LABELS = ['Core', 'Hub', 'Router', 'Switch'];
 
 /** Ключи иконок для core-узлов (соответствуют CORE_LABELS по порядку). */
-export const CORE_ICON_KEYS = ['servers', 'cloud', 'database', 'network'];
+export const CORE_ICON_KEYS = ['server', 'balancer', 'kubernetes', 'storage'];
 
 // ===== КОНСТАНТЫ ДЛЯ ЖИЗНЕННОГО ЦИКЛА =====
 
@@ -105,13 +129,13 @@ export const CORE_ICON_KEYS = ['servers', 'cloud', 'database', 'network'];
  * Минимальное время, которое узел должен быть полностью виден
  * после появления, прежде чем он сможет начать исчезать (мс).
  */
-export const MIN_VISIBLE_TIME = 1500;
+export const MIN_VISIBLE_TIME = 1500 * ANIMATION_SPEED_MULTIPLIER;
 
 /** Длительность плавного исчезновения узла и его связи (мс). */
-export const FADE_DURATION = 600;
+export const FADE_DURATION = 600 * ANIMATION_SPEED_MULTIPLIER;
 
 /** Задержка перед появлением нового узла после начала исчезновения старого (мс). */
-export const RESPAWN_DELAY = 100;
+export const RESPAWN_DELAY = 100 * ANIMATION_SPEED_MULTIPLIER;
 
 /** Максимальное количество попыток найти свободную позицию для нового узла. */
 export const POSITION_SEARCH_ATTEMPTS = 150;
@@ -146,14 +170,14 @@ export const FROZEN_TIME_SCALE = 4;
 /**
  * Время (в мс), за которое нужно достичь лимита узлов при входе в замороженный режим.
  */
-export const FROZEN_FILL_DURATION = 2000;
+export const FROZEN_FILL_DURATION = 2000 * ANIMATION_SPEED_MULTIPLIER;
 
 // ===== КОНСТАНТЫ ДЛЯ АНИМАЦИИ РАЗЛЁТА (SCATTER) =====
 
 /**
  * Длительность анимации разлёта объектов при клике на кнопку (мс).
  */
-export const SCATTER_DURATION = 500;
+export const SCATTER_DURATION = 500 * ANIMATION_SPEED_MULTIPLIER;
 
 /**
  * Максимальное расстояние разлёта объектов от их исходной позиции (в пикселях).

@@ -1,13 +1,18 @@
 /* eslint-disable no-param-reassign */
 
-import {getIcon} from '../../InfrastructureChoose/canvasAnimation/icons';
+import {getIcon} from './icons';
 import {
     BASE_ICON_SIZE,
     BASE_LINE_WIDTH,
     CONNECTION_POINT_RADIUS,
+    LABEL_FONT_SIZE,
     LABEL_GAP,
     LINE_COLOR,
     LINE_CORNER_RADIUS,
+    TEXT_BG_COLOR,
+    TEXT_BG_PADDING_X,
+    TEXT_BG_PADDING_Y,
+    TEXT_BG_RADIUS,
 } from './constants';
 import {LineStyle, Node2D, Point} from './types';
 
@@ -39,6 +44,29 @@ const slicePath = (
         }
     }
     return result;
+};
+
+const drawRoundedRect = (
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    r: number,
+): void => {
+    const radius = Math.min(r, w / 2, h / 2);
+
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + w - radius, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+    ctx.lineTo(x + w, y + h - radius);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+    ctx.lineTo(x + radius, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
 };
 
 export const drawGrowingPath = (
@@ -111,7 +139,24 @@ export const drawNode = (
 
             ctx.drawImage(img, iconX, iconY, iconW, iconH);
 
+            // ===== ПОДЛОЖКА ПОД ТЕКСТОМ =====
             const textY = iconY + iconH + LABEL_GAP * scaleFactor;
+            const textWidth = ctx.measureText(node.label).width;
+            const textHeight = LABEL_FONT_SIZE * scaleFactor;
+            const bgPadX = TEXT_BG_PADDING_X * scaleFactor;
+            const bgPadY = TEXT_BG_PADDING_Y * scaleFactor;
+
+            const bgX = node.x - textWidth / 2 - bgPadX;
+            const bgY = textY - bgPadY;
+            const bgW = textWidth + bgPadX * 2;
+            const bgH = textHeight + bgPadY * 2;
+            const bgRadius = TEXT_BG_RADIUS * scaleFactor;
+
+            ctx.fillStyle = TEXT_BG_COLOR;
+            drawRoundedRect(ctx, bgX, bgY, bgW, bgH, bgRadius);
+            ctx.fill();
+
+            // ===== ТЕКСТ =====
             ctx.fillStyle = '#000000';
             ctx.fillText(node.label, node.x, textY);
         }
@@ -123,7 +168,7 @@ export const drawNode = (
     ctx.beginPath();
     ctx.arc(node.x, connY, connRadius, 0, Math.PI * 2);
 
-    // ИЗМЕНЕНИЕ: Точка теперь закрашивается основным цветом линии (LINE_COLOR) вместо белого ('#ffffff')
+    // Точка закрашивается основным цветом линии
     ctx.fillStyle = LINE_COLOR;
     ctx.fill();
 

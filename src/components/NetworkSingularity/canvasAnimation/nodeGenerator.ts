@@ -4,7 +4,7 @@
    что критично для производительности и избежания срабатывания GC. 
 */
 
-import {getIconKeyByLabel} from '../../InfrastructureChoose/canvasAnimation/icons';
+import {getIconKeyByLabel} from './icons';
 import {
     BASE_ICON_SIZE,
     CANVAS_PADDING_PERCENT,
@@ -170,7 +170,7 @@ export const generateCoreNodes = (width: number, height: number, scaleFactor: nu
 
         const label = CORE_LABELS[i % CORE_LABELS.length];
         const iconKey =
-            CORE_ICON_KEYS[i % CORE_ICON_KEYS.length] || getIconKeyByLabel(label) || 'servers';
+            CORE_ICON_KEYS[i % CORE_ICON_KEYS.length] || getIconKeyByLabel(label) || 'server';
         const bbox = computeBBox(x, y, scaleFactor, label);
 
         const iconHalfH = (BASE_ICON_SIZE / 2) * scaleFactor;
@@ -409,7 +409,7 @@ export const spawnNewNode = (
         const label = availableLabels[labelIdx];
         availableLabels.splice(labelIdx, 1);
 
-        const iconKey = getIconKeyByLabel(label) || 'servers';
+        const iconKey = getIconKeyByLabel(label) || 'server';
         const {x, y} = findRandomPosition(allNodes, width, height, scaleFactor, label, false);
         const bbox = computeBBox(x, y, scaleFactor, label);
 
@@ -546,7 +546,7 @@ export const generateNodes2D = (
 
         if (nodeType === 'icon') {
             const label = selectedLabels[iconIndex++];
-            const iconKey = getIconKeyByLabel(label) || 'servers';
+            const iconKey = getIconKeyByLabel(label) || 'server';
             const bbox = computeBBox(x, y, scaleFactor, label);
 
             const iconHalfH = (BASE_ICON_SIZE / 2) * scaleFactor;
