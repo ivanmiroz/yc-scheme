@@ -539,11 +539,19 @@ export const useNetworkAnimation = (
             const scaleFactor = scaleFactorRef.current;
 
             if (cssWidth > 0 && cssHeight > 0) {
-                const coreNodes = generateCoreNodes(cssWidth, cssHeight, scaleFactor);
+                // Сбрасываем пул подписей и отдаём его core-узлам,
+                // чтобы они выбрали себе 4 случайные подписи и изъяли их из пула.
+                availableLabelsRef.current = [...LABELS];
+
+                const coreNodes = generateCoreNodes(
+                    cssWidth,
+                    cssHeight,
+                    scaleFactor,
+                    availableLabelsRef.current,
+                );
                 buildCoreRingRoutes(coreNodes, scaleFactor);
                 coreNodesRef.current = coreNodes;
 
-                availableLabelsRef.current = [...LABELS];
                 nodesRef.current = generateNodes2D(
                     cssWidth,
                     cssHeight,
@@ -591,11 +599,19 @@ export const useNetworkAnimation = (
                 scaleFactorRef.current = scaleFactor;
                 sizeRef.current = {width: cssWidth, height: cssHeight};
 
-                const coreNodes = generateCoreNodes(cssWidth, cssHeight, scaleFactor);
+                // Сбрасываем пул подписей и отдаём его core-узлам,
+                // чтобы они выбрали себе 4 случайные подписи и изъяли их из пула.
+                availableLabelsRef.current = [...LABELS];
+
+                const coreNodes = generateCoreNodes(
+                    cssWidth,
+                    cssHeight,
+                    scaleFactor,
+                    availableLabelsRef.current,
+                );
                 buildCoreRingRoutes(coreNodes, scaleFactor);
                 coreNodesRef.current = coreNodes;
 
-                availableLabelsRef.current = [...LABELS];
                 nodesRef.current = generateNodes2D(
                     cssWidth,
                     cssHeight,

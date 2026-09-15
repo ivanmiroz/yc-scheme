@@ -86,8 +86,6 @@ export const TEXT_BG_PADDING_Y = 2;
 
 export const CORE_NODE_COUNT = 4;
 export const CORE_RADIUS_RATIO = 0.3;
-export const CORE_LABELS = ['Core', 'Hub', 'Router', 'Switch'];
-export const CORE_ICON_KEYS = ['server', 'balancer', 'kubernetes', 'storage'];
 
 // ===== ЖИЗНЕННЫЙ ЦИКЛ =====
 

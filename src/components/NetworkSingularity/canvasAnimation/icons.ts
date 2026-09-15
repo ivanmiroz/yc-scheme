@@ -83,12 +83,6 @@ const labelToKey = new Map<string, IconKey>([
     ['Сервер', 'server'],
     ['Хранилище', 'storage'],
     ['Виртуальная машина', 'vm'],
-
-    // алиасы для core-узлов, чтобы старые подписи не ломали иконки
-    ['Core', 'server'],
-    ['Hub', 'balancer'],
-    ['Router', 'kubernetes'],
-    ['Switch', 'storage'],
 ]);
 
 const iconCache = new Map<IconKey, HTMLImageElement>();

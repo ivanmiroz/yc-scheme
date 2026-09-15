@@ -4,15 +4,13 @@
    что критично для производительности и избежания срабатывания GC. 
 */
 
-import {getIconKeyByLabel} from './icons';
+import {LABELS, getIconKeyByLabel} from './icons';
 import {
     BASE_ICON_SIZE,
     CANVAS_PADDING_PERCENT,
     CELL_RANDOM_OFFSET,
     CONNECTION_POINT_GAP,
     CONNECTION_POINT_RADIUS,
-    CORE_ICON_KEYS,
-    CORE_LABELS,
     CORE_NODE_COUNT,
     CORE_RADIUS_RATIO,
     EMPTY_NODE_COUNT,
@@ -150,15 +148,33 @@ const rebuildRoutes = (dynamicNodes: Node2D[], coreNodes: Node2D[], scaleFactor:
  * Создаёт постоянные core-узлы «костяка», расположенные по кругу в центре канваса.
  * Эти узлы имеют createdAt = 0 и никогда не исчезают.
  *
+ * Подписи выбираются случайно из переданного пула и изымаются из него,
+ * чтобы не появиться повторно среди динамических узлов.
+ *
  * @param width - Ширина канваса в CSS-пикселях.
  * @param height - Высота канваса в CSS-пикселях.
  * @param scaleFactor - Коэффициент масштабирования.
+ * @param availableLabels - Пул доступных подписей (мутируется: выбранные изымаются).
  * @returns Массив core-узлов, расположенных по кругу в центре канваса.
  */
-export const generateCoreNodes = (width: number, height: number, scaleFactor: number): Node2D[] => {
+export const generateCoreNodes = (
+    width: number,
+    height: number,
+    scaleFactor: number,
+    availableLabels: string[],
+): Node2D[] => {
     const centerX = width / 2;
     const centerY = height / 2;
     const radius = Math.min(width, height) * CORE_RADIUS_RATIO;
+
+    // Случайно выбираем CORE_NODE_COUNT подписей и убираем их из пула,
+    // чтобы они не появились повторно как динамические узлы.
+    const pool = shuffleArray(availableLabels);
+    const coreLabels = pool.slice(0, CORE_NODE_COUNT);
+    for (const label of coreLabels) {
+        const idx = availableLabels.indexOf(label);
+        if (idx !== -1) availableLabels.splice(idx, 1);
+    }
 
     const nodes: Node2D[] = [];
 
@@ -168,9 +184,9 @@ export const generateCoreNodes = (width: number, height: number, scaleFactor: nu
         const x = centerX + Math.cos(angle) * radius;
         const y = centerY + Math.sin(angle) * radius;
 
-        const label = CORE_LABELS[i % CORE_LABELS.length];
-        const iconKey =
-            CORE_ICON_KEYS[i % CORE_ICON_KEYS.length] || getIconKeyByLabel(label) || 'server';
+        // На случай, если пул оказался меньше CORE_NODE_COUNT — подстраховываемся.
+        const label = coreLabels[i] ?? LABELS[i % LABELS.length];
+        const iconKey = getIconKeyByLabel(label) || 'server';
         const bbox = computeBBox(x, y, scaleFactor, label);
 
         const iconHalfH = (BASE_ICON_SIZE / 2) * scaleFactor;
@@ -516,10 +532,22 @@ export const generateNodes2D = (
         ...Array(EMPTY_NODE_COUNT).fill('empty'),
     ];
     const shuffledTypes = shuffleArray(nodeTypes);
-    const shuffledLabels = [...availableLabels].sort(() => 0.5 - Math.random());
-    const selectedLabels = shuffledLabels.slice(0, NODE_COUNT);
 
-    for (const label of selectedLabels) {
+    // Пул подписей может быть меньше NODE_COUNT: core-узлы забирают часть
+    // LABELS, а сам массив LABELS содержит меньше элементов, чем NODE_COUNT.
+    // Добираем недостающие подписи из полного LABELS по кругу — дубликаты допустимы.
+    const shuffledLabels = shuffleArray(availableLabels);
+    const selectedLabels: string[] = [];
+    for (let i = 0; i < NODE_COUNT; i++) {
+        if (i < shuffledLabels.length) {
+            selectedLabels.push(shuffledLabels[i]);
+        } else {
+            selectedLabels.push(LABELS[(i - shuffledLabels.length) % LABELS.length]);
+        }
+    }
+
+    // Из пула забираем только те подписи, которые реально были в нём.
+    for (const label of shuffledLabels) {
         const idx = availableLabels.indexOf(label);
         if (idx !== -1) availableLabels.splice(idx, 1);
     }
