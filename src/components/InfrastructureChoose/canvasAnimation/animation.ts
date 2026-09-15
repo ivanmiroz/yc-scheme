@@ -1,3 +1,4 @@
+// src/components/InfrastructureChoose/canvasAnimation/animation.ts
 import {PodiumState, Position} from './types';
 import {
     ANIMATION_CONFIG,
@@ -93,22 +94,55 @@ export const createPodiumAnimator = (
     const calcSchemeLinesTotal = (params: AnimationParams[]) =>
         params.reduce((max, p) => Math.max(max, p.delay + p.duration), 0);
 
+    // Точка старта платформы по вертикали — центр canvas.
+    // Все платформы одновременно «выезжают» из середины и расходятся:
+    // верхние — вверх, нижние — вниз.
+    const getStartY = (scaledHeight: number): number => {
+        const dpr = getEffectiveDpr();
+        const canvasHeight = canvas.height / dpr;
+        return canvasHeight / 2 - scaledHeight / 2;
+    };
+
+    // Сброс всех «липких» состояний 2D-контекста к дефолтным.
+    // Используем Object.assign вместо последовательных ctx.<prop> = …,
+    // чтобы не триггерить ESLint no-param-reassign (props) — правило
+    // ругается на запись в свойства параметра функции.
+    const resetContextState = () => {
+        Object.assign(ctx, {
+            globalAlpha: 1,
+            filter: 'none',
+            globalCompositeOperation: 'source-over',
+            shadowBlur: 0,
+            shadowColor: 'rgba(0, 0, 0, 0)',
+            shadowOffsetX: 0,
+            shadowOffsetY: 0,
+            lineCap: 'butt',
+            lineJoin: 'miter',
+            lineWidth: 1,
+            miterLimit: 10,
+        });
+    };
+
     const updatePodiums = (elapsed: number): boolean => {
         let allFinished = true;
 
+        // Прогресс одинаковый для всех платформ — они движутся синхронно.
+        const progress = Math.min(elapsed / ANIMATION_CONFIG.PLATFORM_DURATION, 1);
+        const easedProgress = easeOutCubic(progress);
+
+        if (progress < 1) {
+            allFinished = false;
+        }
+
+        // Платформы рисуем на чистом состоянии, чтобы «хвосты» от
+        // предыдущих слоёв не делали их полупрозрачными.
+        ctx.save();
+        resetContextState();
+
         for (let i = podiums.length - 1; i >= 0; i--) {
             const p = podiums[i];
-            const startY = -p.scaledHeight;
+            const startY = getStartY(p.scaledHeight);
 
-            const staggerDelay = i * ANIMATION_CONFIG.STAGGER_DELAY;
-            const adjustedElapsed = Math.max(0, elapsed - staggerDelay);
-            const progress = Math.min(adjustedElapsed / ANIMATION_CONFIG.PLATFORM_DURATION, 1);
-
-            if (progress < 1) {
-                allFinished = false;
-            }
-
-            const easedProgress = easeOutCubic(progress);
             p.currentY = startY + (p.targetY - startY) * easedProgress;
 
             const img = podiumImages[p.id];
@@ -116,6 +150,8 @@ export const createPodiumAnimator = (
                 ctx.drawImage(img, p.currentX, p.currentY, p.scaledWidth, p.scaledHeight);
             }
         }
+
+        ctx.restore();
 
         return allFinished;
     };
@@ -175,9 +211,15 @@ export const createPodiumAnimator = (
     };
 
     const drawAllConnections = (timestamp: number, width: number) => {
+        // Каждый слой — в своём save/restore, чтобы drawers.ts не мог
+        // оставить после себя грязное состояние (globalAlpha, filter,
+        // composite, shadow, lineWidth) для следующих слоёв этого же кадра.
         if (connectionsAnimationStarted) {
             const connectionsElapsed = timestamp - connectionsStartTime;
+            ctx.save();
+            resetContextState();
             drawConnections(ctx, podiums, connectionsElapsed, width, activeLegend);
+            ctx.restore();
         }
 
         if (schemeLinesAnimationStarted) {
@@ -187,7 +229,10 @@ export const createPodiumAnimator = (
                 const localProgress = Math.min(localElapsed / duration, 1);
                 return easeOutCubic(localProgress);
             });
+            ctx.save();
+            resetContextState();
             drawSchemeLines(ctx, positions, progresses, width, activeLegend);
+            ctx.restore();
         }
     };
 
@@ -214,6 +259,11 @@ export const createPodiumAnimator = (
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.clearRect(0, 0, width, height);
 
+        // Чистим состояние после предыдущего кадра. Даже если что-то
+        // протекло из drawers.ts и не восстановилось внутри save/restore,
+        // на новом кадре мы всё равно начинаем с дефолта.
+        resetContextState();
+
         ctx.setTransform(dpr * view.scale, 0, 0, dpr * view.scale, dpr * view.x, dpr * view.y);
 
         const allPlatformsFinished = updatePodiums(elapsed);
@@ -222,7 +272,10 @@ export const createPodiumAnimator = (
         const allPositionsFinished = updatePositionOpacities(timestamp);
 
         if (positions.length > 0 && positionOpacities.length === positions.length) {
+            ctx.save();
+            resetContextState();
             drawPositions(ctx, positions, positionOpacities, width);
+            ctx.restore();
         }
 
         ensureConnectionsStarted(timestamp, allPlatformsFinished, allPositionsFinished);
@@ -358,7 +411,10 @@ export const createPodiumAnimator = (
             podiums.push({
                 id: i,
                 targetY,
-                currentY: skipIntro ? targetY : -scaledHeight,
+                // skipIntro — платформы сразу на своих местах.
+                // Иначе все стартуют из центра canvas (совпадает с getStartY),
+                // чтобы одновременно разойтись: верхние вверх, нижние вниз.
+                currentY: skipIntro ? targetY : centerY - scaledHeight / 2,
                 targetX,
                 currentX: targetX,
                 scaledWidth,
@@ -391,6 +447,11 @@ export const createPodiumAnimator = (
         schemeLinesTotalDuration = calcSchemeLinesTotal(schemeLineParams);
         schemeLinesAnimationStarted = true;
         schemeLinesStartTime = performance.now();
+
+        // Сбрасываем флаг, чтобы по завершении новой анимации снова
+        // сработал onReady — тогда index.ts откроет попап ровно
+        // через POPUP_DELAY_AFTER_ANIMATION после реального окончания линий.
+        readyNotified = false;
 
         if (!animationFrameId) {
             animationFrameId = requestAnimationFrame(animate);

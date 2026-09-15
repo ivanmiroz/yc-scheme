@@ -1,3 +1,4 @@
+// src/components/ScaleTabs/ScaleTabs.tsx
 'use client';
 
 import React, {useCallback, useEffect, useRef, useState} from 'react';
@@ -27,6 +28,10 @@ const b = block('scale-tabs');
 const INACTIVITY_DELAY_MS = 15000;
 const COUNTDOWN_FROM = 59;
 const RESET_DELAY_MS = 800;
+
+// Гайд показывается не раньше, чем через 1 с после завершения анимации
+// линий (событие onReady из NetworkSingularity).
+const GUIDE_POPUP_DELAY_MS = 1000;
 
 const actions = [
     {value: 'scale', label: 'Масштабирование без ограничений'},
@@ -115,6 +120,9 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
 
     const hasShownOnboardingRef = useRef(false);
 
+    // Таймер отложенного показа GuidePopup (1 с после onReady).
+    const guideShowTimerRef = useRef<number | null>(null);
+
     const inactivityTimeoutRef = useRef<number | null>(null);
     const countdownIntervalRef = useRef<number | null>(null);
     const reloadTimeoutRef = useRef<number | null>(null);
@@ -134,16 +142,32 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
 
     const activeTabValue = infraTabs[activeIndex]?.value;
 
+    const cancelGuideShowTimer = useCallback(() => {
+        if (guideShowTimerRef.current !== null) {
+            window.clearTimeout(guideShowTimerRef.current);
+            guideShowTimerRef.current = null;
+        }
+    }, []);
+
     const handleCanvasStart = useCallback(() => {
         setIsCanvasReady(false);
-    }, []);
+        // Перезапуск анимации (переключение схемы, ресайз и т. п.) —
+        // запланированный показ гайда больше не актуален.
+        cancelGuideShowTimer();
+    }, [cancelGuideShowTimer]);
 
     const handleCanvasReady = useCallback(() => {
         setIsCanvasReady(true);
         if (hasShownOnboardingRef.current) return;
         hasShownOnboardingRef.current = true;
-        setOnboardingStep('guide');
-    }, []);
+
+        // Линии дорисованы — показываем GuidePopup через 1 с.
+        cancelGuideShowTimer();
+        guideShowTimerRef.current = window.setTimeout(() => {
+            guideShowTimerRef.current = null;
+            setOnboardingStep('guide');
+        }, GUIDE_POPUP_DELAY_MS);
+    }, [cancelGuideShowTimer]);
 
     const handleGuideClose = useCallback(() => {
         setOnboardingStep('zoom');
@@ -265,6 +289,14 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
             setTimerSeconds(null);
         };
     }, [isOnboardingDone, resetInactivity, clearTimers]);
+
+    // Отмена запланированного показа гайда при размонтировании.
+    useEffect(
+        () => () => {
+            cancelGuideShowTimer();
+        },
+        [cancelGuideShowTimer],
+    );
 
     return (
         <div className={b()}>

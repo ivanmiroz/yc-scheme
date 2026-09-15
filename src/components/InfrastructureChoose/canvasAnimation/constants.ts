@@ -1,3 +1,4 @@
+// src/components/InfrastructureChoose/canvasAnimation/constants.ts
 export const ANIMATION_CONFIG = {
     PLATFORM_DURATION: 1000,
     STAGGER_DELAY: 150,
@@ -33,7 +34,8 @@ export const ICON_DRAW_CONFIG = {
 } as const;
 
 export const CONNECTIONS_CONFIG = {
-    LINE_DURATION: 500,
+    // Соединения между платформами рисуются по 2 секунды каждое.
+    LINE_DURATION: 2000,
     LINE_WIDTH_RATIO: 3 / 1920,
     DOT_RADIUS_RATIO: 7 / 1920,
     COLOR: '#000000',
@@ -80,10 +82,14 @@ export const PLATFORM_MARKER_CONFIG = {
     LINE_DURATION: 500,
 } as const;
 
+// Линии схемы (те, что описаны в scheme1Lines / scheme2Lines / …) рисуются
+// суммарно 2 секунды: BASE_DELAY + MAX_RANDOM_DELAY + DURATION === 2000.
+// Значения используются и в интро-анимации, и в refreshScheme()
+// при переключении схем — тайминг одинаковый.
 export const SCHEME_LINES_ANIMATION_CONFIG = {
-    BASE_DELAY: 100,
-    MAX_RANDOM_DELAY: 500,
-    DURATION: 400,
+    BASE_DELAY: 200,
+    MAX_RANDOM_DELAY: 800,
+    DURATION: 1000,
 } as const;
 
 // ==========================================
