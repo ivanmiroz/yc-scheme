@@ -102,6 +102,12 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
     const [isCanvasReady, setIsCanvasReady] = useState(false);
     const [activeLegend, setActiveLegend] = useState<LegendValue | null>(null);
 
+    // Пока идёт анимация схлопывания — помним, какой таб нужно применить после.
+    const [pendingTabIndex, setPendingTabIndex] = useState<number | null>(null);
+    // Флаг: анимация схлопывания запущена; блокирует повторные клики и
+    // позволяет менять .scale-tabs__sidebar только после её завершения.
+    const [isCollapsing, setIsCollapsing] = useState(false);
+
     const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('closed');
     const [isOnboardingDone, setIsOnboardingDone] = useState(false);
 
@@ -117,6 +123,16 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
     const visibleLegendItems = allLegendItems.filter((item) =>
         availableLegendValues.includes(item.value),
     );
+
+    // Показываем infra sidebar сразу, как только применился таб. Во время
+    // схлопывания .scale-tabs__sidebar остаётся в исходном (scale) состоянии.
+    const isSidebarActive = activeIndex !== -1;
+
+    // isScattering для NetworkSingularity: либо идёт схлопывание, либо
+    // уже показан infra sidebar (тогда canvas занят infrastructure-анимацией).
+    const isScattering = isCollapsing || isSidebarActive;
+
+    const activeTabValue = infraTabs[activeIndex]?.value;
 
     const handleCanvasStart = useCallback(() => {
         setIsCanvasReady(false);
@@ -138,6 +154,20 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
         setIsOnboardingDone(true);
     }, []);
 
+    // Вызывается из NetworkSingularity после завершения ВСЕХ фаз анимации
+    // (ускорение → фейд точек и линий → полёт иконок к центру).
+    // Только здесь применяем отложенный таб — и, соответственно, только теперь
+    // меняется .scale-tabs__sidebar-scale (через модификатор frozen у .scale-tabs__sidebar).
+    const handleScatterComplete = useCallback(() => {
+        if (pendingTabIndex !== null) {
+            onActionClick?.(pendingTabIndex);
+            setLocalActiveIndex(pendingTabIndex);
+            setActiveScheme(pendingTabIndex);
+            setPendingTabIndex(null);
+        }
+        setIsCollapsing(false);
+    }, [pendingTabIndex, onActionClick]);
+
     const handleInfraTabClick = (index: number) => {
         setLocalActiveIndex(index);
         setActiveScheme(index);
@@ -146,9 +176,17 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
     const handleButtonClick = (actionValue: string) => {
         const tabIndex = infraTabs.findIndex((tab) => tab.value === actionValue);
         if (tabIndex === -1) return;
-        onActionClick?.(tabIndex);
-        setLocalActiveIndex(tabIndex);
-        setActiveScheme(tabIndex);
+
+        // Защита: не запускаем новую схлопывающую анимацию поверх текущей
+        // и не переключаем таб, если infra sidebar уже показан.
+        if (isCollapsing) return;
+        if (isSidebarActive) return;
+
+        // Запоминаем намерение, но НЕ применяем таб сразу.
+        // Сначала проигрываем анимацию схлопывания, а таб (и, соответственно,
+        // .scale-tabs__sidebar-scale) меняем только в handleScatterComplete.
+        setPendingTabIndex(tabIndex);
+        setIsCollapsing(true);
     };
 
     const handleLegendClick = (value: LegendValue) => {
@@ -228,19 +266,17 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
         };
     }, [isOnboardingDone, resetInactivity, clearTimers]);
 
-    const isSidebarActive = activeIndex !== -1;
-    const activeTabValue = infraTabs[activeIndex]?.value;
-
     return (
         <div className={b()}>
             <div className={b('content')}>
                 <div className={b('panel')}>
                     <NetworkSingularity
                         activeSchemeIndex={localActiveIndex}
-                        isScattering={isSidebarActive}
+                        isScattering={isScattering}
                         activeLegend={activeLegend}
                         onStart={handleCanvasStart}
                         onReady={handleCanvasReady}
+                        onScatterComplete={handleScatterComplete}
                     />
                 </div>
             </div>

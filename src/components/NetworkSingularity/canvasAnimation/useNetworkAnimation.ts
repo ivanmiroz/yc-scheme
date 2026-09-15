@@ -11,19 +11,31 @@ import {
 } from './nodeGenerator';
 import {drawGrowingPath, drawNode, prepareCanvas} from './renderer';
 import {calculateCanvasDimensions, calculateScaleFactor} from './utils';
-import {Node2D, Point} from './types';
+import {Node2D} from './types';
 import {
     APPEAR_DURATION,
+    COLLAPSE_ACCELERATE_DURATION,
+    COLLAPSE_ACCELERATE_SPEED,
+    COLLAPSE_FADE_DURATION,
+    COLLAPSE_FLY_DURATION,
     FADE_DURATION,
     LABEL_FONT_SIZE,
     MIN_AGE_FOR_FADE,
     RESPAWN_DELAY,
-    SCATTER_DISTANCE,
-    SCATTER_DURATION,
     TARGET_TOTAL_COUNT,
 } from './constants';
 import {LABELS, loadAllIcons} from './icons';
 
+// ===== ОПАСИТИ / ЖИЗНЕННЫЙ ЦИКЛ =====
+
+/**
+ * Считает прозрачность узла с учётом фаз появления и исчезновения.
+ *
+ * @param node - Узел, для которого считается прозрачность.
+ * @param currentTime - Текущее виртуальное время анимации (мс).
+ * @param timeScale - Множитель скорости времени (1 — обычная скорость).
+ * @returns Прозрачность узла в диапазоне [0..1].
+ */
 const getNodeOpacity = (node: Node2D, currentTime: number, timeScale: number): number => {
     if (currentTime < node.createdAt) return 0;
 
@@ -42,6 +54,14 @@ const getNodeOpacity = (node: Node2D, currentTime: number, timeScale: number): n
     return appearOpacity;
 };
 
+/**
+ * Ищет самый старый узел, который уже достиг возраста MIN_AGE_FOR_FADE
+ * и ещё не начал исчезать.
+ *
+ * @param nodes - Массив узлов для поиска.
+ * @param currentTime - Текущее виртуальное время (мс).
+ * @returns Старейший «созревший» узел или null, если такого нет.
+ */
 const findOldestMatureNode = (nodes: Node2D[], currentTime: number): Node2D | null => {
     let oldest: Node2D | null = null;
 
@@ -57,6 +77,17 @@ const findOldestMatureNode = (nodes: Node2D[], currentTime: number): Node2D | nu
     return oldest;
 };
 
+/**
+ * Удаляет из массива полностью исчезнувшие узлы, возвращает освободившиеся
+ * подписи в пул и перестраивает маршруты у узлов, чьи источники были удалены.
+ *
+ * @param coreNodes - Массив постоянных core-узлов.
+ * @param dynamicNodes - Текущий массив динамических узлов.
+ * @param scaleFactor - Коэффициент масштабирования.
+ * @param currentTime - Текущее виртуальное время (мс).
+ * @param availableLabels - Пул доступных подписей (мутируется: возвращает освободившиеся).
+ * @returns Новый массив динамических узлов без удалённых.
+ */
 const removeFadedNodes = (
     coreNodes: Node2D[],
     dynamicNodes: Node2D[],
@@ -109,20 +140,25 @@ const removeFadedNodes = (
     }
 
     for (const node of filteredDynamic) {
-        if (node.sourceIdx >= 0) {
-            if (node.sourceIdx < coreCount) {
-                // Указывает на core — индекс не меняется
-            } else {
-                const oldDynamicIdx = node.sourceIdx - coreCount;
-                const mapped = dynamicIndexMap.get(oldDynamicIdx);
-                node.sourceIdx = mapped === undefined ? -1 : coreCount + mapped;
-            }
+        if (node.sourceIdx >= 0 && node.sourceIdx >= coreCount) {
+            const oldDynamicIdx = node.sourceIdx - coreCount;
+            const mapped = dynamicIndexMap.get(oldDynamicIdx);
+            node.sourceIdx = mapped === undefined ? -1 : coreCount + mapped;
         }
     }
 
     return filteredDynamic;
 };
 
+/**
+ * Помечает fadeStart у узлов, потерявших все связи (нет ни источника,
+ * ни входящих ссылок), чтобы они начали исчезать.
+ *
+ * @param coreNodes - Массив постоянных core-узлов.
+ * @param dynamicNodes - Текущий массив динамических узлов (мутируется).
+ * @param currentTime - Текущее виртуальное время (мс), записывается в fadeStart.
+ * @returns Ничего не возвращает; мутирует элементы dynamicNodes.
+ */
 const fadeDisconnectedNodes = (
     coreNodes: Node2D[],
     dynamicNodes: Node2D[],
@@ -152,6 +188,15 @@ const fadeDisconnectedNodes = (
     }
 };
 
+/**
+ * Управляет жизненным циклом в обычном режиме: когда активных узлов
+ * становится больше TARGET_TOTAL_COUNT, помечает старейший из них
+ * на исчезновение.
+ *
+ * @param dynamicNodes - Текущий массив динамических узлов (мутируется).
+ * @param currentTime - Текущее виртуальное время (мс).
+ * @returns Ничего не возвращает; может установить fadeStart у одного узла.
+ */
 const handleNormalLifecycle = (dynamicNodes: Node2D[], currentTime: number): void => {
     let activeCount = 0;
     for (const node of dynamicNodes) {
@@ -168,22 +213,24 @@ const handleNormalLifecycle = (dynamicNodes: Node2D[], currentTime: number): voi
     }
 };
 
-// Детерминированный расчёт вектора разлёта узла
-const getScatterOffset = (node: Node2D, progress: number): {x: number; y: number} => {
-    const seed = node.createdAt + (node.isCore ? 10000 : 0) + (node.isEmpty ? 5000 : 0);
-    const angle = (seed * 137.508) % 360;
-    const rad = angle * (Math.PI / 180);
-    const distance = SCATTER_DISTANCE * progress;
-    return {
-        x: Math.cos(rad) * distance,
-        y: Math.sin(rad) * distance,
-    };
-};
-
-// Обновление жизненного цикла узлов (вне режима разлёта).
-// ВАЖНО: возвращает актуальный массив динамических узлов — вызывающая сторона
-// обязана присвоить его обратно в nodesRef.current, иначе спавн и удаление
-// будут «теряться» и анимация застынет.
+/**
+ * Обновляет жизненный цикл узлов: удаляет исчезнувшие, добавляет новые.
+ *
+ * @param coreNodes - Массив постоянных core-узлов.
+ * @param dynamicNodes - Текущий массив динамических узлов.
+ * @param availableLabels - Пул доступных подписей (мутируется).
+ * @param scaleFactor - Коэффициент масштабирования.
+ * @param width - Ширина канваса в CSS-пикселях.
+ * @param height - Высота канваса в CSS-пикселях.
+ * @param t - Текущее виртуальное время анимации (мс).
+ * @param unlimited - Если true, верхний лимит TARGET_TOTAL_COUNT снимается:
+ *                    старые узлы не уходят по возрасту, новые спавнятся
+ *                    с частотой RESPAWN_DELAY по виртуальному времени.
+ *                    Используется в фазе ускорения при схлопывании.
+ * @param lastSpawnTRef - Ref с виртуальным временем последнего спавна
+ *                        в unlimited-режиме (чтобы не спавнить каждый кадр).
+ * @returns Обновлённый массив динамических узлов.
+ */
 const updateLifecycle = (
     coreNodes: Node2D[],
     dynamicNodes: Node2D[],
@@ -192,137 +239,250 @@ const updateLifecycle = (
     width: number,
     height: number,
     t: number,
+    unlimited: boolean,
+    lastSpawnTRef: React.MutableRefObject<number>,
 ): Node2D[] => {
-    handleNormalLifecycle(dynamicNodes, t);
+    if (!unlimited) {
+        handleNormalLifecycle(dynamicNodes, t);
+    }
 
     const afterRemoval = removeFadedNodes(coreNodes, dynamicNodes, scaleFactor, t, availableLabels);
 
-    const activeCount = afterRemoval.filter((n) => n.fadeStart === null).length;
-    const countToAdd = TARGET_TOTAL_COUNT - activeCount;
-
-    if (countToAdd > 0) {
-        for (let i = 0; i < countToAdd; i++) {
+    if (unlimited) {
+        // Лимит создания снят: спавним новый узел каждый раз, когда виртуальное
+        // время продвинулось на RESPAWN_DELAY. Старые при этом не уходят —
+        // сцена непрерывно наполняется новыми объектами и связями.
+        if (t - lastSpawnTRef.current >= RESPAWN_DELAY) {
             const allNodesForSpawn = [...coreNodes, ...afterRemoval];
+
+            // В unlimited-режиме основной пул подписей быстро исчерпывается
+            // (за фазу ускорения спавнится ~30 узлов против 14 доступных
+            // подписей). Без этого условия spawnNewNode начинает штамповать
+            // пустые узлы без иконок и названий. Здесь мы подставляем копию
+            // полного списка — spawnNewNode мутирует именно её, а не
+            // availableLabels, и внешний пул не портится.
+            const labels = availableLabels.length > 0 ? availableLabels : [...LABELS];
+
             const newNode = spawnNewNode(
                 allNodesForSpawn,
                 width,
                 height,
                 scaleFactor,
                 t + RESPAWN_DELAY,
-                availableLabels,
+                labels,
             );
             afterRemoval.push(newNode);
+            lastSpawnTRef.current = t;
         }
-    }
+    } else {
+        const activeCount = afterRemoval.filter((n) => n.fadeStart === null).length;
+        const countToAdd = TARGET_TOTAL_COUNT - activeCount;
 
-    fadeDisconnectedNodes(coreNodes, afterRemoval, t);
+        if (countToAdd > 0) {
+            for (let i = 0; i < countToAdd; i++) {
+                const allNodesForSpawn = [...coreNodes, ...afterRemoval];
+                const newNode = spawnNewNode(
+                    allNodesForSpawn,
+                    width,
+                    height,
+                    scaleFactor,
+                    t + RESPAWN_DELAY,
+                    availableLabels,
+                );
+                afterRemoval.push(newNode);
+            }
+        }
+
+        fadeDisconnectedNodes(coreNodes, afterRemoval, t);
+    }
 
     return afterRemoval;
 };
 
-// Отрисовка всех линий между узлами
+// ===== ФАЗЫ СХЛОПЫВАНИЯ =====
+
+type CollapsePhase = 'idle' | 'accelerate' | 'fadeOut' | 'flyToCenter';
+
+/**
+ * Индивидуальный прогресс полёта иконки к центру.
+ * globalProgress ∈ [0..1] — общий прогресс фазы.
+ * Каждая иконка получает детерминированный показатель степени,
+ * поэтому прилетает в разное время, но все достигают центра к концу фазы.
+ *
+ * @param node - Узел, для которого считается прогресс полёта.
+ * @param index - Индекс узла в общем массиве (для детерминированного разброса).
+ * @param globalProgress - Общий прогресс фазы полёта в диапазоне [0..1].
+ * @returns Индивидуальный прогресс полёта узла в диапазоне [0..1].
+ */
+const getFlyProgress = (node: Node2D, index: number, globalProgress: number): number => {
+    const seed = Math.abs(Math.floor(node.createdAt) * 13 + index * 7) % 100;
+    const exponent = 0.6 + (seed / 100) * 1.2; // 0.6 .. 1.8
+    return Math.min(1, Math.pow(globalProgress, exponent));
+};
+
+/**
+ * Множитель прозрачности линий и точек соединения по фазе схлопывания.
+ *
+ * @param phase - Текущая фаза схлопывания.
+ * @param progress - Прогресс текущей фазы в диапазоне [0..1].
+ * @returns Множитель прозрачности в диапазоне [0..1].
+ */
+const computeLineFactor = (phase: CollapsePhase, progress: number): number => {
+    if (phase === 'fadeOut') return 1 - progress;
+    if (phase === 'flyToCenter') return 0;
+    return 1;
+};
+
+/**
+ * Рисует все соединительные линии между узлами.
+ *
+ * @param ctx - Контекст рисования канваса.
+ * @param allNodes - Объединённый массив core + dynamic узлов.
+ * @param opacities - Прозрачности узлов (соответствуют allNodes по индексу).
+ * @param opacityTime - Виртуальное время, по которому считается фаза роста линии.
+ * @param lineFactor - Множитель прозрачности линий для текущей фазы схлопывания.
+ * @param scaleFactor - Коэффициент масштабирования.
+ * @returns Ничего не возвращает; побочный эффект — рисунок на канвасе.
+ */
 const renderLines = (
     ctx: CanvasRenderingContext2D,
     allNodes: Node2D[],
     opacities: number[],
+    opacityTime: number,
+    lineFactor: number,
     scaleFactor: number,
-    renderTime: number,
-    isScatteringNow: boolean,
-    scatterProgress: number,
 ): void => {
+    if (lineFactor <= 0) return;
+
     for (let i = 0; i < allNodes.length; i++) {
         const node = allNodes[i];
         if (node.sourceIdx < 0 || node.path.length < 2) continue;
         const sourceNode = allNodes[node.sourceIdx];
         if (!sourceNode) continue;
 
-        let lineOpacity = Math.min(opacities[i], opacities[node.sourceIdx]);
-        if (isScatteringNow) {
-            lineOpacity *= 1 - scatterProgress;
-        }
-
+        const lineOpacity = Math.min(opacities[i], opacities[node.sourceIdx]) * lineFactor;
         if (lineOpacity <= 0) continue;
 
-        const age = (renderTime - node.createdAt) * 1;
+        const age = opacityTime - node.createdAt;
         const appearProgress = Math.min(1, age / APPEAR_DURATION);
 
         ctx.globalAlpha = lineOpacity;
-
-        if (isScatteringNow) {
-            const targetOffset = getScatterOffset(node, scatterProgress);
-            const scatteredPath: Point[] = node.path.map((p) => ({
-                x: p.x + targetOffset.x,
-                y: p.y + targetOffset.y,
-            }));
-
-            drawGrowingPath(
-                ctx,
-                scatteredPath,
-                scaleFactor,
-                appearProgress,
-                node.lineStyle,
-                node.pathLengths,
-                node.totalPathLength,
-            );
-        } else {
-            drawGrowingPath(
-                ctx,
-                node.path,
-                scaleFactor,
-                appearProgress,
-                node.lineStyle,
-                node.pathLengths,
-                node.totalPathLength,
-            );
-        }
+        drawGrowingPath(
+            ctx,
+            node.path,
+            scaleFactor,
+            appearProgress,
+            node.lineStyle,
+            node.pathLengths,
+            node.totalPathLength,
+        );
         ctx.globalAlpha = 1;
     }
 };
 
-// Отрисовка всех узлов
-const renderNodes = (
+/**
+ * Рисует узлы с учётом фазы схлопывания: затухание точек и полёт иконок к центру.
+ *
+ * @param ctx - Контекст рисования канваса.
+ * @param allNodes - Объединённый массив core + dynamic узлов.
+ * @param opacities - Прозрачности узлов (соответствуют allNodes по индексу).
+ * @param phase - Текущая фаза схлопывания.
+ * @param phaseProgress - Прогресс текущей фазы в диапазоне [0..1].
+ * @param scaleFactor - Коэффициент масштабирования.
+ * @param centerX - Координата X центра канваса (точка прилёта).
+ * @param centerY - Координата Y центра канваса (точка прилёта).
+ * @returns Ничего не возвращает; побочный эффект — рисунок на канвасе.
+ */
+const renderNodesWithPhase = (
     ctx: CanvasRenderingContext2D,
     allNodes: Node2D[],
     opacities: number[],
+    phase: CollapsePhase,
+    phaseProgress: number,
     scaleFactor: number,
-    isScatteringNow: boolean,
-    scatterProgress: number,
+    centerX: number,
+    centerY: number,
 ): void => {
+    const isFlyPhase = phase === 'flyToCenter';
+
     for (let i = 0; i < allNodes.length; i++) {
         const node = allNodes[i];
-        let opacity = opacities[i];
+        const baseOpacity = opacities[i];
 
-        if (isScatteringNow) {
-            opacity *= 1 - scatterProgress;
+        let pointOpacity = baseOpacity;
+        let iconOpacity = baseOpacity;
+
+        let renderX = node.x;
+        let renderY = node.y;
+        let connX = node.connectionPoint.x;
+        let connY = node.connectionPoint.y;
+
+        if (phase === 'fadeOut') {
+            pointOpacity = baseOpacity * (1 - phaseProgress);
+        } else if (isFlyPhase) {
+            pointOpacity = 0;
+            const p = getFlyProgress(node, i, phaseProgress);
+
+            renderX = node.x + (centerX - node.x) * p;
+            renderY = node.y + (centerY - node.y) * p;
+            connX = node.connectionPoint.x + (centerX - node.connectionPoint.x) * p;
+            connY = node.connectionPoint.y + (centerY - node.connectionPoint.y) * p;
+
+            // Иконки гаснут по мере приближения к центру
+            iconOpacity = baseOpacity * (1 - p);
         }
 
-        if (opacity <= 0) continue;
+        if (pointOpacity <= 0 && iconOpacity <= 0) continue;
 
-        if (isScatteringNow) {
-            const offset = getScatterOffset(node, scatterProgress);
-
-            const scatteredNode = {
+        if (renderX !== node.x || renderY !== node.y) {
+            const dx = renderX - node.x;
+            const dy = renderY - node.y;
+            const movedNode: Node2D = {
                 ...node,
-                x: node.x + offset.x,
-                y: node.y + offset.y,
-                connectionPoint: {
-                    x: node.connectionPoint.x + offset.x,
-                    y: node.connectionPoint.y + offset.y,
-                },
+                x: renderX,
+                y: renderY,
+                connectionPoint: {x: connX, y: connY},
                 bbox: {
-                    x: node.bbox.x + offset.x,
-                    y: node.bbox.y + offset.y,
+                    x: node.bbox.x + dx,
+                    y: node.bbox.y + dy,
                     w: node.bbox.w,
                     h: node.bbox.h,
                 },
             };
-            drawNode(ctx, scatteredNode, scaleFactor, opacity);
+            drawNode(ctx, movedNode, scaleFactor, iconOpacity, pointOpacity);
         } else {
-            drawNode(ctx, node, scaleFactor, opacity);
+            drawNode(ctx, node, scaleFactor, iconOpacity, pointOpacity);
         }
     }
 };
 
+// ===== ХУК =====
+
+/**
+ * Состояние одного кадра анимации.
+ */
+interface FrameState {
+    /** Виртуальное время анимации (мс). */
+    t: number;
+    /** Время для расчёта прозрачностей (может отличаться от t в фазе fadeOut). */
+    opacityTime: number;
+    /** Текущая фаза схлопывания (idle — обычный режим). */
+    collapsePhase: CollapsePhase;
+    /** Прогресс текущей фазы схлопывания в диапазоне [0..1]. */
+    phaseProgress: number;
+    /** true, если анимация завершена и кадр нужно пропустить. */
+    shouldStop: boolean;
+}
+
+/**
+ * Хук анимации сети. Управляет жизненным циклом узлов, маршрутами,
+ * отрисовкой и последовательностью схлопывания при клике на таб.
+ *
+ * @param canvasRef - Ref на HTML-элемент канваса.
+ * @param isScattering - Запущена ли анимация схлопывания (ускорение → fade → полёт иконок).
+ * @param onScatterComplete - Колбэк, вызываемый по завершении всех фаз схлопывания.
+ * @returns Ничего не возвращает; работает через побочные эффекты (requestAnimationFrame).
+ */
 export const useNetworkAnimation = (
     canvasRef: React.RefObject<HTMLCanvasElement | null>,
     isScattering = false,
@@ -339,8 +499,13 @@ export const useNetworkAnimation = (
     const availableLabelsRef = useRef<string[]>([...LABELS]);
 
     const isScatteringRef = useRef(isScattering);
-    const scatterStartTimeRef = useRef<number | null>(null);
-    const frozenTimeRef = useRef<number>(0);
+
+    // Опорные точки для последовательности схлопывания
+    const collapseStartRealTimeRef = useRef<number | null>(null);
+    const collapseStartTRef = useRef<number>(0);
+
+    // Виртуальное время последнего спавна в unlimited-режиме
+    const lastSpawnTRef = useRef<number>(Number.NEGATIVE_INFINITY);
 
     const isScatterCompletedRef = useRef(false);
     const onScatterCompleteRef = useRef(onScatterComplete);
@@ -352,29 +517,41 @@ export const useNetworkAnimation = (
 
     useEffect(() => {
         if (isScattering && !isScatteringRef.current) {
-            scatterStartTimeRef.current = null;
+            // Вход в схлопывание.
+            collapseStartRealTimeRef.current = null;
             isScatterCompletedRef.current = false;
+            lastSpawnTRef.current = Number.NEGATIVE_INFINITY;
+
+            // Оживляем все узлы, которые уже начали исчезать, — во время
+            // схлопывания старые объекты и связи не должны пропадать.
+            for (const node of nodesRef.current) {
+                node.fadeStart = null;
+            }
         } else if (!isScattering && isScatteringRef.current) {
+            // Выход из схлопывания — перезапуск анимации.
             isScatterCompletedRef.current = false;
-            scatterStartTimeRef.current = null;
+            collapseStartRealTimeRef.current = null;
+            lastSpawnTRef.current = Number.NEGATIVE_INFINITY;
             startTimeRef.current = performance.now();
 
             const cssWidth = sizeRef.current.width;
             const cssHeight = sizeRef.current.height;
             const scaleFactor = scaleFactorRef.current;
 
-            const coreNodes = generateCoreNodes(cssWidth, cssHeight, scaleFactor);
-            buildCoreRingRoutes(coreNodes, scaleFactor);
-            coreNodesRef.current = coreNodes;
+            if (cssWidth > 0 && cssHeight > 0) {
+                const coreNodes = generateCoreNodes(cssWidth, cssHeight, scaleFactor);
+                buildCoreRingRoutes(coreNodes, scaleFactor);
+                coreNodesRef.current = coreNodes;
 
-            availableLabelsRef.current = [...LABELS];
-            nodesRef.current = generateNodes2D(
-                cssWidth,
-                cssHeight,
-                scaleFactor,
-                availableLabelsRef.current,
-                coreNodes,
-            );
+                availableLabelsRef.current = [...LABELS];
+                nodesRef.current = generateNodes2D(
+                    cssWidth,
+                    cssHeight,
+                    scaleFactor,
+                    availableLabelsRef.current,
+                    coreNodes,
+                );
+            }
 
             cancelAnimationFrame(animationRef.current);
             animationRef.current = requestAnimationFrame(animateRef.current);
@@ -403,8 +580,6 @@ export const useNetworkAnimation = (
                 const cssWidth = rect.width;
                 const cssHeight = rect.height;
 
-                // Пропускаем «нулевые» размеры — если контейнер ещё не отдал габариты,
-                // повторять попытку через 150 мс бессмысленно, но безопасно.
                 if (cssWidth === 0 || cssHeight === 0) return;
 
                 const dimensions = calculateCanvasDimensions(cssWidth, cssHeight);
@@ -431,6 +606,84 @@ export const useNetworkAnimation = (
             }, 150);
         };
 
+        /**
+         * Вычисляет виртуальное время и фазу для текущего кадра анимации.
+         *
+         * @param time - Монотонное время из requestAnimationFrame.
+         * @returns Объект FrameState с полями t, opacityTime, collapsePhase,
+         *          phaseProgress и shouldStop.
+         */
+        const computeFrame = (time: number): FrameState => {
+            const isCollapsingNow = isScatteringRef.current;
+
+            if (!isCollapsingNow) {
+                const t = time - startTimeRef.current;
+                return {
+                    t,
+                    opacityTime: t,
+                    collapsePhase: 'idle',
+                    phaseProgress: 0,
+                    shouldStop: false,
+                };
+            }
+
+            if (collapseStartRealTimeRef.current === null) {
+                collapseStartRealTimeRef.current = time;
+                collapseStartTRef.current = time - startTimeRef.current;
+                // Синхронизируем точку отсчёта спавнов с началом ускорения.
+                lastSpawnTRef.current = collapseStartTRef.current;
+            }
+
+            const realElapsed = time - collapseStartRealTimeRef.current;
+            const accelEnd = COLLAPSE_ACCELERATE_DURATION;
+            const fadeEnd = accelEnd + COLLAPSE_FADE_DURATION;
+            const flyEnd = fadeEnd + COLLAPSE_FLY_DURATION;
+            const frozenT = collapseStartTRef.current + accelEnd * COLLAPSE_ACCELERATE_SPEED;
+
+            if (realElapsed < accelEnd) {
+                const t = collapseStartTRef.current + realElapsed * COLLAPSE_ACCELERATE_SPEED;
+                return {
+                    t,
+                    opacityTime: t,
+                    collapsePhase: 'accelerate',
+                    phaseProgress: 0,
+                    shouldStop: false,
+                };
+            }
+
+            if (realElapsed < fadeEnd) {
+                return {
+                    t: frozenT,
+                    opacityTime: frozenT,
+                    collapsePhase: 'fadeOut',
+                    phaseProgress: (realElapsed - accelEnd) / COLLAPSE_FADE_DURATION,
+                    shouldStop: false,
+                };
+            }
+
+            if (realElapsed < flyEnd) {
+                return {
+                    t: frozenT,
+                    opacityTime: frozenT,
+                    collapsePhase: 'flyToCenter',
+                    phaseProgress: (realElapsed - fadeEnd) / COLLAPSE_FLY_DURATION,
+                    shouldStop: false,
+                };
+            }
+
+            isScatterCompletedRef.current = true;
+            if (onScatterCompleteRef.current) {
+                onScatterCompleteRef.current();
+            }
+            return {
+                t: 0,
+                opacityTime: 0,
+                collapsePhase: 'idle',
+                phaseProgress: 0,
+                shouldStop: true,
+            };
+        };
+
         const animate = (time: number) => {
             if (isMounted === false) return;
             if (isScatterCompletedRef.current) return;
@@ -439,9 +692,6 @@ export const useNetworkAnimation = (
             const dpr = dprRef.current;
             const scaleFactor = scaleFactorRef.current;
 
-            // Не рисуем и не спавним узлы, пока канвас не получил реальные размеры.
-            // Иначе при нулевых width/height спавн попадает в (0,0) и на кадр
-            // «мелькает» в левом верхнем углу.
             if (width === 0 || height === 0) {
                 animationRef.current = requestAnimationFrame(animate);
                 return;
@@ -449,65 +699,54 @@ export const useNetworkAnimation = (
 
             prepareCanvas(ctx, width, height, dpr);
 
-            const t = time - startTimeRef.current;
+            const frame = computeFrame(time);
+            if (frame.shouldStop) return;
+
             const coreNodes = coreNodesRef.current;
-            const dynamicNodes = nodesRef.current;
-            const isScatteringNow = isScatteringRef.current;
 
-            let scatterProgress = 0;
-
-            if (isScatteringNow) {
-                if (scatterStartTimeRef.current === null) {
-                    scatterStartTimeRef.current = t;
-                    frozenTimeRef.current = t;
-                }
-
-                const scatterElapsed = t - (scatterStartTimeRef.current || t);
-                scatterProgress = Math.min(1, scatterElapsed / SCATTER_DURATION);
-
-                if (scatterProgress >= 1 && !isScatterCompletedRef.current) {
-                    isScatterCompletedRef.current = true;
-                    if (onScatterCompleteRef.current) {
-                        onScatterCompleteRef.current();
-                    }
-                    return;
-                }
-            } else {
-                scatterStartTimeRef.current = null;
-
-                // Сохраняем возвращённый массив обратно в ref, иначе новые узлы
-                // теряются, а исчезнувшие не удаляются — анимация застывает.
+            // В обычном режиме работаем с лимитом TARGET_TOTAL_COUNT.
+            // В фазе accelerate лимит снят — узлы и связи продолжают появляться
+            // без верхней границы, а старые не исчезают.
+            // В фазах fadeOut и flyToCenter жизненный цикл замораживается.
+            const unlimited = frame.collapsePhase === 'accelerate';
+            if (frame.collapsePhase === 'idle' || unlimited) {
                 nodesRef.current = updateLifecycle(
                     coreNodes,
-                    dynamicNodes,
+                    nodesRef.current,
                     availableLabelsRef.current,
                     scaleFactor,
                     width,
                     height,
-                    t,
+                    frame.t,
+                    unlimited,
+                    lastSpawnTRef,
                 );
             }
 
-            const allNodes = [...coreNodesRef.current, ...nodesRef.current];
-            const renderTime = isScatteringNow ? frozenTimeRef.current : t;
-
-            const opacities: number[] = allNodes.map((node) => getNodeOpacity(node, renderTime, 1));
+            const allNodes = [...coreNodes, ...nodesRef.current];
+            const opacities: number[] = allNodes.map((node) =>
+                getNodeOpacity(node, frame.opacityTime, 1),
+            );
 
             ctx.font = `500 ${LABEL_FONT_SIZE * scaleFactor}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
             ctx.fillStyle = '#000000';
 
-            renderLines(
+            const lineFactor = computeLineFactor(frame.collapsePhase, frame.phaseProgress);
+
+            renderLines(ctx, allNodes, opacities, frame.opacityTime, lineFactor, scaleFactor);
+
+            renderNodesWithPhase(
                 ctx,
                 allNodes,
                 opacities,
+                frame.collapsePhase,
+                frame.phaseProgress,
                 scaleFactor,
-                renderTime,
-                isScatteringNow,
-                scatterProgress,
+                width / 2,
+                height / 2,
             );
-            renderNodes(ctx, allNodes, opacities, scaleFactor, isScatteringNow, scatterProgress);
 
             animationRef.current = requestAnimationFrame(animate);
         };

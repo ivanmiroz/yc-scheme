@@ -16,6 +16,8 @@ interface NetworkSingularityProps {
     activeLegend?: LegendValue | null;
     onStart?: () => void;
     onReady?: () => void;
+    /** Вызывается, когда анимация схлопывания полностью завершена (после фейда и полёта иконок). */
+    onScatterComplete?: () => void;
 }
 
 export const NetworkSingularity: React.FC<NetworkSingularityProps> = ({
@@ -24,6 +26,7 @@ export const NetworkSingularity: React.FC<NetworkSingularityProps> = ({
     activeLegend = null,
     onStart,
     onReady,
+    onScatterComplete,
 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [startInfrastructure, setStartInfrastructure] = useState(false);
@@ -31,15 +34,21 @@ export const NetworkSingularity: React.FC<NetworkSingularityProps> = ({
 
     const onStartRef = useRef(onStart);
     const onReadyRef = useRef(onReady);
+    const onScatterCompleteRef = useRef(onScatterComplete);
+
     useEffect(() => {
         onStartRef.current = onStart;
     }, [onStart]);
     useEffect(() => {
         onReadyRef.current = onReady;
     }, [onReady]);
+    useEffect(() => {
+        onScatterCompleteRef.current = onScatterComplete;
+    }, [onScatterComplete]);
 
     useNetworkAnimation(canvasRef, isScattering, () => {
         setStartInfrastructure(true);
+        onScatterCompleteRef.current?.();
     });
 
     useEffect(() => {

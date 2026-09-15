@@ -16,6 +16,15 @@ import {
 } from './constants';
 import {LineStyle, Node2D, Point} from './types';
 
+/**
+ * Обрезает путь до заданной доли его длины.
+ *
+ * @param points - Массив точек пути.
+ * @param progress - Прогресс в диапазоне [0..1]; 1 — путь полностью.
+ * @param lengths - Массив накопленных длин до каждой точки.
+ * @param totalLength - Полная длина пути.
+ * @returns Новый массив точек, обрезанный до progress.
+ */
 const slicePath = (
     points: Point[],
     progress: number,
@@ -46,29 +55,18 @@ const slicePath = (
     return result;
 };
 
-const drawRoundedRect = (
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    r: number,
-): void => {
-    const radius = Math.min(r, w / 2, h / 2);
-
-    ctx.beginPath();
-    ctx.moveTo(x + radius, y);
-    ctx.lineTo(x + w - radius, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
-    ctx.lineTo(x + w, y + h - radius);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
-    ctx.lineTo(x + radius, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
-    ctx.lineTo(x, y + radius);
-    ctx.quadraticCurveTo(x, y, x + radius, y);
-    ctx.closePath();
-};
-
+/**
+ * Рисует путь по точкам с учётом прогресса его «прорастания» и стиля линии.
+ *
+ * @param ctx - Контекст рисования канваса.
+ * @param points - Массив точек пути.
+ * @param scaleFactor - Коэффициент масштабирования относительно базового размера канваса.
+ * @param progress - Прогресс роста линии в диапазоне [0..1].
+ * @param lineStyle - Стиль линии: solid | dashed | snake.
+ * @param lengths - Массив накопленных длин до каждой точки (для точной обрезки).
+ * @param totalLength - Полная длина пути.
+ * @returns Ничего не возвращает; побочный эффект — рисунок на канвасе.
+ */
 export const drawGrowingPath = (
     ctx: CanvasRenderingContext2D,
     points: Point[],
@@ -120,15 +118,60 @@ export const drawGrowingPath = (
     ctx.restore();
 };
 
+/**
+ * Рисует скруглённый прямоугольник (используется как подложка под текстом).
+ *
+ * @param ctx - Контекст рисования канваса.
+ * @param x - Координата X левого верхнего угла.
+ * @param y - Координата Y левого верхнего угла.
+ * @param w - Ширина прямоугольника.
+ * @param h - Высота прямоугольника.
+ * @param r - Радиус скругления.
+ * @returns Ничего не возвращает; создаёт путь в контексте (без fill/stroke).
+ */
+const drawRoundedRect = (
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    r: number,
+): void => {
+    const radius = Math.min(r, w / 2, h / 2);
+
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + w - radius, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+    ctx.lineTo(x + w, y + h - radius);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+    ctx.lineTo(x + radius, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+};
+
+/**
+ * Рисует узел на канвасе: иконку с подписью на подложке и точку соединения.
+ *
+ * @param ctx - Контекст рисования канваса.
+ * @param node - Узел, который нужно нарисовать.
+ * @param scaleFactor - Коэффициент масштабирования относительно базового размера канваса.
+ * @param opacity - Прозрачность иконки и текста в диапазоне [0..1].
+ * @param pointOpacity - Прозрачность точки соединения (по умолчанию равна `opacity`).
+ *                       Позволяет отдельно гасить кружок, не трогая иконку.
+ * @returns Ничего не возвращает; побочный эффект — рисунок на канвасе.
+ */
 export const drawNode = (
     ctx: CanvasRenderingContext2D,
     node: Node2D,
     scaleFactor: number,
     opacity: number,
+    pointOpacity: number = opacity,
 ): void => {
-    ctx.globalAlpha = opacity;
-
-    if (!node.isEmpty) {
+    if (!node.isEmpty && opacity > 0) {
+        ctx.globalAlpha = opacity;
         const img = getIcon(node.iconKey);
         if (img) {
             const iconW = BASE_ICON_SIZE * scaleFactor;
@@ -162,23 +205,36 @@ export const drawNode = (
         }
     }
 
-    const connRadius = CONNECTION_POINT_RADIUS * scaleFactor;
-    const connY = node.isEmpty ? node.y : node.connectionPoint.y;
+    if (pointOpacity > 0) {
+        ctx.globalAlpha = pointOpacity;
 
-    ctx.beginPath();
-    ctx.arc(node.x, connY, connRadius, 0, Math.PI * 2);
+        const connRadius = CONNECTION_POINT_RADIUS * scaleFactor;
+        const connY = node.isEmpty ? node.y : node.connectionPoint.y;
 
-    // Точка закрашивается основным цветом линии
-    ctx.fillStyle = LINE_COLOR;
-    ctx.fill();
+        ctx.beginPath();
+        ctx.arc(node.x, connY, connRadius, 0, Math.PI * 2);
 
-    ctx.strokeStyle = LINE_COLOR;
-    ctx.lineWidth = BASE_LINE_WIDTH * scaleFactor;
-    ctx.stroke();
+        // Точка закрашивается основным цветом линии
+        ctx.fillStyle = LINE_COLOR;
+        ctx.fill();
+
+        ctx.strokeStyle = LINE_COLOR;
+        ctx.lineWidth = BASE_LINE_WIDTH * scaleFactor;
+        ctx.stroke();
+    }
 
     ctx.globalAlpha = 1;
 };
 
+/**
+ * Готовит канвас к кадру: применяет DPR-трансформацию и очищает полотно.
+ *
+ * @param ctx - Контекст рисования канваса.
+ * @param width - Ширина канваса в CSS-пикселях.
+ * @param height - Высота канваса в CSS-пикселях.
+ * @param dpr - Коэффициент плотности пикселей (device pixel ratio).
+ * @returns Ничего не возвращает; побочный эффект — сброс трансформа и очистка.
+ */
 export const prepareCanvas = (
     ctx: CanvasRenderingContext2D,
     width: number,
