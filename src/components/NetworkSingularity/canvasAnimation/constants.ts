@@ -61,7 +61,7 @@ export const APPEAR_DURATION = 600 * ANIMATION_SPEED_MULTIPLIER;
 export const CELL_RANDOM_OFFSET = 0.15;
 
 /** Цвет соединительных линий */
-export const LINE_COLOR = '#334155';
+export const LINE_COLOR = '#000';
 
 /** Базовая толщина линии в пикселях */
 export const BASE_LINE_WIDTH = 2;
