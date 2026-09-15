@@ -22,7 +22,22 @@ import {
 import {buildCircularArc, buildSerpentine, drawPolylineWithProgress} from './paths';
 import {applyConnectionStroke} from './stroke';
 
+// Дополнительный горизонтальный сдвиг линий, идущих по правому краю
+// платформы 1 (нижней): пунктир платформа 1 → платформа 3 и дуга
+// платформа 1 → платформа 2.
+// Отрицательное значение — влево. В долях ширины canvas.
+const RIGHT_EDGE_SHIFT_RATIO = -6 / 1920;
+
+// Во сколько раз толще рисуется подсвеченная линия.
+const HIGHLIGHT_WIDTH_MULTIPLIER = 1.5;
+
 export const getConnectionsTotalDuration = (): number => CONNECTIONS_LINE_DURATION;
+
+// Подсвечена ли линия данного типа активной легендой.
+const isKindHighlighted = (
+    activeLegend: LegendValue | null,
+    kind: 'sharp-serpentine' | 'rounded-serpentine' | 'straight' | 'dashed' | 'arc',
+): boolean => activeLegend !== null && LEGEND_TO_LINE_KIND[activeLegend] === kind;
 
 // Цвет для конкретного типа линии с учётом активной легенды.
 const resolveColor = (
@@ -41,8 +56,10 @@ const drawSerpentineConnection = (
     progress: number,
     canvasWidth: number,
     color: string,
+    highlighted: boolean,
 ) => {
-    const lineWidth = Math.max(1, canvasWidth * CONNECTION_LINE_WIDTH_RATIO);
+    const baseLineWidth = Math.max(1, canvasWidth * CONNECTION_LINE_WIDTH_RATIO);
+    const lineWidth = highlighted ? baseLineWidth * HIGHLIGHT_WIDTH_MULTIPLIER : baseLineWidth;
     const dotRadius = Math.max(2, canvasWidth * CONNECTION_DOT_RADIUS_RATIO);
     const amp = canvasWidth * SERPENTINE_AMPLITUDE_RATIO;
 
@@ -90,17 +107,23 @@ const drawCircularArcConnection = (
     progress: number,
     canvasWidth: number,
     color: string,
+    highlighted: boolean,
 ) => {
-    const lineWidth = Math.max(1, canvasWidth * CONNECTION_LINE_WIDTH_RATIO);
+    const baseLineWidth = Math.max(1, canvasWidth * CONNECTION_LINE_WIDTH_RATIO);
+    const lineWidth = highlighted ? baseLineWidth * HIGHLIGHT_WIDTH_MULTIPLIER : baseLineWidth;
     const dotRadius = Math.max(2, canvasWidth * CONNECTION_DOT_RADIUS_RATIO);
     const bulge = canvasWidth * ARC_BULGE_RATIO;
 
+    // Тот же сдвиг влево, что и у пунктирной линии — линии,
+    // идущие по правому краю нижней платформы, двигаются синхронно.
+    const shiftX = canvasWidth * RIGHT_EDGE_SHIFT_RATIO;
+
     const A = {
-        x: bottom.currentX + bottom.scaledWidth,
+        x: bottom.currentX + bottom.scaledWidth + shiftX,
         y: bottom.currentY + bottom.scaledHeight / 2,
     };
     const B = {
-        x: top.currentX + top.scaledWidth,
+        x: top.currentX + top.scaledWidth + shiftX,
         y: top.currentY + top.scaledHeight / 2,
     };
 
@@ -128,18 +151,24 @@ const drawDashedConnection = (
     progress: number,
     canvasWidth: number,
     color: string,
+    highlighted: boolean,
 ) => {
-    const lineWidth = Math.max(1, canvasWidth * CONNECTION_LINE_WIDTH_RATIO);
+    const baseLineWidth = Math.max(1, canvasWidth * CONNECTION_LINE_WIDTH_RATIO);
+    const lineWidth = highlighted ? baseLineWidth * HIGHLIGHT_WIDTH_MULTIPLIER : baseLineWidth;
     const dotRadius = Math.max(2, canvasWidth * CONNECTION_DOT_RADIUS_RATIO);
     const dash = Math.max(4, canvasWidth * DASH_LENGTH_RATIO);
     const gap = Math.max(3, canvasWidth * DASH_GAP_RATIO);
 
+    // Горизонтальный сдвиг всей линии влево — сдвигаются оба конца
+    // одинаково, поэтому наклон линии сохраняется.
+    const shiftX = canvasWidth * RIGHT_EDGE_SHIFT_RATIO;
+
     const A = {
-        x: bottom.currentX + bottom.scaledWidth,
+        x: bottom.currentX + bottom.scaledWidth + shiftX,
         y: bottom.currentY + bottom.scaledHeight / 2,
     };
     const B = {
-        x: farTop.currentX + farTop.scaledWidth,
+        x: farTop.currentX + farTop.scaledWidth + shiftX,
         y: farTop.currentY + farTop.scaledHeight / 2,
     };
 
@@ -176,8 +205,10 @@ const drawPlatformMarker = (
     progress: number,
     canvasWidth: number,
     color: string,
+    highlighted: boolean,
 ) => {
-    const lineWidth = Math.max(1, canvasWidth * MARKER_LINE_WIDTH_RATIO);
+    const baseLineWidth = Math.max(1, canvasWidth * MARKER_LINE_WIDTH_RATIO);
+    const lineWidth = highlighted ? baseLineWidth * HIGHLIGHT_WIDTH_MULTIPLIER : baseLineWidth;
     const dotRadius = Math.max(2, canvasWidth * MARKER_DOT_RADIUS_RATIO);
 
     const centerX = podium.currentX + podium.scaledWidth / 2;
@@ -223,21 +254,40 @@ export const drawConnections = (
     const second = podiums[podiums.length - 2];
     const third = podiums[podiums.length - 3];
 
-    // Змейки между платформами: прямые углы (buildSerpentine не сглаживает) →
-    // sharp-serpentine → подсвечиваются на «Сетевая связность».
+    // Флаги подсветки и цвета — для каждого типа линии отдельно.
+    const serpentineHighlighted = isKindHighlighted(activeLegend, 'sharp-serpentine');
     const serpentineColor = resolveColor(activeLegend, 'sharp-serpentine', CONNECTION_COLOR);
-    // Дуга → cloud-router
+
+    const arcHighlighted = isKindHighlighted(activeLegend, 'arc');
     const arcColor = resolveColor(activeLegend, 'arc', CONNECTION_COLOR);
-    // Пунктирная прямая → vps
+
+    const dashedHighlighted = isKindHighlighted(activeLegend, 'dashed');
     const dashedColor = resolveColor(activeLegend, 'dashed', CONNECTION_COLOR);
-    // Короткий отрезок на платформе — прямая → cloud-interconnect
+
+    const markerHighlighted = isKindHighlighted(activeLegend, 'straight');
     const markerColor = resolveColor(activeLegend, 'straight', MARKER_COLOR);
 
-    drawSerpentineConnection(ctx, bottom, second, progress, canvasWidth, serpentineColor);
-    drawSerpentineConnection(ctx, second, third, progress, canvasWidth, serpentineColor);
-    drawCircularArcConnection(ctx, bottom, second, progress, canvasWidth, arcColor);
-    drawDashedConnection(ctx, bottom, third, progress, canvasWidth, dashedColor);
-    drawPlatformMarker(ctx, bottom, progress, canvasWidth, markerColor);
+    drawSerpentineConnection(
+        ctx,
+        bottom,
+        second,
+        progress,
+        canvasWidth,
+        serpentineColor,
+        serpentineHighlighted,
+    );
+    drawSerpentineConnection(
+        ctx,
+        second,
+        third,
+        progress,
+        canvasWidth,
+        serpentineColor,
+        serpentineHighlighted,
+    );
+    drawCircularArcConnection(ctx, bottom, second, progress, canvasWidth, arcColor, arcHighlighted);
+    drawDashedConnection(ctx, bottom, third, progress, canvasWidth, dashedColor, dashedHighlighted);
+    drawPlatformMarker(ctx, bottom, progress, canvasWidth, markerColor, markerHighlighted);
 
     ctx.restore();
 };

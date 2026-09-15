@@ -142,6 +142,14 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
 
     const activeTabValue = infraTabs[activeIndex]?.value;
 
+    // Активная кнопка = уже применённый таб ИЛИ таб, который сейчас
+    // «в полёте» (клик уже сделан, но анимация схлопывания ещё идёт).
+    // Благодаря этому .scale-tabs__button_active появляется сразу при клике,
+    // а не после завершения анимации.
+    const pendingTabValue =
+        pendingTabIndex !== null ? infraTabs[pendingTabIndex]?.value : undefined;
+    const activeButtonValue = pendingTabValue ?? activeTabValue;
+
     const cancelGuideShowTimer = useCallback(() => {
         if (guideShowTimerRef.current !== null) {
             window.clearTimeout(guideShowTimerRef.current);
@@ -179,7 +187,7 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
     }, []);
 
     // Вызывается из NetworkSingularity после завершения ВСЕХ фаз анимации
-    // (ускорение → фейд точек и линий → полёт иконок к центру).
+    // (ускорение → сматывание линий → полёт иконок к центру).
     // Только здесь применяем отложенный таб — и, соответственно, только теперь
     // меняется .scale-tabs__sidebar-scale (через модификатор frozen у .scale-tabs__sidebar).
     const handleScatterComplete = useCallback(() => {
@@ -206,9 +214,8 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
         if (isCollapsing) return;
         if (isSidebarActive) return;
 
-        // Запоминаем намерение, но НЕ применяем таб сразу.
-        // Сначала проигрываем анимацию схлопывания, а таб (и, соответственно,
-        // .scale-tabs__sidebar-scale) меняем только в handleScatterComplete.
+        // Запоминаем намерение — благодаря activeButtonValue кнопка сразу
+        // станет активной, хотя сам таб применится только в handleScatterComplete.
         setPendingTabIndex(tabIndex);
         setIsCollapsing(true);
     };
@@ -328,7 +335,7 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
                             <button
                                 key={action.value}
                                 className={b('button', {
-                                    active: activeTabValue === action.value,
+                                    active: activeButtonValue === action.value,
                                 })}
                                 type="button"
                                 onClick={() => handleButtonClick(action.value)}

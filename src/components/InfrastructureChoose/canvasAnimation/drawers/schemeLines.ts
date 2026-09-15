@@ -24,9 +24,13 @@ import {
 } from './paths';
 import {applyConnectionStroke} from './stroke';
 
+// Во сколько раз толще рисуется подсвеченная линия.
+const HIGHLIGHT_WIDTH_MULTIPLIER = 1.5;
+
 // Линии, специфичные для активной схемы.
 // progresses[i] — прогресс 0..1 для i-й линии (по порядку из getActiveSchemeLines()).
-// activeLegend — если задан, линии соответствующего типа рисуются цветом подсветки.
+// activeLegend — если задан, линии соответствующего типа рисуются цветом подсветки
+// и увеличенной толщиной.
 export const drawSchemeLines = (
     ctx: CanvasRenderingContext2D,
     positions: Position[],
@@ -40,7 +44,7 @@ export const drawSchemeLines = (
     const byNumber = new Map<string, Position>();
     positions.forEach((p) => byNumber.set(p.positionNumber, p));
 
-    const lineWidth = Math.max(1, canvasWidth * CONNECTION_LINE_WIDTH_RATIO);
+    const baseLineWidth = Math.max(1, canvasWidth * CONNECTION_LINE_WIDTH_RATIO);
     const dotRadius = Math.max(2, canvasWidth * CONNECTION_DOT_RADIUS_RATIO);
     const dash = Math.max(4, canvasWidth * DASH_LENGTH_RATIO);
     const gap = Math.max(3, canvasWidth * DASH_GAP_RATIO);
@@ -69,6 +73,9 @@ export const drawSchemeLines = (
         // Подходит ли эта линия под активный тип легенды
         const isHighlighted = activeKind !== null && getLineKind(line) === activeKind;
         const color = isHighlighted ? CONNECTION_HIGHLIGHT_COLOR : CONNECTION_COLOR;
+        const lineWidth = isHighlighted
+            ? baseLineWidth * HIGHLIGHT_WIDTH_MULTIPLIER
+            : baseLineWidth;
 
         applyConnectionStroke(ctx, {lineWidth, color});
 

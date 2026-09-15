@@ -50,10 +50,10 @@ export const CONNECTIONS_CONFIG = {
     },
 
     SCHEME_SERPENTINE: {
-        TURNS: 10,
-        AMPLITUDE_RATIO: (40 / 1920) * 0.7,
+        TURNS: 6,
+        AMPLITUDE_RATIO: (40 / 1920) * 0.5,
         STRAIGHT_FRACTION: 0.25,
-        CORNER_RADIUS_RATIO: 8 / 1920,
+        CORNER_RADIUS_RATIO: 16 / 1920,
         CORNER_SEGMENTS: 8,
     },
 
