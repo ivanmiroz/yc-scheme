@@ -95,6 +95,14 @@ export const RESPAWN_DELAY = 100 * ANIMATION_SPEED_MULTIPLIER;
 export const POSITION_SEARCH_ATTEMPTS = 150;
 export const NODE_SPACING = 50;
 
+/**
+ * Сколько самых старых динамических узлов исключается из выбора источника
+ * для новых линий. Самые старые узлы первыми уходят по возрасту, поэтому
+ * новые связи к ним не крепим — иначе линия обрывается вместе с узлом,
+ * едва успев появиться. Core-узлы под это правило не попадают.
+ */
+export const SKIP_OLDEST_SOURCE_COUNT = 4;
+
 // ===== ПРОИЗВОДНЫЕ =====
 
 export const TARGET_TOTAL_COUNT = NODE_COUNT + EMPTY_NODE_COUNT;
@@ -118,10 +126,11 @@ export const COLLAPSE_ACCELERATE_DURATION = 2000;
 export const COLLAPSE_ACCELERATE_SPEED = 3;
 
 /**
- * Длительность фазы затухания точек и линий (мс).
- * Иконки при этом остаются видимыми.
+ * Длительность фазы «сжатия» линий (мс).
+ * Линии не гаснут — они «сматываются» обратно к своему источнику
+ * (визуально укорачиваются до нуля). Иконки и точки при этом остаются видимыми.
  */
-export const COLLAPSE_FADE_DURATION = 500;
+export const COLLAPSE_SHRINK_DURATION = 500;
 
 /**
  * Длительность фазы слёта иконок к центру (мс).

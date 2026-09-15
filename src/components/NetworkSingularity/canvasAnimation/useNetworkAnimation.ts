@@ -16,8 +16,8 @@ import {
     APPEAR_DURATION,
     COLLAPSE_ACCELERATE_DURATION,
     COLLAPSE_ACCELERATE_SPEED,
-    COLLAPSE_FADE_DURATION,
     COLLAPSE_FLY_DURATION,
+    COLLAPSE_SHRINK_DURATION,
     FADE_DURATION,
     LABEL_FONT_SIZE,
     MIN_AGE_FOR_FADE,
@@ -261,7 +261,7 @@ const updateLifecycle = (
 
 // ===== ФАЗЫ СХЛОПЫВАНИЯ =====
 
-type CollapsePhase = 'idle' | 'accelerate' | 'fadeOut' | 'flyToCenter';
+type CollapsePhase = 'idle' | 'accelerate' | 'shrinkLines' | 'flyToCenter';
 
 /**
  * Индивидуальный прогресс полёта иконки к центру.
@@ -282,14 +282,27 @@ const getFlyProgress = (node: Node2D, index: number, globalProgress: number): nu
 
 /**
  * Множитель прозрачности линий и точек соединения по фазе схлопывания.
+ * Во время сжатия линий они остаются полностью видимыми — гаснут
+ * только на фазе полёта иконок.
+ *
+ * @param phase - Текущая фаза схлопывания.
+ * @returns Множитель прозрачности в диапазоне [0..1].
+ */
+const computeLineFactor = (phase: CollapsePhase): number => {
+    if (phase === 'flyToCenter') return 0;
+    return 1;
+};
+
+/**
+ * Множитель длины линии по фазе схлопывания.
+ * В фазе shrinkLines линия плавно «сматывается» от полной длины до нуля.
  *
  * @param phase - Текущая фаза схлопывания.
  * @param progress - Прогресс текущей фазы в диапазоне [0..1].
- * @returns Множитель прозрачности в диапазоне [0..1].
+ * @returns Множитель длины в диапазоне [0..1].
  */
-const computeLineFactor = (phase: CollapsePhase, progress: number): number => {
-    if (phase === 'fadeOut') return 1 - progress;
-    if (phase === 'flyToCenter') return 0;
+const computeLineShrink = (phase: CollapsePhase, progress: number): number => {
+    if (phase === 'shrinkLines') return 1 - progress;
     return 1;
 };
 
@@ -301,6 +314,7 @@ const computeLineFactor = (phase: CollapsePhase, progress: number): number => {
  * @param opacities - Прозрачности узлов (соответствуют allNodes по индексу).
  * @param opacityTime - Виртуальное время, по которому считается фаза роста линии.
  * @param lineFactor - Множитель прозрачности линий для текущей фазы схлопывания.
+ * @param lineShrink - Множитель длины линий (1 — полная длина, 0 — линия сжата в точку).
  * @param scaleFactor - Коэффициент масштабирования.
  * @returns Ничего не возвращает; побочный эффект — рисунок на канвасе.
  */
@@ -310,9 +324,10 @@ const renderLines = (
     opacities: number[],
     opacityTime: number,
     lineFactor: number,
+    lineShrink: number,
     scaleFactor: number,
 ): void => {
-    if (lineFactor <= 0) return;
+    if (lineFactor <= 0 || lineShrink <= 0) return;
 
     for (let i = 0; i < allNodes.length; i++) {
         const node = allNodes[i];
@@ -325,13 +340,14 @@ const renderLines = (
 
         const age = opacityTime - node.createdAt;
         const appearProgress = Math.min(1, age / APPEAR_DURATION);
+        const drawProgress = appearProgress * lineShrink;
 
         ctx.globalAlpha = lineOpacity;
         drawGrowingPath(
             ctx,
             node.path,
             scaleFactor,
-            appearProgress,
+            drawProgress,
             node.lineStyle,
             node.pathLengths,
             node.totalPathLength,
@@ -341,7 +357,7 @@ const renderLines = (
 };
 
 /**
- * Рисует узлы с учётом фазы схлопывания: затухание точек и полёт иконок к центру.
+ * Рисует узлы с учётом фазы схлопывания: полёт иконок к центру.
  *
  * @param ctx - Контекст рисования канваса.
  * @param allNodes - Объединённый массив core + dynamic узлов.
@@ -377,9 +393,7 @@ const renderNodesWithPhase = (
         let connX = node.connectionPoint.x;
         let connY = node.connectionPoint.y;
 
-        if (phase === 'fadeOut') {
-            pointOpacity = baseOpacity * (1 - phaseProgress);
-        } else if (isFlyPhase) {
+        if (isFlyPhase) {
             pointOpacity = 0;
             const p = getFlyProgress(node, i, phaseProgress);
 
@@ -424,7 +438,7 @@ const renderNodesWithPhase = (
 interface FrameState {
     /** Виртуальное время анимации (мс). */
     t: number;
-    /** Время для расчёта прозрачностей (может отличаться от t в фазе fadeOut). */
+    /** Время для расчёта прозрачностей (может отличаться от t в фазе схлопывания). */
     opacityTime: number;
     /** Текущая фаза схлопывания (idle — обычный режим). */
     collapsePhase: CollapsePhase;
@@ -439,7 +453,7 @@ interface FrameState {
  * отрисовкой и последовательностью схлопывания при клике на таб.
  *
  * @param canvasRef - Ref на HTML-элемент канваса.
- * @param isScattering - Запущена ли анимация схлопывания (ускорение → fade → полёт иконок).
+ * @param isScattering - Запущена ли анимация схлопывания (ускорение → сжатие линий → полёт иконок).
  * @param onScatterComplete - Колбэк, вызываемый по завершении всех фаз схлопывания.
  * @returns Ничего не возвращает; работает через побочные эффекты (requestAnimationFrame).
  */
@@ -584,6 +598,9 @@ export const useNetworkAnimation = (
 
         /**
          * Вычисляет виртуальное время и фазу для текущего кадра анимации.
+         * Последовательность при схлопывании:
+         *   accelerate (2000мс, ускорение) → shrinkLines (линии сматываются)
+         *   → flyToCenter (иконки летят к центру).
          *
          * @param time - Монотонное время из requestAnimationFrame.
          * @returns Объект FrameState с полями t, opacityTime, collapsePhase,
@@ -612,8 +629,8 @@ export const useNetworkAnimation = (
 
             const realElapsed = time - collapseStartRealTimeRef.current;
             const accelEnd = COLLAPSE_ACCELERATE_DURATION;
-            const fadeEnd = accelEnd + COLLAPSE_FADE_DURATION;
-            const flyEnd = fadeEnd + COLLAPSE_FLY_DURATION;
+            const shrinkEnd = accelEnd + COLLAPSE_SHRINK_DURATION;
+            const flyEnd = shrinkEnd + COLLAPSE_FLY_DURATION;
             const frozenT = collapseStartTRef.current + accelEnd * COLLAPSE_ACCELERATE_SPEED;
 
             if (realElapsed < accelEnd) {
@@ -627,12 +644,12 @@ export const useNetworkAnimation = (
                 };
             }
 
-            if (realElapsed < fadeEnd) {
+            if (realElapsed < shrinkEnd) {
                 return {
                     t: frozenT,
                     opacityTime: frozenT,
-                    collapsePhase: 'fadeOut',
-                    phaseProgress: (realElapsed - accelEnd) / COLLAPSE_FADE_DURATION,
+                    collapsePhase: 'shrinkLines',
+                    phaseProgress: (realElapsed - accelEnd) / COLLAPSE_SHRINK_DURATION,
                     shouldStop: false,
                 };
             }
@@ -642,7 +659,7 @@ export const useNetworkAnimation = (
                     t: frozenT,
                     opacityTime: frozenT,
                     collapsePhase: 'flyToCenter',
-                    phaseProgress: (realElapsed - fadeEnd) / COLLAPSE_FLY_DURATION,
+                    phaseProgress: (realElapsed - shrinkEnd) / COLLAPSE_FLY_DURATION,
                     shouldStop: false,
                 };
             }
@@ -683,7 +700,7 @@ export const useNetworkAnimation = (
             // В обычном режиме работаем с лимитом TARGET_TOTAL_COUNT.
             // В фазе accelerate лимит снят — узлы и связи продолжают появляться
             // без верхней границы, а старые не исчезают.
-            // В фазах fadeOut и flyToCenter жизненный цикл замораживается.
+            // В фазах shrinkLines и flyToCenter жизненный цикл замораживается.
             const unlimited = frame.collapsePhase === 'accelerate';
             if (frame.collapsePhase === 'idle' || unlimited) {
                 nodesRef.current = updateLifecycle(
@@ -709,9 +726,18 @@ export const useNetworkAnimation = (
             ctx.textBaseline = 'top';
             ctx.fillStyle = '#000000';
 
-            const lineFactor = computeLineFactor(frame.collapsePhase, frame.phaseProgress);
+            const lineFactor = computeLineFactor(frame.collapsePhase);
+            const lineShrink = computeLineShrink(frame.collapsePhase, frame.phaseProgress);
 
-            renderLines(ctx, allNodes, opacities, frame.opacityTime, lineFactor, scaleFactor);
+            renderLines(
+                ctx,
+                allNodes,
+                opacities,
+                frame.opacityTime,
+                lineFactor,
+                lineShrink,
+                scaleFactor,
+            );
 
             renderNodesWithPhase(
                 ctx,
