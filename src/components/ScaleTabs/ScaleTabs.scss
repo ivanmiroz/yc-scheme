@@ -32,14 +32,14 @@
     }
 
     &__sidebar-infra {
-        transform: translateX(-100%);
+        transform: translateX(-25%);
         opacity: 0;
         pointer-events: none;
     }
 
     &__sidebar_frozen {
         .scale-tabs__sidebar-scale {
-            transform: translateX(100%);
+            transform: translateX(25%);
             opacity: 0;
             pointer-events: none;
         }
