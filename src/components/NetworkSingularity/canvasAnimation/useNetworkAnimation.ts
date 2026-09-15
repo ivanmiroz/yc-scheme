@@ -151,44 +151,6 @@ const removeFadedNodes = (
 };
 
 /**
- * Помечает fadeStart у узлов, потерявших все связи (нет ни источника,
- * ни входящих ссылок), чтобы они начали исчезать.
- *
- * @param coreNodes - Массив постоянных core-узлов.
- * @param dynamicNodes - Текущий массив динамических узлов (мутируется).
- * @param currentTime - Текущее виртуальное время (мс), записывается в fadeStart.
- * @returns Ничего не возвращает; мутирует элементы dynamicNodes.
- */
-const fadeDisconnectedNodes = (
-    coreNodes: Node2D[],
-    dynamicNodes: Node2D[],
-    currentTime: number,
-): void => {
-    const coreCount = coreNodes.length;
-
-    const connectedTargets = new Set<number>();
-    for (const node of dynamicNodes) {
-        if (node.sourceIdx >= 0) {
-            connectedTargets.add(node.sourceIdx);
-        }
-    }
-
-    for (let i = 0; i < dynamicNodes.length; i++) {
-        const node = dynamicNodes[i];
-        if (node.fadeStart !== null) continue;
-
-        const globalIdx = coreCount + i;
-
-        const hasOutgoing = node.sourceIdx >= 0;
-        const hasIncoming = connectedTargets.has(globalIdx);
-
-        if (!hasOutgoing && !hasIncoming) {
-            node.fadeStart = currentTime;
-        }
-    }
-};
-
-/**
  * Управляет жизненным циклом в обычном режиме: когда активных узлов
  * становится больше TARGET_TOTAL_COUNT, помечает старейший из них
  * на исчезновение.
@@ -292,8 +254,6 @@ const updateLifecycle = (
                 afterRemoval.push(newNode);
             }
         }
-
-        fadeDisconnectedNodes(coreNodes, afterRemoval, t);
     }
 
     return afterRemoval;
