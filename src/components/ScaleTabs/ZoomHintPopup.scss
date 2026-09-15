@@ -1,25 +1,25 @@
 .zoom-hint-popup {
-    position: fixed;
-    inset: 0;
-    z-index: 2000;
-    display: flex;
     align-items: center;
+    display: flex;
+    inset: 0;
     justify-content: center;
     padding: 2vw;
+    position: fixed;
+    z-index: 2000;
 
     &__backdrop {
-        position: absolute;
-        inset: 0;
         background: rgba(0, 0, 0, 0.55);
         cursor: pointer;
+        inset: 0;
+        position: absolute;
     }
 
     // Плашки + крестик в один горизонтальный ряд.
     &__row {
-        position: relative;
-        display: flex;
         align-items: center;
+        display: flex;
         gap: 0.8vw;
+        position: relative;
     }
 
     // Белая плашка с текстом слева.
@@ -39,50 +39,52 @@
 
     // Белая плашка с иконкой-жестом справа от текстовой.
     &__icon-card {
+        align-items: center;
         background: #ffffff;
         border-radius: 1vw;
-        padding: 0.6vw;
         display: flex;
-        align-items: center;
         justify-content: center;
+        padding: 0.6vw;
 
         img {
             display: block;
-            width: 4.5vw;
             height: 4.5vw;
             object-fit: contain;
+            width: 4.5vw;
         }
     }
 
-    // Круглая кнопка закрытия — справа от плашек.
+    // Круглая кнопка закрытия — справа от плашек, как в GuidePopup.
     &__close {
-        position: relative;
-        flex-shrink: 0;
-        width: 2vw;
-        height: 2vw;
-        border-radius: 50%;
-        border: none;
+        align-items: center;
         background: #ffffff;
+        border: none;
+        border-radius: 50%;
+        box-sizing: border-box;
         cursor: pointer;
         display: flex;
-        align-items: center;
+        flex-shrink: 0;
+        height: 1.667vw; // 32px @ 1920
         justify-content: center;
-        transition: background 0.2s ease;
+        padding: 0;
+        position: relative;
+        transition: opacity 0.2s ease;
+        width: 1.667vw; // 32px @ 1920
 
         &:hover {
-            background: var(--g-color-base-generic-hover);
+            opacity: 0.85;
         }
 
         &::before,
         &::after {
+            background: var(--g-color-text-primary);
+            border-radius: 0.104vw;
             content: '';
+            height: 0.104vw; // 2px @ 1920
+            left: 50%;
             position: absolute;
             top: 50%;
-            left: 50%;
             width: 45%;
-            height: 0.1vw;
-            background: var(--g-color-text-primary);
-            border-radius: 0.1vw;
         }
 
         &::before {
