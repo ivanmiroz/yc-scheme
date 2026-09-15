@@ -147,7 +147,7 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
     // Благодаря этому .scale-tabs__button_active появляется сразу при клике,
     // а не после завершения анимации.
     const pendingTabValue =
-        pendingTabIndex !== null ? infraTabs[pendingTabIndex]?.value : undefined;
+        pendingTabIndex === null ? undefined : infraTabs[pendingTabIndex]?.value;
     const activeButtonValue = pendingTabValue ?? activeTabValue;
 
     const cancelGuideShowTimer = useCallback(() => {
@@ -272,11 +272,11 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
         clearTimers();
         setTimerSeconds(null);
 
-        if (!isOnboardingDone) return;
-
-        inactivityTimeoutRef.current = window.setTimeout(() => {
-            startCountdown();
-        }, INACTIVITY_DELAY_MS);
+        if (isOnboardingDone) {
+            inactivityTimeoutRef.current = window.setTimeout(() => {
+                startCountdown();
+            }, INACTIVITY_DELAY_MS);
+        }
     }, [clearTimers, isOnboardingDone, startCountdown]);
 
     useEffect(() => {

@@ -1,8 +1,13 @@
+// src/components/InfrastructureChoose/canvasAnimation/schemes.ts
 export interface PositionConfig {
     positionNumber: string;
     iconKey?: string;
     iconKeys?: string[];
     label?: string;
+    // Горизонтальный отступ между иконками в группе (для 2+ иконок),
+    // в дизайнерских пикселях при ширине canvas 1920.
+    // Если не задан — используется DEFAULT_ICON_GROUP_GAP_PX = 5.
+    iconGapPx?: number;
 }
 
 export interface PlatformScheme {
@@ -270,6 +275,7 @@ export const scheme3Platforms: PlatformScheme[] = [
                 positionNumber: '3.4',
                 iconKeys: ['code', 'elephant', 'sticks'],
                 label: 'Yandex Managed\ndatabase',
+                iconGapPx: 8,
             },
             {positionNumber: '3.5'},
             {positionNumber: '3.6', iconKey: 'storage', label: 'Object\n Storage'},
@@ -366,6 +372,7 @@ export const scheme4Platforms: PlatformScheme[] = [
                 positionNumber: '3.5',
                 iconKeys: ['code', 'elephant', 'sticks'],
                 label: 'Yandex Managed\ndatabase',
+                iconGapPx: 8,
             },
             {positionNumber: '3.6'},
         ],
