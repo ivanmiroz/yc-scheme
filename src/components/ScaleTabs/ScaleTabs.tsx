@@ -134,7 +134,7 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
 
     // Показываем infra sidebar сразу, как только применился таб. Во время
     // схлопывания .scale-tabs__sidebar остаётся в исходном (scale) состоянии.
-    const isSidebarActive = activeIndex !== -1;
+    const isSidebarActive = activeIndex >= 0;
 
     // isScattering для NetworkSingularity: либо идёт схлопывание, либо
     // уже показан infra sidebar (тогда canvas занят infrastructure-анимацией).
