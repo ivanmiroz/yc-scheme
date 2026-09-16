@@ -7,7 +7,7 @@
 
     &__sidebar {
         display: flex;
-        flex: 0 0 22.03%;
+        flex: 0 0 23%;
         position: relative;
         padding: 3.5vw 5.21vw 3.5vw 0;
     }
@@ -292,13 +292,9 @@
         color: var(--g-color-text-primary);
         cursor: pointer;
         display: flex;
-        gap: 0.6vw;
+        gap: 0.5vw;
         padding: 0.4vw;
         text-align: left;
-        transition:
-            background-color 0.2s ease,
-            border-color 0.2s ease,
-            color 0.2s ease;
         width: 100%;
 
         &:hover {
@@ -349,7 +345,7 @@
         color: var(--g-color-text-primary);
         font-size: var(--g-text-size-xs);
         font-weight: 500;
-        transition: color 0.2s ease;
+        line-height: 1;
         white-space: pre-line;
     }
 }

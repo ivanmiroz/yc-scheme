@@ -62,7 +62,7 @@ const allLegendItems: LegendItem[] = [
     {
         value: 'vps-pe',
         icon: <img src={legend2Src.src} alt="VPS PE" />,
-        text: 'VPS PE',
+        text: 'Virtual Private\n Cloud Peering\n Connection',
     },
     {
         value: 'cloud-interconnect',
@@ -72,7 +72,7 @@ const allLegendItems: LegendItem[] = [
     {
         value: 'vps',
         icon: <img src={legend4Src.src} alt="VPS" />,
-        text: 'VPS',
+        text: 'Virtual Private\n Cloud',
     },
     {
         value: 'cloud-router',
