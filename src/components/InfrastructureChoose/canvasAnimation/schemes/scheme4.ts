@@ -44,27 +44,27 @@ export const scheme4Platforms: PlatformScheme[] = [
                 iconKey: 'mfsk',
                 label: 'Managed Service\n for Kubernetes®',
             },
+            {positionNumber: '2.5', iconKey: 'cloudcdn', label: 'Cloud Cdn'},
             {
-                positionNumber: '2.5',
+                positionNumber: '2.6',
                 iconKey: 'baremetal',
                 label: 'BareMetal\n Extend:\n Virtualization',
             },
-            {positionNumber: '2.6', iconKey: 'cloudcdn', label: 'Cloud Cdn'},
         ],
     },
     {
         platformId: 3,
         positions: [
             {positionNumber: '1.1', iconKey: 'servers', label: 'Серверы\n и СХД'},
-            {positionNumber: '1.2', iconKey: 'network', label: 'Сетевое\n подключение'},
+            {positionNumber: '1.2', iconKey: 'network', label: 'Сетевое\n оборудование'},
             {positionNumber: '1.3'},
+            {positionNumber: '1.4', iconKey: 'servers', label: 'Серверы\n и СХД'},
+            {positionNumber: '1.5'},
             {
-                positionNumber: '1.4',
+                positionNumber: '1.6',
                 iconKey: 'baremetal',
                 label: 'BareMetal\n Extend:\n Virtualization',
             },
-            {positionNumber: '1.5'},
-            {positionNumber: '1.6', iconKey: 'servers', label: 'Серверы\n и СХД'},
         ],
     },
 ];
@@ -100,7 +100,6 @@ export const scheme4Lines: SchemeLine[] = [
         toPlatformAnchor: 'right',
         arc: true,
         platformAnchorShiftXRatio: -0.005,
-        platformAnchorShiftYRatio: -0.02,
     },
     {
         from: '1.4',

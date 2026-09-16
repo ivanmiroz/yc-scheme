@@ -33,7 +33,7 @@ export const scheme2Platforms: PlatformScheme[] = [
                 iconKey: 'hypervisor',
                 label: 'Гипервизор,\n виртуальные\n машины',
             },
-            {positionNumber: '2.3', iconKey: 'stackland', label: 'Yandex Cloud Stackland'},
+            {positionNumber: '2.3', iconKey: 'stackland', label: 'Yandex Cloud\n Stackland'},
             {
                 positionNumber: '2.4',
                 iconKey: 'baremetal',
@@ -47,15 +47,15 @@ export const scheme2Platforms: PlatformScheme[] = [
         platformId: 3,
         positions: [
             {positionNumber: '1.1', iconKey: 'servers', label: 'Серверы\n и СХД'},
-            {positionNumber: '1.2', iconKey: 'network', label: 'Сетевое\n подключение'},
+            {positionNumber: '1.2', iconKey: 'network', label: 'Сетевое\n оборудование'},
             {positionNumber: '1.3'},
+            {positionNumber: '1.4', iconKey: 'servers', label: 'Серверы\n и СХД'},
+            {positionNumber: '1.5'},
             {
-                positionNumber: '1.4',
+                positionNumber: '1.6',
                 iconKey: 'baremetal',
                 label: 'BareMetal\n Extend:\n Virtualization',
             },
-            {positionNumber: '1.5'},
-            {positionNumber: '1.6', iconKey: 'servers', label: 'Серверы\n и СХД'},
         ],
     },
 ];
