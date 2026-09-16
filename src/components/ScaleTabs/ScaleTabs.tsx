@@ -12,7 +12,6 @@ import {
 } from '../InfrastructureChoose/canvasAnimation/schemes';
 import {GuidePopup} from './GuidePopup';
 import {ZoomHintPopup} from './ZoomHintPopup';
-import {InactivityTimer} from './InactivityTimer';
 
 import legend1Src from '@/assets/icons/legend1.png';
 import legend2Src from '@/assets/icons/legend2.png';
@@ -25,9 +24,8 @@ import './ScaleTabs.scss';
 
 const b = block('scale-tabs');
 
-const INACTIVITY_DELAY_MS = 15000;
-const COUNTDOWN_FROM = 59;
-const RESET_DELAY_MS = 800;
+// Через сколько бездействия перезагружаем страницу.
+const INACTIVITY_DELAY_MS = 60000;
 
 // Гайд показывается не раньше, чем через 1 с после завершения анимации
 // линий (событие onReady из NetworkSingularity).
@@ -119,16 +117,13 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
 
     const [architectTab, setArchitectTab] = useState<ArchitectTab>('comments');
 
-    const [timerSeconds, setTimerSeconds] = useState<number | null>(null);
-
     const hasShownOnboardingRef = useRef(false);
 
     // Таймер отложенного показа GuidePopup (1 с после onReady).
     const guideShowTimerRef = useRef<number | null>(null);
 
+    // Таймер бездействия: сбрасывается на любом событии активности.
     const inactivityTimeoutRef = useRef<number | null>(null);
-    const countdownIntervalRef = useRef<number | null>(null);
-    const reloadTimeoutRef = useRef<number | null>(null);
 
     const availableLegendValues = getAvailableLegendValues(localActiveIndex);
     const visibleLegendItems = allLegendItems.filter((item) =>
@@ -147,8 +142,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
 
     // Активная кнопка = уже применённый таб ИЛИ таб, который сейчас
     // «в полёте» (клик уже сделан, но анимация схлопывания ещё идёт).
-    // Благодаря этому .scale-tabs__button_active появляется сразу при клике,
-    // а не после завершения анимации.
     const pendingTabValue =
         pendingTabIndex === null ? undefined : infraTabs[pendingTabIndex]?.value;
     const activeButtonValue = pendingTabValue ?? activeTabValue;
@@ -231,56 +224,23 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
     //  Таймер без активности
     // ------------------------------------------------------------
 
-    const clearTimers = useCallback(() => {
+    const clearInactivityTimer = useCallback(() => {
         if (inactivityTimeoutRef.current !== null) {
             window.clearTimeout(inactivityTimeoutRef.current);
             inactivityTimeoutRef.current = null;
         }
-        if (countdownIntervalRef.current !== null) {
-            window.clearInterval(countdownIntervalRef.current);
-            countdownIntervalRef.current = null;
-        }
-        if (reloadTimeoutRef.current !== null) {
-            window.clearTimeout(reloadTimeoutRef.current);
-            reloadTimeoutRef.current = null;
-        }
-    }, []);
-
-    const startCountdown = useCallback(() => {
-        setTimerSeconds(COUNTDOWN_FROM);
-        let remaining = COUNTDOWN_FROM;
-
-        countdownIntervalRef.current = window.setInterval(() => {
-            remaining -= 1;
-
-            if (remaining <= 0) {
-                setTimerSeconds(0);
-                if (countdownIntervalRef.current !== null) {
-                    window.clearInterval(countdownIntervalRef.current);
-                    countdownIntervalRef.current = null;
-                }
-                // Небольшая пауза, чтобы пользователь увидел 00:00,
-                // затем перезагружаем страницу — она вернётся в исходное состояние.
-                reloadTimeoutRef.current = window.setTimeout(() => {
-                    reloadTimeoutRef.current = null;
-                    window.location.reload();
-                }, RESET_DELAY_MS);
-                return;
-            }
-            setTimerSeconds(remaining);
-        }, 1000);
     }, []);
 
     const resetInactivity = useCallback(() => {
-        clearTimers();
-        setTimerSeconds(null);
+        clearInactivityTimer();
 
         if (isOnboardingDone) {
             inactivityTimeoutRef.current = window.setTimeout(() => {
-                startCountdown();
+                inactivityTimeoutRef.current = null;
+                window.location.reload();
             }, INACTIVITY_DELAY_MS);
         }
-    }, [clearTimers, isOnboardingDone, startCountdown]);
+    }, [clearInactivityTimer, isOnboardingDone]);
 
     useEffect(() => {
         if (!isOnboardingDone) return undefined;
@@ -295,10 +255,9 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
 
         return () => {
             ACTIVITY_EVENTS.forEach((eventName) => window.removeEventListener(eventName, handler));
-            clearTimers();
-            setTimerSeconds(null);
+            clearInactivityTimer();
         };
-    }, [isOnboardingDone, resetInactivity, clearTimers]);
+    }, [isOnboardingDone, resetInactivity, clearInactivityTimer]);
 
     // Отмена запланированного показа гайда при размонтировании.
     useEffect(
@@ -456,8 +415,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
 
             <GuidePopup open={onboardingStep === 'guide'} onClose={handleGuideClose} />
             <ZoomHintPopup open={onboardingStep === 'zoom'} onClose={handleZoomHintClose} />
-
-            {timerSeconds !== null && <InactivityTimer seconds={timerSeconds} />}
         </div>
     );
 };
