@@ -177,6 +177,11 @@ export const drawNode = (
             const iconW = BASE_ICON_SIZE * scaleFactor;
             const iconH = BASE_ICON_SIZE * scaleFactor;
 
+            // Качественный downscale PNG-исходников (128×128 и больше)
+            // к текущему физическому размеру иконки.
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+
             const iconX = node.x - iconW / 2;
             const iconY = node.y - iconH / 2;
 

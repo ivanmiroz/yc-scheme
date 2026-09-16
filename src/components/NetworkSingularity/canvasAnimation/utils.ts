@@ -90,12 +90,14 @@ export const calculateCanvasDimensions = (
     cssHeight: number,
 ): {width: number; height: number; dpr: number} => {
     const maxCssDim = Math.max(cssWidth, cssHeight);
-    let dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-    const targetPhysical = maxCssDim * dpr;
+    const deviceDpr = window.devicePixelRatio || 1;
 
-    if (targetPhysical > MAX_CANVAS_DIMENSION) {
-        dpr = MAX_CANVAS_DIMENSION / maxCssDim;
-    }
+    // Кламп DPR нужен только чтобы физический размер канваса
+    // не превысил MAX_CANVAS_DIMENSION. На обычных экранах
+    // (Full HD / 2K / Retina) он не срабатывает, и используется
+    // реальный DPR — иконки и текст перестают мылиться.
+    const maxCssSizeForDpr = MAX_CANVAS_DIMENSION / deviceDpr;
+    const dpr = maxCssDim > maxCssSizeForDpr ? MAX_CANVAS_DIMENSION / maxCssDim : deviceDpr;
 
     return {
         width: Math.floor(cssWidth * dpr),
