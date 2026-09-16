@@ -134,12 +134,15 @@ export const smoothCorners = (
     return out;
 };
 
-// Круговая дуга между A и B, выпуклая вправо от отрезка A→B.
+// Круговая дуга между A и B.
+// По умолчанию выпуклая вправо от отрезка A→B.
+// При flip = true выпуклость отражается на противоположную сторону.
 export const buildCircularArc = (
     A: {x: number; y: number},
     B: {x: number; y: number},
     bulge: number,
     segments: number,
+    flip = false,
 ): {x: number; y: number}[] => {
     const dx = B.x - A.x;
     const dy = B.y - A.y;
@@ -149,8 +152,9 @@ export const buildCircularArc = (
     const R = (d * d) / (8 * bulge) + bulge / 2;
     const M = {x: (A.x + B.x) / 2, y: (A.y + B.y) / 2};
 
-    const nx = dy / d;
-    const ny = -dx / d;
+    const sign = flip ? -1 : 1;
+    const nx = (dy / d) * sign;
+    const ny = (-dx / d) * sign;
 
     const h = R - bulge;
     const O = {x: M.x + nx * h, y: M.y + ny * h};

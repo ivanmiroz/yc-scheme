@@ -51,7 +51,7 @@ export const CONNECTIONS_CONFIG = {
 
     SCHEME_SERPENTINE: {
         TURNS: 6,
-        AMPLITUDE_RATIO: (40 / 1920) * 0.5,
+        AMPLITUDE_RATIO: (40 / 1920) * 0.33,
         STRAIGHT_FRACTION: 0.25,
         CORNER_RADIUS_RATIO: 16 / 1920,
         CORNER_SEGMENTS: 8,
@@ -63,7 +63,7 @@ export const CONNECTIONS_CONFIG = {
     },
 
     SCHEME_ARC: {
-        BULGE_RATIO: 40 / 1920,
+        BULGE_RATIO: 60 / 1920,
         SEGMENTS: 48,
     },
 
@@ -75,7 +75,7 @@ export const CONNECTIONS_CONFIG = {
 
 export const PLATFORM_MARKER_CONFIG = {
     LENGTH_RATIO: 1 / 3,
-    BOTTOM_OFFSET_RATIO: 0.2,
+    BOTTOM_OFFSET_RATIO: 0.25,
     LINE_WIDTH_RATIO: 3 / 1920,
     DOT_RADIUS_RATIO: 7 / 1920,
     COLOR: '#000000',

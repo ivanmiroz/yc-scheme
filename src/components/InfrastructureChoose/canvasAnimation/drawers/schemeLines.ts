@@ -101,7 +101,13 @@ export const drawSchemeLines = (
                 : smoothCorners(rawPoints, cornerRadius, SCHEME_SERPENTINE_CORNER_SEGMENTS);
             drawPolylineWithProgress(ctx, finalPoints, progress);
         } else if (line.arc) {
-            const points = buildCircularArc(A, B, arcBulge, SCHEME_ARC_SEGMENTS);
+            const points = buildCircularArc(
+                A,
+                B,
+                arcBulge,
+                SCHEME_ARC_SEGMENTS,
+                line.arcFlip ?? false,
+            );
             drawPolylineWithProgress(ctx, points, progress);
         } else {
             const currentX = A.x + (B.x - A.x) * progress;

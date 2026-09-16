@@ -42,6 +42,8 @@ export interface SchemeLine {
     serpentineStraightFraction?: number;
     // Если true — линия рисуется по круговой дуге.
     arc?: boolean;
+    // Отражает выпуклость дуги на противоположную сторону.
+    arcFlip?: boolean;
 }
 
 // Схема целиком: платформы + линии между объектами этой схемы.
@@ -159,7 +161,7 @@ export const scheme1Platforms: PlatformScheme[] = [
 ];
 
 export const scheme1Lines: SchemeLine[] = [
-    {from: '2.4', fromAnchor: 'right', to: '2.6', toAnchor: 'left'},
+    // 2.5 → 3.5: без изменений.
     {
         from: '2.5',
         fromAnchor: 'top',
@@ -167,12 +169,37 @@ export const scheme1Lines: SchemeLine[] = [
         toAnchor: 'text-bottom',
         serpentine: true,
     },
+    // 2.5 → 2.6: было serpentine, стало прямой пунктирной.
     {
         from: '2.5',
         fromAnchor: 'right',
         to: '2.6',
         toAnchor: 'left',
-        serpentine: true,
+        dashed: true,
+    },
+    // 1.4 → 1.5: новая прямая.
+    {
+        from: '1.4',
+        fromAnchor: 'right',
+        to: '1.5',
+        toAnchor: 'left',
+    },
+    // 2.4 → 2.5: дуга от низа текста к низу текста.
+    {
+        from: '2.4',
+        fromAnchor: 'text-bottom',
+        to: '2.5',
+        toAnchor: 'text-bottom',
+        arc: true,
+    },
+    // 2.5 → 1.4: дуга между платформами 2 и 1, отклоняется вниз.
+    {
+        from: '2.5',
+        fromAnchor: 'text-bottom',
+        to: '1.4',
+        toAnchor: 'right',
+        arc: true,
+        arcFlip: true,
     },
 ];
 

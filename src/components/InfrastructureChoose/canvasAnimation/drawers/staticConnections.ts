@@ -1,8 +1,6 @@
 import {LEGEND_TO_LINE_KIND, LegendValue} from '../schemes';
 import {PodiumState} from '../types';
 import {
-    ARC_BULGE_RATIO,
-    ARC_SEGMENTS,
     CONNECTIONS_LINE_DURATION,
     CONNECTION_COLOR,
     CONNECTION_DOT_RADIUS_RATIO,
@@ -19,12 +17,11 @@ import {
     SERPENTINE_STRAIGHT_FRACTION,
     SERPENTINE_TURNS,
 } from './config';
-import {buildCircularArc, buildSerpentine, drawPolylineWithProgress} from './paths';
+import {buildSerpentine, drawPolylineWithProgress} from './paths';
 import {applyConnectionStroke} from './stroke';
 
 // Дополнительный горизонтальный сдвиг линий, идущих по правому краю
-// платформы 1 (нижней): пунктир платформа 1 → платформа 3 и дуга
-// платформа 1 → платформа 2.
+// платформы 1 (нижней): пунктир платформа 1 → платформа 3.
 // Отрицательное значение — влево. В долях ширины canvas.
 const RIGHT_EDGE_SHIFT_RATIO = -6 / 1920;
 
@@ -88,50 +85,6 @@ const drawSerpentineConnection = (
     applyConnectionStroke(ctx, {lineWidth, color});
 
     drawPolylineWithProgress(ctx, fullPath, progress);
-
-    ctx.beginPath();
-    ctx.arc(A.x, A.y, dotRadius, 0, Math.PI * 2);
-    ctx.fill();
-
-    if (progress >= 1) {
-        ctx.beginPath();
-        ctx.arc(B.x, B.y, dotRadius, 0, Math.PI * 2);
-        ctx.fill();
-    }
-};
-
-const drawCircularArcConnection = (
-    ctx: CanvasRenderingContext2D,
-    bottom: PodiumState,
-    top: PodiumState,
-    progress: number,
-    canvasWidth: number,
-    color: string,
-    highlighted: boolean,
-) => {
-    const baseLineWidth = Math.max(1, canvasWidth * CONNECTION_LINE_WIDTH_RATIO);
-    const lineWidth = highlighted ? baseLineWidth * HIGHLIGHT_WIDTH_MULTIPLIER : baseLineWidth;
-    const dotRadius = Math.max(2, canvasWidth * CONNECTION_DOT_RADIUS_RATIO);
-    const bulge = canvasWidth * ARC_BULGE_RATIO;
-
-    // Тот же сдвиг влево, что и у пунктирной линии — линии,
-    // идущие по правому краю нижней платформы, двигаются синхронно.
-    const shiftX = canvasWidth * RIGHT_EDGE_SHIFT_RATIO;
-
-    const A = {
-        x: bottom.currentX + bottom.scaledWidth + shiftX,
-        y: bottom.currentY + bottom.scaledHeight / 2,
-    };
-    const B = {
-        x: top.currentX + top.scaledWidth + shiftX,
-        y: top.currentY + top.scaledHeight / 2,
-    };
-
-    const points = buildCircularArc(A, B, bulge, ARC_SEGMENTS);
-
-    applyConnectionStroke(ctx, {lineWidth, color});
-
-    drawPolylineWithProgress(ctx, points, progress);
 
     ctx.beginPath();
     ctx.arc(A.x, A.y, dotRadius, 0, Math.PI * 2);
@@ -211,7 +164,7 @@ const drawPlatformMarker = (
     const lineWidth = highlighted ? baseLineWidth * HIGHLIGHT_WIDTH_MULTIPLIER : baseLineWidth;
     const dotRadius = Math.max(2, canvasWidth * MARKER_DOT_RADIUS_RATIO);
 
-    const centerX = podium.currentX + podium.scaledWidth / 2;
+    const centerX = podium.currentX + podium.scaledWidth / 2.01;
     const y = podium.currentY + podium.scaledHeight * (1 - MARKER_BOTTOM_OFFSET_RATIO);
     const halfLength = (podium.scaledWidth * MARKER_LENGTH_RATIO * progress) / 2;
 
@@ -235,7 +188,8 @@ const drawPlatformMarker = (
     ctx.restore();
 };
 
-// Пять статичных элементов, не зависящих от активной схемы.
+// Четыре статичных элемента, не зависящих от активной схемы.
+// (Дуга между платформами 1 и 2 убрана.)
 export const drawConnections = (
     ctx: CanvasRenderingContext2D,
     podiums: PodiumState[],
@@ -254,16 +208,16 @@ export const drawConnections = (
     const second = podiums[podiums.length - 2];
     const third = podiums[podiums.length - 3];
 
-    // Флаги подсветки и цвета — для каждого типа линии отдельно.
+    // Змейки между платформами: прямые углы (buildSerpentine не сглаживает) →
+    // sharp-serpentine → подсвечиваются на «Сетевая связность».
     const serpentineHighlighted = isKindHighlighted(activeLegend, 'sharp-serpentine');
     const serpentineColor = resolveColor(activeLegend, 'sharp-serpentine', CONNECTION_COLOR);
 
-    const arcHighlighted = isKindHighlighted(activeLegend, 'arc');
-    const arcColor = resolveColor(activeLegend, 'arc', CONNECTION_COLOR);
-
+    // Пунктирная прямая → vps
     const dashedHighlighted = isKindHighlighted(activeLegend, 'dashed');
     const dashedColor = resolveColor(activeLegend, 'dashed', CONNECTION_COLOR);
 
+    // Короткий отрезок на платформе — прямая → cloud-interconnect
     const markerHighlighted = isKindHighlighted(activeLegend, 'straight');
     const markerColor = resolveColor(activeLegend, 'straight', MARKER_COLOR);
 
@@ -285,7 +239,6 @@ export const drawConnections = (
         serpentineColor,
         serpentineHighlighted,
     );
-    drawCircularArcConnection(ctx, bottom, second, progress, canvasWidth, arcColor, arcHighlighted);
     drawDashedConnection(ctx, bottom, third, progress, canvasWidth, dashedColor, dashedHighlighted);
     drawPlatformMarker(ctx, bottom, progress, canvasWidth, markerColor, markerHighlighted);
 
