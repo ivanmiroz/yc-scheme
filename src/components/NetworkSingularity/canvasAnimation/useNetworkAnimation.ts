@@ -18,9 +18,10 @@ import {
     COLLAPSE_ACCELERATE_SPEED,
     COLLAPSE_FLY_DURATION,
     COLLAPSE_SHRINK_DURATION,
-    FADE_DURATION,
     LABEL_FONT_SIZE,
     MIN_AGE_FOR_FADE,
+    NODE_FADE_IN_DURATION,
+    NODE_FADE_OUT_DURATION,
     RESPAWN_DELAY,
     TARGET_TOTAL_COUNT,
 } from './constants';
@@ -30,6 +31,11 @@ import {LABELS, loadAllIcons} from './icons';
 
 /**
  * Считает прозрачность узла с учётом фаз появления и исчезновения.
+ *
+ * Появление и исчезновение иконки/текста идут быстрее, чем рост линии —
+ * за это отвечают отдельные константы NODE_FADE_IN_DURATION и
+ * NODE_FADE_OUT_DURATION. Рост линии управляется APPEAR_DURATION
+ * (см. renderLines), поэтому скорости узловых фаз его не меняют.
  *
  * @param node - Узел, для которого считается прозрачность.
  * @param currentTime - Текущее виртуальное время анимации (мс).
@@ -41,12 +47,12 @@ const getNodeOpacity = (node: Node2D, currentTime: number, timeScale: number): n
 
     const age = (currentTime - node.createdAt) * timeScale;
 
-    const appearProgress = Math.min(1, age / APPEAR_DURATION);
+    const appearProgress = Math.min(1, age / NODE_FADE_IN_DURATION);
     const appearOpacity = 1 - Math.pow(1 - appearProgress, 3);
 
     if (node.fadeStart !== null) {
         const fadeElapsed = (currentTime - node.fadeStart) * timeScale;
-        const fadeProgress = Math.min(1, fadeElapsed / FADE_DURATION);
+        const fadeProgress = Math.min(1, fadeElapsed / NODE_FADE_OUT_DURATION);
         const fadeOpacity = 1 - Math.pow(fadeProgress, 2);
         return Math.min(appearOpacity, fadeOpacity);
     }
@@ -338,6 +344,8 @@ const renderLines = (
         const lineOpacity = Math.min(opacities[i], opacities[node.sourceIdx]) * lineFactor;
         if (lineOpacity <= 0) continue;
 
+        // Рост линии считается по APPEAR_DURATION — эта скорость не меняется
+        // при ускорении появления/исчезновения иконок и текста.
         const age = opacityTime - node.createdAt;
         const appearProgress = Math.min(1, age / APPEAR_DURATION);
         const drawProgress = appearProgress * lineShrink;

@@ -54,14 +54,34 @@ export const ANIMATION_SPEED_MULTIPLIER = 2;
 /** Задержка между появлениями иконок при старте (мс) */
 export const SPAWN_DELAY_STEP = 150 * ANIMATION_SPEED_MULTIPLIER;
 
-/** Длительность появления иконки (мс) */
+/**
+ * Длительность роста линии (мс).
+ * Используется для отрисовки «прорастания» связи и для расчёта
+ * минимального возраста узла (MIN_AGE_FOR_FADE), чтобы узел не пропал
+ * раньше, чем его линия успеет дорисоваться.
+ */
 export const APPEAR_DURATION = 600 * ANIMATION_SPEED_MULTIPLIER;
+
+/**
+ * Длительность появления иконки и подписи узла (мс).
+ * Намеренно быстрее APPEAR_DURATION — иконки/текст проявляются раньше,
+ * чем успевает дорисоваться подходящая к ним линия.
+ */
+export const NODE_FADE_IN_DURATION = 250 * ANIMATION_SPEED_MULTIPLIER;
+
+/**
+ * Длительность исчезновения иконки и подписи узла (мс).
+ * Быстрее, чем было раньше: старые узлы уходят заметно шустрее.
+ * Отдельная константа, чтобы можно было независимо крутить скорость
+ * появления/исчезновения узлов, не трогая скорость роста линий.
+ */
+export const NODE_FADE_OUT_DURATION = 250 * ANIMATION_SPEED_MULTIPLIER;
 
 /** Максимальное случайное смещение внутри ячейки */
 export const CELL_RANDOM_OFFSET = 0.15;
 
 /** Цвет соединительных линий */
-export const LINE_COLOR = '#000';
+export const LINE_COLOR = '#334155';
 
 /** Базовая толщина линии в пикселях */
 export const BASE_LINE_WIDTH = 2;
@@ -90,7 +110,6 @@ export const CORE_RADIUS_RATIO = 0.3;
 // ===== ЖИЗНЕННЫЙ ЦИКЛ =====
 
 export const MIN_VISIBLE_TIME = 1500 * ANIMATION_SPEED_MULTIPLIER;
-export const FADE_DURATION = 600 * ANIMATION_SPEED_MULTIPLIER;
 export const RESPAWN_DELAY = 100 * ANIMATION_SPEED_MULTIPLIER;
 export const POSITION_SEARCH_ATTEMPTS = 150;
 export const NODE_SPACING = 50;
@@ -106,6 +125,12 @@ export const SKIP_OLDEST_SOURCE_COUNT = 4;
 // ===== ПРОИЗВОДНЫЕ =====
 
 export const TARGET_TOTAL_COUNT = NODE_COUNT + EMPTY_NODE_COUNT;
+
+/**
+ * Минимальный возраст узла, после которого его можно помечать на исчезновение.
+ * Считаем по APPEAR_DURATION (росту линии): узел не должен пропасть, пока
+ * линия к нему (или от него) ещё не дорисовалась.
+ */
 export const MIN_AGE_FOR_FADE = APPEAR_DURATION + MIN_VISIBLE_TIME;
 
 // ===== ЗАМОРОЖЕННЫЙ РЕЖИМ =====
