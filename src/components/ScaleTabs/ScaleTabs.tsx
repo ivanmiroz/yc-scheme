@@ -11,7 +11,6 @@ import {
     setActiveScheme,
 } from '../InfrastructureChoose/canvasAnimation/schemes';
 import {GuidePopup} from './GuidePopup';
-import {ZoomHintPopup} from './ZoomHintPopup';
 
 import legend1Src from '@/assets/icons/legend1.png';
 import legend2Src from '@/assets/icons/legend2.png';
@@ -19,6 +18,7 @@ import legend3Src from '@/assets/icons/legend3.png';
 import legend4Src from '@/assets/icons/legend4.png';
 import legend5Src from '@/assets/icons/legend5.png';
 import legend6Src from '@/assets/icons/legend6.png';
+import zoomHintSrc from '@/assets/icons/zoom-hint.png';
 
 import './ScaleTabs.scss';
 
@@ -30,6 +30,9 @@ const INACTIVITY_DELAY_MS = 60000;
 // Гайд показывается не раньше, чем через 1 с после завершения анимации
 // линий (событие onReady из NetworkSingularity).
 const GUIDE_POPUP_DELAY_MS = 1000;
+
+// Сколько показывается подсказка «Увеличьте схему…» после закрытия гайда.
+const ZOOM_HINT_DURATION_MS = 30000;
 
 const actions = [
     {value: 'scale', label: 'Масштабирование без ограничений'},
@@ -122,6 +125,9 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
     // Таймер отложенного показа GuidePopup (1 с после onReady).
     const guideShowTimerRef = useRef<number | null>(null);
 
+    // Таймер автоскрытия подсказки «Увеличьте схему…» через 30 с.
+    const zoomHintTimerRef = useRef<number | null>(null);
+
     // Таймер бездействия: сбрасывается на любом событии активности.
     const inactivityTimeoutRef = useRef<number | null>(null);
 
@@ -153,6 +159,13 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
         }
     }, []);
 
+    const cancelZoomHintTimer = useCallback(() => {
+        if (zoomHintTimerRef.current !== null) {
+            window.clearTimeout(zoomHintTimerRef.current);
+            zoomHintTimerRef.current = null;
+        }
+    }, []);
+
     const handleCanvasStart = useCallback(() => {
         setIsCanvasReady(false);
         // Перезапуск анимации (переключение схемы, ресайз и т. п.) —
@@ -173,14 +186,18 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
         }, GUIDE_POPUP_DELAY_MS);
     }, [cancelGuideShowTimer]);
 
+    // Закрытие гайда: вместо полноэкранного ZoomHintPopup показываем
+    // подсказку в левом нижнем углу на 30 секунд, после чего онбординг
+    // считается завершённым и включается таймер бездействия.
     const handleGuideClose = useCallback(() => {
         setOnboardingStep('zoom');
-    }, []);
-
-    const handleZoomHintClose = useCallback(() => {
-        setOnboardingStep('closed');
-        setIsOnboardingDone(true);
-    }, []);
+        cancelZoomHintTimer();
+        zoomHintTimerRef.current = window.setTimeout(() => {
+            zoomHintTimerRef.current = null;
+            setOnboardingStep('closed');
+            setIsOnboardingDone(true);
+        }, ZOOM_HINT_DURATION_MS);
+    }, [cancelZoomHintTimer]);
 
     // Вызывается из NetworkSingularity после завершения ВСЕХ фаз анимации
     // (ускорение → сматывание линий → полёт иконок к центру).
@@ -259,12 +276,13 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
         };
     }, [isOnboardingDone, resetInactivity, clearInactivityTimer]);
 
-    // Отмена запланированного показа гайда при размонтировании.
+    // Отмена запланированных таймеров при размонтировании.
     useEffect(
         () => () => {
             cancelGuideShowTimer();
+            cancelZoomHintTimer();
         },
-        [cancelGuideShowTimer],
+        [cancelGuideShowTimer, cancelZoomHintTimer],
     );
 
     return (
@@ -413,8 +431,20 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
                 </div>
             </div>
 
+            {/* Подсказка в левом нижнем углу: показывается 30 с после
+                закрытия гайда, потом исчезает сама. */}
+            {onboardingStep === 'zoom' && (
+                <div className={b('zoom-hint')}>
+                    <div className={b('zoom-hint-icon')}>
+                        <img src={zoomHintSrc.src} alt="" />
+                    </div>
+                    <p className={b('zoom-hint-text')}>
+                        Увеличьте схему и нажмите на сервис, чтобы узнать о нём подробности
+                    </p>
+                </div>
+            )}
+
             <GuidePopup open={onboardingStep === 'guide'} onClose={handleGuideClose} />
-            <ZoomHintPopup open={onboardingStep === 'zoom'} onClose={handleZoomHintClose} />
         </div>
     );
 };
