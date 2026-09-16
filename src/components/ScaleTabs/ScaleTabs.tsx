@@ -87,6 +87,7 @@ const allLegendItems: LegendItem[] = [
 ];
 
 type OnboardingStep = 'closed' | 'guide' | 'zoom';
+type ArchitectTab = 'comments' | 'scenario';
 
 const ACTIVITY_EVENTS: (keyof WindowEventMap)[] = [
     'mousemove',
@@ -115,6 +116,8 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
 
     const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('closed');
     const [isOnboardingDone, setIsOnboardingDone] = useState(false);
+
+    const [architectTab, setArchitectTab] = useState<ArchitectTab>('comments');
 
     const [timerSeconds, setTimerSeconds] = useState<number | null>(null);
 
@@ -380,27 +383,50 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
                         ))}
                     </div>
 
-                    <button className="infrastructure-choose__architect-button" type="button">
-                        <span className="infrastructure-choose__architect-button-text">
-                            Комментарии архитектора
-                        </span>
-                        <svg
-                            className="infrastructure-choose__architect-button-arrow"
-                            width="9"
-                            height="16"
-                            viewBox="0 0 9 16"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                        >
-                            <path
-                                fillRule="evenodd"
-                                clipRule="evenodd"
-                                d="M0.329505 15.4205C-0.109835 14.9812 -0.109835 14.2688 0.329505 13.8295L6.28401 7.875L0.329504 1.9205C-0.109836 1.48116 -0.109836 0.768849 0.329504 0.32951C0.768844 -0.10983 1.48115 -0.10983 1.92049 0.32951L8.67049 7.07951C9.10983 7.51885 9.10983 8.23116 8.67049 8.6705L1.92049 15.4205C1.48115 15.8598 0.768844 15.8598 0.329505 15.4205Z"
-                                fill="white"
-                                fillOpacity="0.7"
-                            />
-                        </svg>
-                    </button>
+                    <div className="infrastructure-choose__architect-tabs">
+                        <div className="infrastructure-choose__architect-tablist" role="tablist">
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={architectTab === 'comments'}
+                                className={`infrastructure-choose__architect-tab ${
+                                    architectTab === 'comments'
+                                        ? 'infrastructure-choose__architect-tab_active'
+                                        : ''
+                                }`}
+                                onClick={() => setArchitectTab('comments')}
+                            >
+                                Комментарии архитектора
+                            </button>
+
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={architectTab === 'scenario'}
+                                className={`infrastructure-choose__architect-tab ${
+                                    architectTab === 'scenario'
+                                        ? 'infrastructure-choose__architect-tab_active'
+                                        : ''
+                                }`}
+                                onClick={() => setArchitectTab('scenario')}
+                            >
+                                Описание сценария
+                            </button>
+                        </div>
+
+                        <div className="infrastructure-choose__architect-tabpanel" role="tabpanel">
+                            {architectTab === 'comments' && (
+                                <p className="infrastructure-choose__architect-text">
+                                    Здесь будет комментарий архитектора по выбранному сценарию.
+                                </p>
+                            )}
+                            {architectTab === 'scenario' && (
+                                <p className="infrastructure-choose__architect-text">
+                                    Здесь будет описание выбранного сценария.
+                                </p>
+                            )}
+                        </div>
+                    </div>
 
                     <h3 className="infrastructure-choose__section-title">Network</h3>
 
