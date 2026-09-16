@@ -61,8 +61,8 @@ const allLegendItems: LegendItem[] = [
     },
     {
         value: 'vps-pe',
-        icon: <img src={legend2Src.src} alt="VPS PE" />,
-        text: 'Virtual Private\n Cloud Peering\n Connection',
+        icon: <img src={legend2Src.src} alt="VPC Private Endpoint" />,
+        text: 'VPC Private Endpoint',
     },
     {
         value: 'cloud-interconnect',
@@ -402,7 +402,7 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
                         </svg>
                     </button>
 
-                    <h3 className="infrastructure-choose__section-title">Легенда</h3>
+                    <h3 className="infrastructure-choose__section-title">Network</h3>
 
                     <div className="infrastructure-choose__buttons">
                         {visibleLegendItems.map((item) => (

@@ -231,7 +231,9 @@ export const createPodiumAnimator = (
             });
             ctx.save();
             resetContextState();
-            drawSchemeLines(ctx, positions, progresses, width, activeLegend);
+            // podiums передаём, чтобы работали линии, крепящиеся к краю
+            // платформы (fromPlatform/toPlatform в SchemeLine).
+            drawSchemeLines(ctx, positions, progresses, width, activeLegend, podiums);
             ctx.restore();
         }
     };

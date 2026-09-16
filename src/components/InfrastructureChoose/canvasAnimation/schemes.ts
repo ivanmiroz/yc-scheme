@@ -27,12 +27,34 @@ export type LineAnchor =
     | 'text-top'
     | 'text-bottom';
 
+// Точка крепления линии на платформе.
+// 'left' | 'right' | 'top' | 'bottom' | 'center' — по границе/центру прямоугольника платформы.
+export type PlatformAnchor = 'left' | 'right' | 'top' | 'bottom' | 'center';
+
 // Линия между двумя объектами схемы.
+// Концы могут крепиться либо к иконке позиции (from/to — positionNumber),
+// либо к краю платформы (fromPlatform/toPlatform — её номер 1..4).
 export interface SchemeLine {
-    from: string; // positionNumber, например '2.4'
-    to: string; // positionNumber, например '2.6'
+    // Крепление к иконке позиции. Если указано fromPlatform —
+    // это поле игнорируется (аналогично для to).
+    from?: string; // positionNumber, например '2.4'
+    to?: string; // positionNumber, например '2.6'
     fromAnchor?: LineAnchor; // по умолчанию 'center'
     toAnchor?: LineAnchor; // по умолчанию 'center'
+    // Крепление к краю платформы. Номер платформы — как в positionNumber:
+    // '1.x' → 1 (нижняя), '4.x' → 4 (верхняя).
+    fromPlatform?: number;
+    fromPlatformAnchor?: PlatformAnchor; // по умолчанию 'center'
+    toPlatform?: number;
+    toPlatformAnchor?: PlatformAnchor; // по умолчанию 'center'
+    // Дополнительный горизонтальный сдвиг платформенных якорей,
+    // в долях ширины платформы. Отрицательное — влево.
+    // Применяется к fromPlatformAnchor и toPlatformAnchor одновременно.
+    platformAnchorShiftXRatio?: number;
+    // Дополнительный вертикальный сдвиг платформенных якорей,
+    // в долях высоты платформы. Отрицательное — вверх.
+    // Применяется к fromPlatformAnchor и toPlatformAnchor одновременно.
+    platformAnchorShiftYRatio?: number;
     dashed?: boolean; // пунктир (по умолчанию — сплошная)
     // Если true — середина линии рисуется змейкой
     serpentine?: boolean;
@@ -201,6 +223,15 @@ export const scheme1Lines: SchemeLine[] = [
         arc: true,
         arcFlip: true,
     },
+    // Прямая пунктирная от правого края платформы 1 к правому краю платформы 2.
+    {
+        fromPlatform: 1,
+        fromPlatformAnchor: 'right',
+        toPlatform: 2,
+        toPlatformAnchor: 'right',
+        dashed: true,
+        platformAnchorShiftXRatio: -0.005,
+    },
 ];
 
 // ==========================================
@@ -275,6 +306,23 @@ export const scheme2Lines: SchemeLine[] = [
         toAnchor: 'text-bottom',
         serpentine: true,
     },
+    // Прямая пунктирная от правого края платформы 1 к правому краю платформы 2.
+    {
+        fromPlatform: 1,
+        fromPlatformAnchor: 'right',
+        toPlatform: 2,
+        toPlatformAnchor: 'right',
+        dashed: true,
+        platformAnchorShiftXRatio: -0.005,
+    },
+    // Дуга от правого края позиции 1.6 к правому краю позиции 2.6.
+    {
+        from: '1.6',
+        fromAnchor: 'right',
+        to: '2.6',
+        toAnchor: 'right',
+        arc: true,
+    },
 ];
 
 // ==========================================
@@ -346,7 +394,14 @@ export const scheme3Platforms: PlatformScheme[] = [
 
 export const scheme3Lines: SchemeLine[] = [
     {from: '1.4', fromAnchor: 'right', to: '1.6', toAnchor: 'left'},
-    {from: '2.4', fromAnchor: 'right', to: '2.6', toAnchor: 'left', arc: true},
+    // 2.4 → 2.6: прямая пунктирная.
+    {
+        from: '2.4',
+        fromAnchor: 'right',
+        to: '2.6',
+        toAnchor: 'left',
+        dashed: true,
+    },
     {
         from: '2.6',
         fromAnchor: 'top',
@@ -354,12 +409,13 @@ export const scheme3Lines: SchemeLine[] = [
         toAnchor: 'text-bottom',
         serpentine: true,
     },
+    // 2.4 → 2.5: дуга от низа текста к низу текста.
     {
-        from: '2.5',
-        fromAnchor: 'right',
-        to: '2.6',
-        toAnchor: 'left',
-        serpentine: true,
+        from: '2.4',
+        fromAnchor: 'text-bottom',
+        to: '2.5',
+        toAnchor: 'text-bottom',
+        arc: true,
     },
     {
         from: '3.3',
@@ -370,6 +426,23 @@ export const scheme3Lines: SchemeLine[] = [
         dashed: true,
         sharpCorners: true,
         serpentineStraightFraction: 0.125,
+    },
+    // Прямая пунктирная от правого края платформы 1 к правому краю платформы 2.
+    {
+        fromPlatform: 1,
+        fromPlatformAnchor: 'right',
+        toPlatform: 2,
+        toPlatformAnchor: 'right',
+        dashed: true,
+        platformAnchorShiftXRatio: -0.005,
+    },
+    // Дуга от правого края иконки 1.6 к правому краю иконки 2.6.
+    {
+        from: '1.6',
+        fromAnchor: 'right',
+        to: '2.6',
+        toAnchor: 'right',
+        arc: true,
     },
 ];
 
@@ -446,19 +519,51 @@ export const scheme4Platforms: PlatformScheme[] = [
 
 export const scheme4Lines: SchemeLine[] = [
     {from: '1.4', fromAnchor: 'right', to: '1.6', toAnchor: 'left'},
+    // 2.5 → 2.4: прямая пунктирная, от левого края 2.5 к правому краю 2.4.
+    {
+        from: '2.5',
+        fromAnchor: 'left',
+        to: '2.4',
+        toAnchor: 'right',
+        dashed: true,
+    },
+    // 2.4 → 3.5: дуга, конец — к нижнему краю текста.
     {
         from: '2.4',
         fromAnchor: 'right',
-        to: '2.6',
-        toAnchor: 'left',
-        dashed: true,
-    },
-    {
-        from: '2.5',
-        fromAnchor: 'top',
         to: '3.5',
         toAnchor: 'text-bottom',
-        serpentine: true,
+        arc: true,
+    },
+    // Прямая пунктирная от правого края платформы 2 к правому краю платформы 3.
+    {
+        fromPlatform: 2,
+        fromPlatformAnchor: 'right',
+        toPlatform: 3,
+        toPlatformAnchor: 'right',
+        dashed: true,
+        platformAnchorShiftXRatio: -0.005,
+    },
+    // Дуга от правого края иконки 1.6 к правому краю платформы 2.
+    {
+        from: '1.6',
+        fromAnchor: 'right',
+        toPlatform: 2,
+        toPlatformAnchor: 'right',
+        arc: true,
+        platformAnchorShiftXRatio: -0.005,
+    },
+    // Дуга от левого края иконки 1.4 к чуть выше и чуть левее
+    // середины платформы 2.
+    {
+        from: '1.4',
+        fromAnchor: 'left',
+        toPlatform: 2,
+        toPlatformAnchor: 'center',
+        arc: true,
+        arcFlip: true,
+        platformAnchorShiftXRatio: 0.01,
+        platformAnchorShiftYRatio: -0.02,
     },
 ];
 

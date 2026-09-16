@@ -6,8 +6,6 @@ import {
     CONNECTION_DOT_RADIUS_RATIO,
     CONNECTION_HIGHLIGHT_COLOR,
     CONNECTION_LINE_WIDTH_RATIO,
-    DASH_GAP_RATIO,
-    DASH_LENGTH_RATIO,
     MARKER_BOTTOM_OFFSET_RATIO,
     MARKER_COLOR,
     MARKER_DOT_RADIUS_RATIO,
@@ -20,13 +18,17 @@ import {
 import {buildSerpentine, drawPolylineWithProgress} from './paths';
 import {applyConnectionStroke} from './stroke';
 
-// Дополнительный горизонтальный сдвиг линий, идущих по правому краю
-// платформы 1 (нижней): пунктир платформа 1 → платформа 3.
-// Отрицательное значение — влево. В долях ширины canvas.
-const RIGHT_EDGE_SHIFT_RATIO = -6 / 1920;
-
 // Во сколько раз толще рисуется подсвеченная линия.
 const HIGHLIGHT_WIDTH_MULTIPLIER = 1.5;
+
+// Во сколько раз дополнительная горизонтальная линия на платформе
+// короче основного маркера (по ширине).
+const EXTRA_LINE_WIDTH_DIVISOR = 1.8;
+
+// Дополнительный сдвиг влево для новой горизонтальной линии
+// относительно основного маркера, в долях ширины платформы.
+// Знак: отрицательное значение — влево.
+const EXTRA_LINE_SHIFT_RATIO = -0.005;
 
 export const getConnectionsTotalDuration = (): number => CONNECTIONS_LINE_DURATION;
 
@@ -97,61 +99,6 @@ const drawSerpentineConnection = (
     }
 };
 
-const drawDashedConnection = (
-    ctx: CanvasRenderingContext2D,
-    bottom: PodiumState,
-    farTop: PodiumState,
-    progress: number,
-    canvasWidth: number,
-    color: string,
-    highlighted: boolean,
-) => {
-    const baseLineWidth = Math.max(1, canvasWidth * CONNECTION_LINE_WIDTH_RATIO);
-    const lineWidth = highlighted ? baseLineWidth * HIGHLIGHT_WIDTH_MULTIPLIER : baseLineWidth;
-    const dotRadius = Math.max(2, canvasWidth * CONNECTION_DOT_RADIUS_RATIO);
-    const dash = Math.max(4, canvasWidth * DASH_LENGTH_RATIO);
-    const gap = Math.max(3, canvasWidth * DASH_GAP_RATIO);
-
-    // Горизонтальный сдвиг всей линии влево — сдвигаются оба конца
-    // одинаково, поэтому наклон линии сохраняется.
-    const shiftX = canvasWidth * RIGHT_EDGE_SHIFT_RATIO;
-
-    const A = {
-        x: bottom.currentX + bottom.scaledWidth + shiftX,
-        y: bottom.currentY + bottom.scaledHeight / 2,
-    };
-    const B = {
-        x: farTop.currentX + farTop.scaledWidth + shiftX,
-        y: farTop.currentY + farTop.scaledHeight / 2,
-    };
-
-    ctx.save();
-    applyConnectionStroke(ctx, {lineWidth, lineCap: 'butt', color});
-    ctx.setLineDash([dash, gap]);
-
-    const currentX = A.x + (B.x - A.x) * progress;
-    const currentY = A.y + (B.y - A.y) * progress;
-
-    ctx.beginPath();
-    ctx.moveTo(A.x, A.y);
-    ctx.lineTo(currentX, currentY);
-    ctx.stroke();
-
-    ctx.setLineDash([]);
-
-    ctx.beginPath();
-    ctx.arc(A.x, A.y, dotRadius, 0, Math.PI * 2);
-    ctx.fill();
-
-    if (progress >= 1) {
-        ctx.beginPath();
-        ctx.arc(B.x, B.y, dotRadius, 0, Math.PI * 2);
-        ctx.fill();
-    }
-
-    ctx.restore();
-};
-
 const drawPlatformMarker = (
     ctx: CanvasRenderingContext2D,
     podium: PodiumState,
@@ -163,33 +110,68 @@ const drawPlatformMarker = (
     const baseLineWidth = Math.max(1, canvasWidth * MARKER_LINE_WIDTH_RATIO);
     const lineWidth = highlighted ? baseLineWidth * HIGHLIGHT_WIDTH_MULTIPLIER : baseLineWidth;
     const dotRadius = Math.max(2, canvasWidth * MARKER_DOT_RADIUS_RATIO);
+    const strokeColor = color ?? MARKER_COLOR;
 
+    // Центр чуть левее середины платформы (2.01 вместо 2).
     const centerX = podium.currentX + podium.scaledWidth / 2.01;
-    const y = podium.currentY + podium.scaledHeight * (1 - MARKER_BOTTOM_OFFSET_RATIO);
-    const halfLength = (podium.scaledWidth * MARKER_LENGTH_RATIO * progress) / 2;
+    const platformCenterY = podium.currentY + podium.scaledHeight / 2;
+    const markerY = podium.currentY + podium.scaledHeight * (1 - MARKER_BOTTOM_OFFSET_RATIO);
+
+    // Y дополнительной линии — ровно посередине между маркером и центром платформы.
+    const extraLineY = (markerY + platformCenterY) / 2;
+
+    // Дополнительная линия смещена чуть левее основного маркера.
+    const extraCenterX = centerX + podium.scaledWidth * EXTRA_LINE_SHIFT_RATIO;
+
+    // Длина: основной маркер и дополнительная линия.
+    const markerHalfLength = (podium.scaledWidth * MARKER_LENGTH_RATIO) / 2;
+    const extraHalfLength = markerHalfLength / EXTRA_LINE_WIDTH_DIVISOR;
 
     ctx.save();
-    applyConnectionStroke(ctx, {lineWidth, color: color ?? MARKER_COLOR});
+    applyConnectionStroke(ctx, {lineWidth, color: strokeColor});
+
+    // Дополнительная горизонтальная линия с точками на концах.
+    const extraCurrentHalf = extraHalfLength * progress;
+    const extraLeftX = extraCenterX - extraCurrentHalf;
+    const extraRightX = extraCenterX + extraCurrentHalf;
 
     ctx.beginPath();
-    ctx.moveTo(centerX - halfLength, y);
-    ctx.lineTo(centerX + halfLength, y);
+    ctx.moveTo(extraLeftX, extraLineY);
+    ctx.lineTo(extraRightX, extraLineY);
     ctx.stroke();
 
     if (progress > 0) {
         ctx.beginPath();
-        ctx.arc(centerX - halfLength, y, dotRadius, 0, Math.PI * 2);
+        ctx.arc(extraLeftX, extraLineY, dotRadius, 0, Math.PI * 2);
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(centerX + halfLength, y, dotRadius, 0, Math.PI * 2);
+        ctx.arc(extraRightX, extraLineY, dotRadius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Основной горизонтальный маркер с точками на концах.
+    const markerHalf = markerHalfLength * progress;
+    const markerLeftX = centerX - markerHalf;
+    const markerRightX = centerX + markerHalf;
+
+    ctx.beginPath();
+    ctx.moveTo(markerLeftX, markerY);
+    ctx.lineTo(markerRightX, markerY);
+    ctx.stroke();
+
+    if (progress > 0) {
+        ctx.beginPath();
+        ctx.arc(markerLeftX, markerY, dotRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(markerRightX, markerY, dotRadius, 0, Math.PI * 2);
         ctx.fill();
     }
 
     ctx.restore();
 };
 
-// Четыре статичных элемента, не зависящих от активной схемы.
-// (Дуга между платформами 1 и 2 убрана.)
+// Статичные элементы, не зависящие от активной схемы.
 export const drawConnections = (
     ctx: CanvasRenderingContext2D,
     podiums: PodiumState[],
@@ -213,10 +195,6 @@ export const drawConnections = (
     const serpentineHighlighted = isKindHighlighted(activeLegend, 'sharp-serpentine');
     const serpentineColor = resolveColor(activeLegend, 'sharp-serpentine', CONNECTION_COLOR);
 
-    // Пунктирная прямая → vps
-    const dashedHighlighted = isKindHighlighted(activeLegend, 'dashed');
-    const dashedColor = resolveColor(activeLegend, 'dashed', CONNECTION_COLOR);
-
     // Короткий отрезок на платформе — прямая → cloud-interconnect
     const markerHighlighted = isKindHighlighted(activeLegend, 'straight');
     const markerColor = resolveColor(activeLegend, 'straight', MARKER_COLOR);
@@ -239,7 +217,6 @@ export const drawConnections = (
         serpentineColor,
         serpentineHighlighted,
     );
-    drawDashedConnection(ctx, bottom, third, progress, canvasWidth, dashedColor, dashedHighlighted);
     drawPlatformMarker(ctx, bottom, progress, canvasWidth, markerColor, markerHighlighted);
 
     ctx.restore();
