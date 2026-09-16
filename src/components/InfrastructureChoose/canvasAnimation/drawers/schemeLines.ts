@@ -33,6 +33,30 @@ interface Point {
     y: number;
 }
 
+// Поля линии, которые нужны для разрешения её концов.
+// Это подмножество SchemeLine — чтобы не тянуть сюда полный тип
+// и не плодить циклические импорты.
+interface EndpointSpec {
+    fromPlatform?: number;
+    fromPlatformAnchor?: string;
+    from?: string;
+    fromAnchor?: string;
+    toPlatform?: number;
+    toPlatformAnchor?: string;
+    to?: string;
+    toAnchor?: string;
+}
+
+// Поля линии, которые нужны для выбора формы её отрисовки.
+interface PathSpec {
+    dashed?: boolean;
+    serpentine?: boolean;
+    sharpCorners?: boolean;
+    serpentineStraightFraction?: number;
+    arc?: boolean;
+    arcFlip?: boolean;
+}
+
 // Номер платформы по её позиции в массиве podiums:
 // последний элемент — платформа 1 (нижняя), первый — платформа 4 (верхняя).
 const getPlatformNumber = (podiums: PodiumState[], podium: PodiumState): number =>
@@ -85,7 +109,7 @@ const getPlatformAnchorPoint = (
 // Разрешить точку привязки для одного конца линии.
 // Приоритет: платформенный якорь → якорь иконки → null.
 const resolveEndpoint = (
-    line: {fromPlatform?: number; fromPlatformAnchor?: string; from?: string; fromAnchor?: string},
+    line: EndpointSpec,
     podiums: PodiumState[],
     byNumber: Map<string, Position>,
     canvasWidth: number,
@@ -125,14 +149,7 @@ const drawLinePath = (
     B: Point,
     progress: number,
     canvasWidth: number,
-    line: {
-        dashed?: boolean;
-        serpentine?: boolean;
-        sharpCorners?: boolean;
-        serpentineStraightFraction?: number;
-        arc?: boolean;
-        arcFlip?: boolean;
-    },
+    line: PathSpec,
 ) => {
     const dash = Math.max(4, canvasWidth * DASH_LENGTH_RATIO);
     const gap = Math.max(3, canvasWidth * DASH_GAP_RATIO);
