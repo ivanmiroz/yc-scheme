@@ -288,8 +288,6 @@
         border: 1px solid rgba(176, 189, 217, 1);
         border-radius: 0.625vw;
         display: flex;
-        // Блок табов забирает всё свободное место в сайдбаре,
-        // из-за чего Network-заголовок и легенда прижимаются к низу.
         flex: 1;
         flex-direction: column;
         min-height: 0;
@@ -325,16 +323,30 @@
     }
 
     &__architect-tabpanel {
-        // Растягиваем панель внутри блока табов — тогда именно здесь
-        // работает скролл, а не на всю высоту сайдбара.
         flex: 1;
         min-height: 0;
         overflow-y: auto;
         padding: 0.625vw 0.833vw;
     }
 
-    // Описание выбранного сценария — показывается только в табе
-    // «Описание сценария», над блоком QR-карточек.
+    // Абзацы «Рекомендаций архитектора» — показываются только в табе
+    // «Рекомендации архитектора», над блоком QR-карточек.
+    &__architect-recommendation {
+        display: flex;
+        flex-direction: column;
+        gap: 0.417vw; // 8px @ 1920
+        margin: 0 0 0.417vw; // 8px @ 1920
+    }
+
+    &__architect-recommendation-text {
+        color: var(--g-color-text-primary);
+        font-size: var(--g-text-size-xs);
+        line-height: 1.4;
+        margin: 0;
+    }
+
+    // Описание сценария — показывается только в табе «Описание сценария»,
+    // над блоком QR-карточек.
     &__architect-scenario {
         color: var(--g-color-text-primary);
         font-size: var(--g-text-size-xs);
@@ -365,8 +377,6 @@
         color: var(--g-color-text-primary);
         font-size: var(--g-text-size-xxs);
         line-height: 1.3;
-        // Отрицательные боковые отступы — текст может выходить за паддинг
-        // карточки на 5px с каждой стороны. 5px @ 1920 = 0.26vw.
         margin: 0 -0.26vw;
         text-align: center;
     }
