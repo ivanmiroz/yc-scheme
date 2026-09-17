@@ -17,8 +17,8 @@ export const scheme3Platforms: PlatformScheme[] = [
         platformId: 1,
         positions: [
             {positionNumber: '3.1', iconKey: 'storage', label: 'Object\n Storage'},
-            {positionNumber: '3.2', iconKey: 'dwn', label: 'DWN'},
-            {positionNumber: '3.3', iconKey: 'servers', label: 'Серверы\n и СХД'},
+            {positionNumber: '3.2', iconKey: 'stackland', label: 'Yandex Cloud\n Stackland'},
+            {positionNumber: '3.3', iconKey: 'dwn', label: 'DWH'},
             {
                 positionNumber: '3.4',
                 iconKeys: ['code', 'elephant', 'sticks'],
@@ -38,7 +38,7 @@ export const scheme3Platforms: PlatformScheme[] = [
                 iconKey: 'hypervisor',
                 label: 'Гипервизор,\n виртуальные\n машины',
             },
-            {positionNumber: '2.3', iconKey: 'stackland', label: 'Yandex Cloud\n Stackland'},
+            {positionNumber: '2.3'},
             {positionNumber: '2.4', iconKey: 'backup', label: 'Cloud\n Backup'},
             {
                 positionNumber: '2.5',
@@ -56,11 +56,7 @@ export const scheme3Platforms: PlatformScheme[] = [
             {positionNumber: '1.3'},
             {positionNumber: '1.4', iconKey: 'servers', label: 'Серверы\n и СХД'},
             {positionNumber: '1.5'},
-            {
-                positionNumber: '1.6',
-                iconKey: 'baremetal',
-                label: 'BareMetal\n Extend:\n Virtualization',
-            },
+            {positionNumber: '1.6', iconKey: 'baremetal', label: 'BareMetal'},
         ],
     },
 ];
@@ -97,14 +93,6 @@ export const scheme3Lines: SchemeLine[] = [
         dashed: true,
         sharpCorners: true,
         serpentineStraightFraction: 0.125,
-    },
-    {
-        fromPlatform: 1,
-        fromPlatformAnchor: 'right',
-        toPlatform: 2,
-        toPlatformAnchor: 'right',
-        dashed: true,
-        platformAnchorShiftXRatio: -0.005,
     },
     {
         from: '1.6',

@@ -15,6 +15,7 @@ import {
     isPointOverPosition,
 } from './drawers';
 import {LegendValue, getActiveSchemeLines, getPositionConfig} from './schemes';
+import {getIconBackground} from './iconBackgrounds';
 import {loadAllIcons} from './icons';
 
 interface AnimationParams {
@@ -661,6 +662,8 @@ export const createPodiumAnimator = (
 
             const config = getPositionConfig(pos.positionNumber);
             if (!config || !config.label) continue;
+            // Наводим/кликаем только по иконкам с подложкой.
+            if (!getIconBackground(config.label)) continue;
 
             if (isPointOverPosition(world.x, world.y, pos, config, iconSize, labelFontSize)) {
                 return true;
@@ -689,6 +692,8 @@ export const createPodiumAnimator = (
 
             const config = getPositionConfig(pos.positionNumber);
             if (!config || !config.label) continue;
+            // Попап открываем только у иконок с подложкой.
+            if (!getIconBackground(config.label)) continue;
 
             if (isPointOverPosition(world.x, world.y, pos, config, iconSize, labelFontSize)) {
                 return pos;

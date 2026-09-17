@@ -49,6 +49,11 @@ export const DESCRIPTIONS: Record<string, DescriptionEntry> = {
         qr: qrStackland.src,
     },
 
+    DWH: {
+        description: 'Распределенная веб-платформа для высоконагруженных сервисов.',
+        qr: qrStackland.src,
+    },
+
     'Гипервизор, виртуальные машины': {
         description:
             'Средства виртуализации и управления виртуальными машинами в облачной инфраструктуре.',
@@ -70,10 +75,28 @@ export const DESCRIPTIONS: Record<string, DescriptionEntry> = {
         qr: qrBareMetalExtend.src,
     },
 
-    'Yandex BareMetal Независимый ДЦ': {
+    // BareMetal Extend в связке с Managed Service for Kubernetes.
+    'BareMetal Extend Managed Service for Kubernetes': {
+        title: 'Yandex BareMetal Extend: Managed Service for Kubernetes',
+        description:
+            'Кластеры Managed Service for Kubernetes® на выделенных серверах Yandex BareMetal — производительность физического железа с оркестрацией Kubernetes в изолированной среде.',
+        qr: qrBareMetalExtend.src,
+    },
+
+    // Короткая подпись «BareMetal» — используется, когда позиция помечена
+    // одним словом (например, 1.4 в scheme1).
+    BareMetal: {
         title: 'Yandex BareMetal',
         description:
             'Сервис по аренде выделенного физического сервера, все ресурсы которого доступны для решения только ваших задач.',
+        qr: qrBareMetal.src,
+    },
+
+    // BareMetal с GPU — тот же сервис, но с GPU-конфигурацией.
+    'BareMetal с GPU': {
+        title: 'Yandex BareMetal с GPU',
+        description:
+            'Сервис по аренде выделенного физического сервера с GPU, все ресурсы которого доступны для решения только ваших задач.',
         qr: qrBareMetal.src,
     },
 
@@ -102,6 +125,14 @@ export const DESCRIPTIONS: Record<string, DescriptionEntry> = {
         title: 'Yandex Compute Cloud',
         description:
             'Сервис предоставляет масштабируемые вычислительные мощности для размещения, тестирования и прототипирования ваших проектов.',
+        qr: qrComputeCloud.src,
+    },
+
+    // Cloud Compute с GPU — тот же сервис, но с GPU-конфигурацией.
+    'Cloud Compute с GPU': {
+        title: 'Yandex Compute Cloud с GPU',
+        description:
+            'Сервис предоставляет масштабируемые вычислительные мощности с GPU для размещения, тестирования и прототипирования ваших проектов, а также для задач машинного обучения и инференса.',
         qr: qrComputeCloud.src,
     },
 

@@ -6,6 +6,8 @@ import {
     CONNECTION_DOT_RADIUS_RATIO,
     CONNECTION_HIGHLIGHT_COLOR,
     CONNECTION_LINE_WIDTH_RATIO,
+    DASH_GAP_RATIO,
+    DASH_LENGTH_RATIO,
     MARKER_BOTTOM_OFFSET_RATIO,
     MARKER_COLOR,
     MARKER_DOT_RADIUS_RATIO,
@@ -29,6 +31,10 @@ const EXTRA_LINE_WIDTH_DIVISOR = 1.8;
 // относительно основного маркера, в долях ширины платформы.
 // Знак: отрицательное значение — влево.
 const EXTRA_LINE_SHIFT_RATIO = -0.005;
+
+// Сдвиг по X для вертикальных линий, соединяющих платформы
+// (от правого края к правому краю). Чуть левее края — как в схемах.
+const PLATFORM_TO_PLATFORM_SHIFT_X_RATIO = -0.005;
 
 export const getConnectionsTotalDuration = (): number => CONNECTIONS_LINE_DURATION;
 
@@ -97,6 +103,63 @@ const drawSerpentineConnection = (
         ctx.arc(B.x, B.y, dotRadius, 0, Math.PI * 2);
         ctx.fill();
     }
+};
+
+// Прямая вертикальная пунктирная линия между двумя платформами.
+// Идёт от правого края нижней платформы к правому краю верхней.
+const drawPlatformToPlatformConnection = (
+    ctx: CanvasRenderingContext2D,
+    fromPodium: PodiumState,
+    toPodium: PodiumState,
+    progress: number,
+    canvasWidth: number,
+    color: string,
+    highlighted: boolean,
+) => {
+    const baseLineWidth = Math.max(1, canvasWidth * CONNECTION_LINE_WIDTH_RATIO);
+    const lineWidth = highlighted ? baseLineWidth * HIGHLIGHT_WIDTH_MULTIPLIER : baseLineWidth;
+    const dotRadius = Math.max(2, canvasWidth * CONNECTION_DOT_RADIUS_RATIO);
+
+    const dash = Math.max(4, canvasWidth * DASH_LENGTH_RATIO);
+    const gap = Math.max(3, canvasWidth * DASH_GAP_RATIO);
+
+    const shiftX = fromPodium.scaledWidth * PLATFORM_TO_PLATFORM_SHIFT_X_RATIO;
+
+    const A = {
+        x: fromPodium.currentX + fromPodium.scaledWidth + shiftX,
+        y: fromPodium.currentY + fromPodium.scaledHeight / 2,
+    };
+    const B = {
+        x: toPodium.currentX + toPodium.scaledWidth + shiftX,
+        y: toPodium.currentY + toPodium.scaledHeight / 2,
+    };
+
+    ctx.save();
+    applyConnectionStroke(ctx, {lineWidth, color});
+    ctx.setLineDash([dash, gap]);
+
+    const currentX = A.x + (B.x - A.x) * progress;
+    const currentY = A.y + (B.y - A.y) * progress;
+
+    ctx.beginPath();
+    ctx.moveTo(A.x, A.y);
+    ctx.lineTo(currentX, currentY);
+    ctx.stroke();
+
+    // Точки на концах рисуем без пунктира.
+    ctx.setLineDash([]);
+
+    ctx.beginPath();
+    ctx.arc(A.x, A.y, dotRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (progress >= 1) {
+        ctx.beginPath();
+        ctx.arc(B.x, B.y, dotRadius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    ctx.restore();
 };
 
 const drawPlatformMarker = (
@@ -198,6 +261,33 @@ export const drawConnections = (
     // Короткий отрезок на платформе — прямая → cloud-interconnect
     const markerHighlighted = isKindHighlighted(activeLegend, 'straight');
     const markerColor = resolveColor(activeLegend, 'straight', MARKER_COLOR);
+
+    // Вертикальные прямые пунктирные линии между платформами
+    // (правый край → правый край). Общие для всех схем, больше не задаются
+    // в schemeN.ts. Подсвечиваются как 'dashed'.
+    const verticalHighlighted = isKindHighlighted(activeLegend, 'dashed');
+    const verticalColor = resolveColor(activeLegend, 'dashed', CONNECTION_COLOR);
+
+    // Вертикальные линии рисуем первыми, чтобы они были «позади»
+    // змеек и маркеров, если вдруг пересекутся.
+    drawPlatformToPlatformConnection(
+        ctx,
+        bottom,
+        second,
+        progress,
+        canvasWidth,
+        verticalColor,
+        verticalHighlighted,
+    );
+    drawPlatformToPlatformConnection(
+        ctx,
+        second,
+        third,
+        progress,
+        canvasWidth,
+        verticalColor,
+        verticalHighlighted,
+    );
 
     drawSerpentineConnection(
         ctx,

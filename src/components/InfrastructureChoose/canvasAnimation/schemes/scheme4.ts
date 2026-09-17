@@ -16,8 +16,8 @@ export const scheme4Platforms: PlatformScheme[] = [
     {
         platformId: 1,
         positions: [
-            {positionNumber: '3.1', iconKey: 'servers', label: 'Серверы\n и СХД'},
-            {positionNumber: '3.2', iconKey: 'dwn', label: 'DWN'},
+            {positionNumber: '3.1', iconKey: 'dwn', label: 'DWH'},
+            {positionNumber: '3.2', iconKey: 'stackland', label: 'Yandex Cloud\n Stackland'},
             {positionNumber: '3.3', iconKey: 'storage', label: 'Object\n Storage'},
             {positionNumber: '3.4', iconKey: 'storage', label: 'Object\n Storage'},
             {
@@ -38,7 +38,7 @@ export const scheme4Platforms: PlatformScheme[] = [
                 iconKey: 'hypervisor',
                 label: 'Гипервизор,\n виртуальные\n машины',
             },
-            {positionNumber: '2.3', iconKey: 'stackland', label: 'Yandex Cloud\n Stackland'},
+            {positionNumber: '2.3'},
             {
                 positionNumber: '2.4',
                 iconKey: 'mfsk',
@@ -48,7 +48,7 @@ export const scheme4Platforms: PlatformScheme[] = [
             {
                 positionNumber: '2.6',
                 iconKey: 'baremetal',
-                label: 'BareMetal\n Extend:\n Virtualization',
+                label: 'BareMetal Extend\n Managed Service\n for Kubernetes',
             },
         ],
     },
@@ -79,36 +79,11 @@ export const scheme4Lines: SchemeLine[] = [
         dashed: true,
     },
     {
-        from: '2.4',
-        fromAnchor: 'right',
-        to: '3.5',
-        toAnchor: 'text-bottom',
-        arc: true,
-    },
-    {
-        fromPlatform: 2,
-        fromPlatformAnchor: 'right',
-        toPlatform: 3,
-        toPlatformAnchor: 'right',
-        dashed: true,
-        platformAnchorShiftXRatio: -0.005,
-    },
-    {
         from: '1.6',
         fromAnchor: 'right',
         toPlatform: 2,
         toPlatformAnchor: 'right',
         arc: true,
         platformAnchorShiftXRatio: -0.005,
-    },
-    {
-        from: '1.4',
-        fromAnchor: 'left',
-        toPlatform: 2,
-        toPlatformAnchor: 'center',
-        arc: true,
-        arcFlip: true,
-        platformAnchorShiftXRatio: 0.01,
-        platformAnchorShiftYRatio: -0.02,
     },
 ];

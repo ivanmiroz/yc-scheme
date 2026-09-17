@@ -8,8 +8,17 @@ export const ICON_BACKGROUNDS: Record<string, string> = {
     'Object Storage': 'rgba(148, 207, 255, 1)',
     'Yandex Cloud Stackland': 'rgba(148, 207, 255, 1)',
     'BareMetal Extend: Virtualization': 'rgba(148, 207, 255, 1)',
+    // Короткая форма — для позиций, где подпись умещается в одну строку.
+    BareMetal: 'rgba(148, 207, 255, 1)',
+    // BareMetal с GPU — та же подложка, что у обычного BareMetal.
+    'BareMetal с GPU': 'rgba(148, 207, 255, 1)',
+    // BareMetal Extend + Managed Service for Kubernetes — та же подложка,
+    // что у BareMetal и BareMetal Extend.
+    'BareMetal Extend Managed Service for Kubernetes': 'rgba(148, 207, 255, 1)',
     'Cloud Backup': 'rgba(148, 207, 255, 1)',
     'Cloud Compute': 'rgba(148, 207, 255, 1)',
+    // Cloud Compute с GPU — та же подложка, что у обычного Cloud Compute.
+    'Cloud Compute с GPU': 'rgba(148, 207, 255, 1)',
     'Cloud Cdn': 'rgba(148, 207, 255, 1)',
 
     // Сиреневая группа

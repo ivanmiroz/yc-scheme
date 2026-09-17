@@ -16,9 +16,9 @@ export const scheme1Platforms: PlatformScheme[] = [
     {
         platformId: 1,
         positions: [
-            {positionNumber: '3.1', iconKey: 'servers', label: 'Серверы\n и СХД'},
-            {positionNumber: '3.2', iconKey: 'dwn', label: 'DWN'},
-            {positionNumber: '3.3'},
+            {positionNumber: '3.1', iconKey: 'dwn', label: 'DWH'},
+            {positionNumber: '3.2'},
+            {positionNumber: '3.3', iconKey: 'stackland', label: 'Yandex Cloud\n Stackland'},
             {positionNumber: '3.4'},
             {positionNumber: '3.5', iconKey: 'storage', label: 'Object\n Storage'},
             {positionNumber: '3.6'},
@@ -33,7 +33,7 @@ export const scheme1Platforms: PlatformScheme[] = [
                 iconKey: 'hypervisor',
                 label: 'Гипервизор,\n виртуальные\n машины',
             },
-            {positionNumber: '2.3', iconKey: 'stackland', label: 'Yandex Cloud\n Stackland'},
+            {positionNumber: '2.3'},
             {
                 positionNumber: '2.4',
                 iconKey: 'baremetal',
@@ -49,11 +49,7 @@ export const scheme1Platforms: PlatformScheme[] = [
             {positionNumber: '1.1', iconKey: 'servers', label: 'Серверы\n и СХД'},
             {positionNumber: '1.2', iconKey: 'network', label: 'Сетевое\n оборудование'},
             {positionNumber: '1.3'},
-            {
-                positionNumber: '1.4',
-                iconKey: 'baremetal',
-                label: 'BareMetal\n Extend:\n Virtualization',
-            },
+            {positionNumber: '1.4', iconKey: 'baremetal', label: 'BareMetal'},
             {positionNumber: '1.5', iconKey: 'servers', label: 'Серверы\n и СХД'},
             {positionNumber: '1.6'},
         ],
@@ -96,12 +92,12 @@ export const scheme1Lines: SchemeLine[] = [
         arc: true,
         arcFlip: true,
     },
+    // Прямая пунктирная линия между 2.6 и 2.4 — соединяет соседей по ряду.
     {
-        fromPlatform: 1,
-        fromPlatformAnchor: 'right',
-        toPlatform: 2,
-        toPlatformAnchor: 'right',
+        from: '2.6',
+        fromAnchor: 'left',
+        to: '2.4',
+        toAnchor: 'right',
         dashed: true,
-        platformAnchorShiftXRatio: -0.005,
     },
 ];
