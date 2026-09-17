@@ -220,13 +220,14 @@
 
     &__zoom-hint-text {
         color: #ffffff;
-        font-size: var(--g-text-size-s);
-        line-height: 1.1;
+        font-size: var(--g-text-size-xs);
+        line-height: 1.3;
         margin: 0;
         // Ширина подобрана так, чтобы текст «Увеличьте схему и нажмите
         // на сервис, чтобы узнать о нём подробности» укладывался в 3 строки.
-        width: 14vw; // ≈ 211px @ 1920
+        width: 11vw; // ≈ 211px @ 1920
     }
+    // ==============================================
 }
 
 .infrastructure-choose {
@@ -282,11 +283,13 @@
         }
     }
 
-    // ===== БЛОК ТАБОВ «Комментарии архитектора / Описание сценария» =====
+    // ===== БЛОК ТАБОВ «Рекомендации архитектора / Описание сценария» =====
     &__architect-tabs {
         border: 1px solid rgba(176, 189, 217, 1);
         border-radius: 0.625vw;
         display: flex;
+        // Блок табов забирает всё свободное место в сайдбаре,
+        // из-за чего Network-заголовок и легенда прижимаются к низу.
         flex: 1;
         flex-direction: column;
         min-height: 0;
@@ -322,18 +325,57 @@
     }
 
     &__architect-tabpanel {
+        // Растягиваем панель внутри блока табов — тогда именно здесь
+        // работает скролл, а не на всю высоту сайдбара.
         flex: 1;
         min-height: 0;
         overflow-y: auto;
         padding: 0.625vw 0.833vw;
     }
 
-    &__architect-text {
+    // Описание выбранного сценария — показывается только в табе
+    // «Описание сценария», над блоком QR-карточек.
+    &__architect-scenario {
         color: var(--g-color-text-primary);
         font-size: var(--g-text-size-xs);
-        line-height: 1.5;
-        margin: 0;
+        line-height: 1.4;
+        margin: 0 0 0.417vw; // 8px @ 1920
     }
+
+    // Две карточки с QR-кодами.
+    &__architect-cards {
+        display: flex;
+        gap: 0.417vw; // 8px @ 1920
+        width: 100%;
+    }
+
+    &__architect-card {
+        background: rgba(231, 235, 244, 1);
+        border-radius: 0.625vw; // 12px @ 1920
+        box-sizing: border-box;
+        display: flex;
+        flex: 1 1 0;
+        flex-direction: column;
+        gap: 0.417vw; // 8px @ 1920
+        min-width: 0;
+        padding: 0.417vw; // 8px @ 1920
+    }
+
+    &__architect-card-text {
+        color: var(--g-color-text-primary);
+        font-size: var(--g-text-size-xxs);
+        line-height: 1.3;
+        // Отрицательные боковые отступы — текст может выходить за паддинг
+        // карточки на 5px с каждой стороны. 5px @ 1920 = 0.26vw.
+        margin: 0 -0.26vw;
+        text-align: center;
+    }
+
+    &__architect-card-qr {
+        display: block;
+        width: 100%;
+    }
+    // ==================================================================
 
     &__section-title {
         color: var(--g-color-text-primary);
@@ -349,6 +391,7 @@
         margin-top: 0.1vw;
     }
 
+    // Кнопка легенды: белая плашка с рамкой и полностью круглыми углами.
     &__button {
         align-items: center;
         background: #ffffff;
@@ -366,6 +409,7 @@
             background: var(--g-color-base-generic-hover);
         }
 
+        // Активная кнопка легенды: чёрный фон, белая иконка и белый текст.
         &_active {
             background: #000000;
             border-color: #000000;
@@ -375,6 +419,9 @@
                 color: #ffffff;
             }
 
+            // PNG-иконку перекрашиваем в белый.
+            // brightness(0) делает её полностью чёрной,
+            // invert(1) — затем белой, сохраняя альфа-канал.
             .infrastructure-choose__button-icon img {
                 filter: brightness(0) invert(1);
             }
@@ -385,6 +432,8 @@
         }
     }
 
+    // Иконка без фона и радиуса — просто картинка внутри кнопки.
+    // Размеры оставлены, иначе img рендерится в натуральную величину.
     &__button-icon {
         align-items: center;
         display: flex;

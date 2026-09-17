@@ -19,6 +19,8 @@ import legend4Src from '@/assets/icons/legend4.png';
 import legend5Src from '@/assets/icons/legend5.png';
 import legend6Src from '@/assets/icons/legend6.png';
 import zoomHintSrc from '@/assets/icons/zoom-hint.png';
+import qrRecSrc from '@/assets/qr/qr-rec.png';
+import qrMatSrc from '@/assets/qr/qr-mat.png';
 
 import './ScaleTabs.scss';
 
@@ -46,6 +48,14 @@ const infraTabs = [
     {value: 'ai', label: 'Инфраструктура\nдля ИИ'},
     {value: 'stability', label: 'Стабильная работа\nсервисов'},
     {value: 'ttm', label: 'Ускорение\ntime-to-market'},
+];
+
+// Описания сценариев. Порядок совпадает с порядком табов (индекс схемы 0..3).
+const SCENARIO_DESCRIPTIONS = [
+    'Держите постоянную нагрузку на собственном оборудовании, а в пиковые периоды подключайте ресурсы в облаке. Так вы не переплатите за серверы, которые нужны несколько раз в год.',
+    'Запускайте эксперименты и обучайте модели, не дожидаясь закупки оборудования: облачные GPU доступны по запросу, а данные остаются в вашем контуре. Платите только за использованные ресурсы.',
+    'Дублируйте критичные системы сразу в двух контурах: локальном и облачном. Если один окажется недоступен, нагрузка перейдёт на второй, и сервисы продолжат работать.',
+    'Выпускайте продукты быстрее: постоянные нагрузки держите on-premises на инфраструктуре Stackland, а под разработку и тесты подключайте за минуты облачные вычисления и выделенные серверы.',
 ];
 
 interface LegendItem {
@@ -285,6 +295,33 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
         [cancelGuideShowTimer, cancelZoomHintTimer],
     );
 
+    // Блок с двумя QR-карточками — показывается в обоих табах.
+    const architectCards = (
+        <div className="infrastructure-choose__architect-cards">
+            <div className="infrastructure-choose__architect-card">
+                <p className="infrastructure-choose__architect-card-text">
+                    Скачать все рекомендации архитектора
+                </p>
+                <img
+                    className="infrastructure-choose__architect-card-qr"
+                    src={qrRecSrc.src}
+                    alt="QR-код: рекомендации архитектора"
+                />
+            </div>
+
+            <div className="infrastructure-choose__architect-card">
+                <p className="infrastructure-choose__architect-card-text">
+                    Получить спецусловия, полезные материалы или консультацию
+                </p>
+                <img
+                    className="infrastructure-choose__architect-card-qr"
+                    src={qrMatSrc.src}
+                    alt="QR-код: спецусловия и материалы"
+                />
+            </div>
+        </div>
+    );
+
     return (
         <div className={b()}>
             <div className={b('content')}>
@@ -373,7 +410,7 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
                                 }`}
                                 onClick={() => setArchitectTab('comments')}
                             >
-                                Комментарии архитектора
+                                Рекомендации архитектора
                             </button>
 
                             <button
@@ -392,16 +429,12 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
                         </div>
 
                         <div className="infrastructure-choose__architect-tabpanel" role="tabpanel">
-                            {architectTab === 'comments' && (
-                                <p className="infrastructure-choose__architect-text">
-                                    Здесь будет комментарий архитектора по выбранному сценарию.
-                                </p>
-                            )}
                             {architectTab === 'scenario' && (
-                                <p className="infrastructure-choose__architect-text">
-                                    Здесь будет описание выбранного сценария.
+                                <p className="infrastructure-choose__architect-scenario">
+                                    {SCENARIO_DESCRIPTIONS[localActiveIndex] ?? ''}
                                 </p>
                             )}
+                            {architectCards}
                         </div>
                     </div>
 

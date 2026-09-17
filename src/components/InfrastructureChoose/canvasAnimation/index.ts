@@ -1,3 +1,4 @@
+// src/components/InfrastructureChoose/canvasAnimation/index.ts
 import podium1Src from '@/assets/images/podium1.png';
 import podium2Src from '@/assets/images/podium2.png';
 import podium3Src from '@/assets/images/podium3.png';
@@ -6,12 +7,17 @@ import {CanvasAnimationCleanup} from './types';
 import {getEffectiveDpr} from './constants';
 import {createPodiumAnimator} from './animation';
 import {LegendValue, getPositionConfig} from './schemes';
-import {getDescription, getQr} from './descriptions';
+import {getDescription, getQr, getTitle} from './descriptions';
 import {getPositionAnchor} from './drawers';
 import './popup.scss';
 
 const POPUP_ICON_GAP = 4;
 const POPUP_VIEWPORT_MARGIN = 8;
+
+// Попап открывается не раньше, чем через 1 секунду после того,
+// как аниматор сообщил о завершении анимации линий (onReady).
+// Это одинаково работает и для интро, и при переключении схем.
+const POPUP_DELAY_AFTER_ANIMATION = 1000;
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 5;
@@ -75,9 +81,39 @@ export const initCanvasAnimation = (
     const podiumImages: HTMLImageElement[] = [];
     let isLoaded = false;
 
+    // Флаг: можно ли открывать попап. Пока анимация линий не завершилась
+    // (+ POPUP_DELAY_AFTER_ANIMATION), клики по позициям игнорируются.
+    let interactionEnabled = false;
+    let interactionTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const disableInteraction = () => {
+        interactionEnabled = false;
+        if (interactionTimer !== null) {
+            clearTimeout(interactionTimer);
+            interactionTimer = null;
+        }
+    };
+
+    const enableInteractionAfter = (delayMs: number) => {
+        disableInteraction();
+        interactionTimer = setTimeout(() => {
+            interactionTimer = null;
+            interactionEnabled = true;
+        }, delayMs);
+    };
+
     const animator = createPodiumAnimator(canvas, ctx, podiumImages, {
-        onStart: options.onStart,
-        onReady: options.onReady,
+        onStart: () => {
+            // Анимация началась — блокируем открытие попапа до onReady.
+            disableInteraction();
+            options.onStart?.();
+        },
+        onReady: () => {
+            // Аниматор сообщил, что все линии дорисованы.
+            // Открываем попап через POPUP_DELAY_AFTER_ANIMATION.
+            enableInteractionAfter(POPUP_DELAY_AFTER_ANIMATION);
+            options.onReady?.();
+        },
     });
 
     if (podiumImagesCache) {
@@ -394,6 +430,9 @@ export const initCanvasAnimation = (
     };
 
     const handleClick = (e: MouseEvent) => {
+        // Пока линии не дорисованы (+ POPUP_DELAY_AFTER_ANIMATION), попап не открываем.
+        if (!interactionEnabled) return;
+
         if (hasMoved) {
             hasMoved = false;
             return;
@@ -409,11 +448,14 @@ export const initCanvasAnimation = (
         const config = getPositionConfig(clickedPosition.positionNumber);
         if (!config || !config.label) return;
 
-        const cleanLabel = config.label.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+        // Заголовок попапа берём из словаря — там для сервисов записаны
+        // полные названия. Если для позиции своего title нет — используется
+        // нормализованный label.
+        const title = getTitle(config.label);
         const description = getDescription(config.label);
         const qrSrc = getQr(config.label);
 
-        popupTitle.textContent = cleanLabel;
+        popupTitle.textContent = title;
 
         if (description) {
             popupDescription.textContent = description;
@@ -504,6 +546,11 @@ export const initCanvasAnimation = (
         backdrop.removeEventListener('click', handleBackdropClick);
         popupClose.removeEventListener('click', handleCloseClick);
 
+        if (interactionTimer !== null) {
+            clearTimeout(interactionTimer);
+            interactionTimer = null;
+        }
+
         // Отменяет и основной RAF-цикл, и отложенную перерисовку.
         animator.dispose();
 
@@ -513,6 +560,11 @@ export const initCanvasAnimation = (
     };
 
     cleanup.refreshScheme = () => {
+        // Блокируем попап до тех пор, пока аниматор не закончит
+        // рисовать линии новой схемы. Момент завершения придёт через
+        // onReady (см. animator.refreshScheme, там сбрасывается readyNotified),
+        // и тогда interaction включится через POPUP_DELAY_AFTER_ANIMATION.
+        disableInteraction();
         animator.refreshScheme?.();
     };
 
