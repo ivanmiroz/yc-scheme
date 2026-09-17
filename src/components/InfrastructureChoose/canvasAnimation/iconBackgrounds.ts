@@ -20,6 +20,8 @@ export const ICON_BACKGROUNDS: Record<string, string> = {
     // Cloud Compute с GPU — та же подложка, что у обычного Cloud Compute.
     'Cloud Compute с GPU': 'rgba(148, 207, 255, 1)',
     'Cloud Cdn': 'rgba(148, 207, 255, 1)',
+    // ALB — та же подложка, что у Cloud Cdn.
+    ALB: 'rgba(148, 207, 255, 1)',
 
     // Сиреневая группа
     DataLens: 'rgba(202, 184, 255, 1)',

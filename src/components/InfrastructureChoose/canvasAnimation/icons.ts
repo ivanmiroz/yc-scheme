@@ -16,6 +16,7 @@ import cloudcdnSrc from '@/assets/icons/cloudcdn.png';
 import codeSrc from '@/assets/icons/code.png';
 import elephantSrc from '@/assets/icons/elephant.png';
 import sticksSrc from '@/assets/icons/sticks.png';
+import albSrc from '@/assets/icons/alb.png';
 
 // Маппинг: ключ → путь к иконке
 export const ICON_MAP: Record<string, string> = {
@@ -37,6 +38,7 @@ export const ICON_MAP: Record<string, string> = {
     code: codeSrc.src,
     elephant: elephantSrc.src,
     sticks: sticksSrc.src,
+    alb: albSrc.src,
 };
 
 // Кэш загруженных изображений
