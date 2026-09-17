@@ -120,12 +120,11 @@ export const getLineKind = (line: SchemeLine): LineKind => {
     return 'straight';
 };
 
-// Типы линий, которые всегда присутствуют на канвасе (статичные соединения
-// между платформами + базовые линии схемы). Эти кнопки легенды показываем всегда.
-export const STATIC_LEGEND_KINDS: LineKind[] = [
-    'sharp-serpentine',
-    'rounded-serpentine',
-    'straight',
-    'dashed',
-    'arc',
-];
+// Типы линий, которые статически присутствуют на канвасе на каждой схеме.
+// Это ровно то, что рисует staticConnections.ts:
+//   • sharp-serpentine — змейки между платформами;
+//   • straight         — горизонтальные маркеры на платформах;
+//   • dashed           — вертикальные пунктирные между платформами.
+// Типы rounded-serpentine и arc сюда НЕ входят: они появляются в списке
+// доступных легенд только если реально встречаются в линиях активной схемы.
+export const STATIC_LEGEND_KINDS: LineKind[] = ['sharp-serpentine', 'straight', 'dashed'];
