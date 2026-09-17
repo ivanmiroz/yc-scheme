@@ -18,6 +18,10 @@ interface NetworkSingularityProps {
     onReady?: () => void;
     /** Вызывается, когда анимация схлопывания полностью завершена (после фейда и полёта иконок). */
     onScatterComplete?: () => void;
+    /** Запустить обратную анимацию: фейдаут линий и «схлопывание» платформ в центр. */
+    isReversing?: boolean;
+    /** Обратная анимация завершена. */
+    onReverseComplete?: () => void;
 }
 
 export const NetworkSingularity: React.FC<NetworkSingularityProps> = ({
@@ -27,6 +31,8 @@ export const NetworkSingularity: React.FC<NetworkSingularityProps> = ({
     onStart,
     onReady,
     onScatterComplete,
+    isReversing = false,
+    onReverseComplete,
 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [startInfrastructure, setStartInfrastructure] = useState(false);
@@ -35,6 +41,7 @@ export const NetworkSingularity: React.FC<NetworkSingularityProps> = ({
     const onStartRef = useRef(onStart);
     const onReadyRef = useRef(onReady);
     const onScatterCompleteRef = useRef(onScatterComplete);
+    const onReverseCompleteRef = useRef(onReverseComplete);
 
     useEffect(() => {
         onStartRef.current = onStart;
@@ -45,6 +52,9 @@ export const NetworkSingularity: React.FC<NetworkSingularityProps> = ({
     useEffect(() => {
         onScatterCompleteRef.current = onScatterComplete;
     }, [onScatterComplete]);
+    useEffect(() => {
+        onReverseCompleteRef.current = onReverseComplete;
+    }, [onReverseComplete]);
 
     useNetworkAnimation(canvasRef, isScattering, () => {
         setStartInfrastructure(true);
@@ -87,6 +97,18 @@ export const NetworkSingularity: React.FC<NetworkSingularityProps> = ({
             cleanupRef.current.setActiveLegend(activeLegend);
         }
     }, [activeLegend]);
+
+    // Запуск обратной анимации (фейдаут линий/объектов → схлопывание
+    // платформ в центр). По завершении дергаем onReverseComplete, чтобы
+    // ScaleTabs сбросил sidebar-infra обратно в sidebar-scale.
+    useEffect(() => {
+        if (!isReversing) return;
+        if (!cleanupRef.current || !cleanupRef.current.startReverse) return;
+
+        cleanupRef.current.startReverse(() => {
+            onReverseCompleteRef.current?.();
+        });
+    }, [isReversing]);
 
     return (
         <div className={b()}>

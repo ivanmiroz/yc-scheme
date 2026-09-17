@@ -26,7 +26,9 @@ import './ScaleTabs.scss';
 
 const b = block('scale-tabs');
 
-// Через сколько бездействия перезагружаем страницу.
+// Через сколько бездействия запускаем обратную анимацию:
+// фейдаут линий/объектов, затем схлопывание платформ в центр
+// и возврат sidebar-scale.
 const INACTIVITY_DELAY_MS = 60000;
 
 // Гайд показывается не раньше, чем через 1 с после завершения анимации
@@ -154,6 +156,9 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
     // позволяет менять .scale-tabs__sidebar только после её завершения.
     const [isCollapsing, setIsCollapsing] = useState(false);
 
+    // Флаг: идёт обратная анимация (фейдаут + разъезд платформ в центр).
+    const [isReversing, setIsReversing] = useState(false);
+
     const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('closed');
     const [isOnboardingDone, setIsOnboardingDone] = useState(false);
 
@@ -164,7 +169,7 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
     // Таймер отложенного показа GuidePopup (1 с после onReady).
     const guideShowTimerRef = useRef<number | null>(null);
 
-    // Таймер автоскрытия подсказки «Увеличьте схему…» через 30 с.
+    // Таймер автоскрытия подсказки «Увеличьте схему…».
     const zoomHintTimerRef = useRef<number | null>(null);
 
     // Таймер бездействия: сбрасывается на любом событии активности.
@@ -252,7 +257,34 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
         setIsCollapsing(false);
     }, [pendingTabIndex, onActionClick]);
 
+    // Вызывается из NetworkSingularity после завершения обратной анимации
+    // (фейдаут линий/объектов → схлопывание платформ в центр).
+    // Здесь полностью возвращаем экран в исходное состояние:
+    // sidebar-infra → sidebar-scale, сбрасываем легенду, гайд и онбординг.
+    const handleReverseComplete = useCallback(() => {
+        cancelGuideShowTimer();
+        cancelZoomHintTimer();
+
+        setIsReversing(false);
+        setIsOnboardingDone(false);
+        setOnboardingStep('closed');
+        hasShownOnboardingRef.current = false;
+
+        setActiveLegend(null);
+        setPendingTabIndex(null);
+        setIsCollapsing(false);
+        setArchitectTab('comments');
+
+        // Возвращаем sidebar-scale и убираем sidebar-infra:
+        // activeIndex станет -1 → isSidebarActive=false → модификатор frozen снимется.
+        onActionClick?.(-1);
+        setLocalActiveIndex(0);
+        setActiveScheme(0);
+    }, [onActionClick, cancelGuideShowTimer, cancelZoomHintTimer]);
+
     const handleInfraTabClick = (index: number) => {
+        // Во время reverse-анимации переключение табов блокируем.
+        if (isReversing) return;
         setLocalActiveIndex(index);
         setActiveScheme(index);
     };
@@ -265,6 +297,7 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
         // и не переключаем таб, если infra sidebar уже показан.
         if (isCollapsing) return;
         if (isSidebarActive) return;
+        if (isReversing) return;
 
         // Запоминаем намерение — благодаря activeButtonValue кнопка сразу
         // станет активной, хотя сам таб применится только в handleScatterComplete.
@@ -273,6 +306,7 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
     };
 
     const handleLegendClick = (value: LegendValue) => {
+        if (isReversing) return;
         setActiveLegend((prev) => (prev === value ? null : value));
     };
 
@@ -290,13 +324,15 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
     const resetInactivity = useCallback(() => {
         clearInactivityTimer();
 
-        if (isOnboardingDone) {
+        // Если онбординг завершён и сейчас не идёт reverse — взводим таймер.
+        // Через 60 с бездействия запускаем обратную анимацию.
+        if (isOnboardingDone && !isReversing) {
             inactivityTimeoutRef.current = window.setTimeout(() => {
                 inactivityTimeoutRef.current = null;
-                window.location.reload();
+                setIsReversing(true);
             }, INACTIVITY_DELAY_MS);
         }
-    }, [clearInactivityTimer, isOnboardingDone]);
+    }, [clearInactivityTimer, isOnboardingDone, isReversing]);
 
     useEffect(() => {
         if (!isOnboardingDone) return undefined;
@@ -362,6 +398,8 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
                         onStart={handleCanvasStart}
                         onReady={handleCanvasReady}
                         onScatterComplete={handleScatterComplete}
+                        isReversing={isReversing}
+                        onReverseComplete={handleReverseComplete}
                     />
                 </div>
             </div>

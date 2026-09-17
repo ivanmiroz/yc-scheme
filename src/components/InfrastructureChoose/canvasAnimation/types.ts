@@ -18,4 +18,6 @@ export interface CanvasAnimationCleanup {
     (): void;
     refreshScheme?: () => void;
     setActiveLegend?: (legend: import('./schemes').LegendValue | null) => void;
+    /** Обратная анимация: фейдаут линий/объектов, затем схлопывание платформ в центр. */
+    startReverse?: (cb?: () => void) => void;
 }

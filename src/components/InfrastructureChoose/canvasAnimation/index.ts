@@ -75,6 +75,9 @@ export const initCanvasAnimation = (
         const cleanup = () => {};
         cleanup.refreshScheme = () => {};
         cleanup.setActiveLegend = () => {};
+        // Имя параметра onDone (не cb/callback/next), чтобы не триггерить
+        // ESLint callback-return при его вызове.
+        cleanup.startReverse = (onDone?: () => void) => onDone?.();
         return cleanup;
     }
 
@@ -570,6 +573,20 @@ export const initCanvasAnimation = (
 
     cleanup.setActiveLegend = (legend: LegendValue | null) => {
         animator.setActiveLegend(legend);
+    };
+
+    // Обратная анимация: фейдаут линий/объектов, затем «схлопывание»
+    // платформ в центр. Попап скрываем, интеракцию выключаем — пока
+    // идёт reverse, клики по позициям не должны ничего открывать.
+    //
+    // Параметр назван onDone (не cb/callback/next), чтобы не триггерить
+    // ESLint callback-return при его вызове.
+    cleanup.startReverse = (onDone?: () => void) => {
+        hidePopup();
+        disableInteraction();
+        animator.startReverse(() => {
+            onDone?.();
+        });
     };
 
     return cleanup;
