@@ -227,7 +227,7 @@ export const DESCRIPTIONS: Record<string, DescriptionEntry> = {
     ALB: {
         title: 'Yandex Application Load Balancer',
         description:
-            'Сервис для распределения входящего трафика между разными компонентами ваших веб‑приложений.',
+            'Инструмент для создания балансировщиков нагрузки и управления ими в кластерах Yandex Managed Service for Kubernetes — Gwin. Контроллер Gwin, установленный в кластер, автоматически разворачивает L7-балансировщики на основе конфигурации созданных вами ресурсов Kubernetes.',
         qr: qrAlb.src,
     },
 };
