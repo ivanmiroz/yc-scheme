@@ -10,6 +10,7 @@ import qrBareMetalKubernetes from '@/assets/qr/bare-metal-kuberbetes.png';
 import qrBareMetalGpu from '@/assets/qr/bare-metal-gpu.png';
 import qrComputeCloudGpu from '@/assets/qr/compute-cloud-gpu.png';
 import qrAlb from '@/assets/qr/alb.png';
+import qrAlbGwin from '@/assets/qr/alb-gwin.png';
 import qrVpc from '@/assets/qr/vpc.png';
 import qrVpcPe from '@/assets/qr/vpc-pe.png';
 import qrCloudRouter from '@/assets/qr/cloud-router.png';
@@ -229,6 +230,15 @@ export const DESCRIPTIONS: Record<string, DescriptionEntry> = {
         description:
             'Инструмент для создания балансировщиков нагрузки и управления ими в кластерах Yandex Managed Service for Kubernetes — Gwin. Контроллер Gwin, установленный в кластер, автоматически разворачивает L7-балансировщики на основе конфигурации созданных вами ресурсов Kubernetes.',
         qr: qrAlb.src,
+    },
+
+    // ALB/GWIN — та же информация, что у ALB: на 4-й схеме подпись
+    // отражает связку Application Load Balancer с Gwin.
+    'ALB/GWIN': {
+        title: 'Yandex Application Load Balancer',
+        description:
+            'Инструмент для создания балансировщиков нагрузки и управления ими в кластерах Yandex Managed Service for Kubernetes — Gwin. Контроллер Gwin, установленный в кластер, автоматически разворачивает L7-балансировщики на основе конфигурации созданных вами ресурсов Kubernetes.',
+        qr: qrAlbGwin.src,
     },
 };
 

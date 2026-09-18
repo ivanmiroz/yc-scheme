@@ -50,7 +50,7 @@ export const scheme4Platforms: PlatformScheme[] = [
                 iconKey: 'baremetal',
                 label: 'BareMetal Extend\n Managed Service\n for Kubernetes',
             },
-            {positionNumber: '2.7', iconKey: 'alb', label: 'ALB'},
+            {positionNumber: '2.7', iconKey: 'alb', label: 'ALB/GWIN'},
         ],
     },
     {

@@ -22,6 +22,8 @@ export const ICON_BACKGROUNDS: Record<string, string> = {
     'Cloud Cdn': 'rgba(148, 207, 255, 1)',
     // ALB — та же подложка, что у Cloud Cdn.
     ALB: 'rgba(148, 207, 255, 1)',
+    // ALB/GWIN — для случая, когда подпись отображает связку с Gwin.
+    'ALB/GWIN': 'rgba(148, 207, 255, 1)',
 
     // Сиреневая группа
     DataLens: 'rgba(202, 184, 255, 1)',
