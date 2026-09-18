@@ -224,16 +224,16 @@ export const DESCRIPTIONS: Record<string, DescriptionEntry> = {
         qr: qrDataTransfer.src,
     },
 
-    // ALB — Application Load Balancer (позиция 2.7 на 4-й схеме).
+    // ALB — Application Load Balancer (позиция 2.4.1 на 3-й схеме).
     ALB: {
         title: 'Yandex Application Load Balancer',
         description:
-            'Инструмент для создания балансировщиков нагрузки и управления ими в кластерах Yandex Managed Service for Kubernetes — Gwin. Контроллер Gwin, установленный в кластер, автоматически разворачивает L7-балансировщики на основе конфигурации созданных вами ресурсов Kubernetes.',
+            'Сервис для распределения входящего трафика между разными компонентами ваших веб‑приложений.',
         qr: qrAlb.src,
     },
 
-    // ALB/GWIN — та же информация, что у ALB: на 4-й схеме подпись
-    // отражает связку Application Load Balancer с Gwin.
+    // ALB/GWIN — та же связка с Gwin, что и у ALB, но с расширенным
+    // описанием и отдельным QR. Используется на 4-й схеме в позиции 2.7.
     'ALB/GWIN': {
         title: 'Yandex Application Load Balancer',
         description:

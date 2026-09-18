@@ -7,9 +7,30 @@ const createPosition = (x: number, y: number, platformNum: number, posNum: strin
 });
 
 // Y дополнительной 7-й позиции (в долях высоты платформы) — чуть выше
-// центра, где стоят остальные шесть позиций (0.5). Используется только
-// для тех схем, где в positionNumber есть 'X.7' (сейчас — 4-я схема, ALB).
+// центра, где стоят остальные шесть позиций (0.5).
 const EXTRA_POSITION_Y_RATIO = 0.4;
+
+// Сдвиг по X для 2.4.1 (в долях ширины платформы) — «чуть левее 2.4».
+const EXTRA_POSITION_4_1_X_RATIO = 0.05;
+
+// Сдвиг по Y для 2.4.1 (в долях высоты платформы) относительно
+// центрального ряда. Y растёт вниз, поэтому итоговый Y = ph * (0.5 - delta).
+//   delta > 0 → выше основного ряда;
+//   delta = 0 → на уровне основного ряда;
+//   delta < 0 → ниже основного ряда.
+// Здесь ALB опущена ниже основного ряда.
+const EXTRA_POSITION_4_1_Y_RATIO = -0.02;
+
+// Сдвиг по X для 2.4.2 (в долях ширины платформы) — «чуть правее 2.4».
+const EXTRA_POSITION_4_2_X_RATIO = 0.05;
+
+// Сдвиг по Y для 2.4.2 и 2.6.1 (в долях высоты платформы) — «чуть выше»
+// относительно центрального ряда.
+const EXTRA_POSITION_SUB_Y_RATIO = 0.08;
+
+// Сдвиг по X для 2.5.1 — точная середина между визуальными позициями
+// 2.4.2 и 2.6.1.
+const EXTRA_POSITION_5_1_X_RATIO = EXTRA_POSITION_4_2_X_RATIO / 2;
 
 export const calculatePositions = (podiums: PodiumState[]): Position[] => {
     const positions: Position[] = [];
@@ -43,14 +64,50 @@ export const calculatePositions = (podiums: PodiumState[]): Position[] => {
             createPosition(rhomb2CenterX, rhomb2CenterY, platformNum, '6'),
         );
 
-        // Седьмая позиция — на второй ромбовидной группе:
-        //   • по X — как 2.5 (в drawPositions для '.7' adjustedX = pos.x,
-        //     то есть ромб-центр без сдвига);
-        //   • по Y — чуть выше, чем у 2.4 (0.4 ph вместо 0.5 ph).
-        // Позиция создаётся для всех платформ; отрисовка произойдёт только
-        // там, где в активной схеме есть такой positionNumber.
+        // Седьмая позиция — на второй ромбовидной группе.
         positions.push(
             createPosition(rhomb2CenterX, py + ph * EXTRA_POSITION_Y_RATIO, platformNum, '7'),
+        );
+
+        // Под-позиция 2.4.1 — сосед 2.4, чуть левее и ниже.
+        positions.push(
+            createPosition(
+                rhomb2CenterX - pw * EXTRA_POSITION_4_1_X_RATIO,
+                py + ph * (0.5 - EXTRA_POSITION_4_1_Y_RATIO),
+                platformNum,
+                '4.1',
+            ),
+        );
+
+        // Под-позиция 2.4.2 — сосед 2.4, чуть правее и выше.
+        positions.push(
+            createPosition(
+                rhomb2CenterX + pw * EXTRA_POSITION_4_2_X_RATIO,
+                py + ph * (0.5 - EXTRA_POSITION_SUB_Y_RATIO),
+                platformNum,
+                '4.2',
+            ),
+        );
+
+        // Под-позиция 2.6.1 — сосед 2.6: по X как 2.6, по Y — как 2.4.2.
+        positions.push(
+            createPosition(
+                rhomb2CenterX,
+                py + ph * (0.5 - EXTRA_POSITION_SUB_Y_RATIO),
+                platformNum,
+                '6.1',
+            ),
+        );
+
+        // Под-позиция 2.5.1 — сосед 2.5: по Y как 2.5 (0.5 ph),
+        // по X — середина между 2.4.2 и 2.6.1.
+        positions.push(
+            createPosition(
+                rhomb2CenterX + pw * EXTRA_POSITION_5_1_X_RATIO,
+                py + ph * 0.5,
+                platformNum,
+                '5.1',
+            ),
         );
     });
 

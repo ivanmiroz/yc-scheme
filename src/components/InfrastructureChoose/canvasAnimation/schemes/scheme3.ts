@@ -39,13 +39,17 @@ export const scheme3Platforms: PlatformScheme[] = [
                 label: 'Гипервизор,\n виртуальные\n машины',
             },
             {positionNumber: '2.3'},
-            {positionNumber: '2.4', iconKey: 'backup', label: 'Cloud\n Backup'},
+            {positionNumber: '2.4'},
+            {positionNumber: '2.4.1', iconKey: 'alb', label: 'ALB'},
+            {positionNumber: '2.4.2', iconKey: 'backup', label: 'Cloud\n Backup'},
+            {positionNumber: '2.5'},
             {
-                positionNumber: '2.5',
+                positionNumber: '2.5.1',
                 iconKey: 'baremetal',
                 label: 'BareMetal\n Extend:\n Virtualization',
             },
-            {positionNumber: '2.6', iconKey: 'compute', label: 'Cloud\n Compute'},
+            {positionNumber: '2.6'},
+            {positionNumber: '2.6.1', iconKey: 'compute', label: 'Cloud\n Compute'},
         ],
     },
     {
@@ -64,14 +68,14 @@ export const scheme3Platforms: PlatformScheme[] = [
 export const scheme3Lines: SchemeLine[] = [
     {from: '1.4', fromAnchor: 'right', to: '1.6', toAnchor: 'left'},
     {
-        from: '2.4',
+        from: '2.4.2',
         fromAnchor: 'right',
-        to: '2.6',
+        to: '2.6.1',
         toAnchor: 'left',
         dashed: true,
     },
     {
-        from: '2.6',
+        from: '2.6.1',
         fromAnchor: 'top',
         to: '3.6',
         toAnchor: 'text-bottom',
@@ -97,8 +101,23 @@ export const scheme3Lines: SchemeLine[] = [
     {
         from: '1.6',
         fromAnchor: 'right',
-        to: '2.6',
+        to: '2.6.1',
         toAnchor: 'right',
         arc: true,
+    },
+    {
+        from: '2.4.2',
+        fromAnchor: 'text-bottom',
+        to: '2.5.1',
+        toAnchor: 'text-bottom',
+        arc: true,
+    },
+    {
+        from: '2.5.1',
+        fromAnchor: 'top',
+        to: '2.6.1',
+        toAnchor: 'top',
+        arc: true,
+        arcFlip: true,
     },
 ];

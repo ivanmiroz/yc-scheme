@@ -4,6 +4,17 @@ import {Position} from '../types';
 import {CONNECTION_TEXT_ANCHOR_GAP_RATIO, ICON_DRAW_RATIO} from './config';
 import {getBackgroundSize, getIconsRow} from './icons';
 
+// Вспомогательная функция: по positionNumber ('X.Y' или 'X.Y.Z')
+// возвращает средний сегмент ('1'..'7') и флаг «нижней» позиции.
+// Именно средний сегмент определяет горизонтальный сдвиг и сторону
+// отрисовки подписи — так же, как в drawPositions.
+const parsePositionHint = (positionNumber: string): {hint: string; isBottomPosition: boolean} => {
+    const parts = positionNumber.split('.');
+    const hint = parts[1] ?? '';
+    const isBottomPosition = hint === '2' || hint === '5';
+    return {hint, isBottomPosition};
+};
+
 // Геометрия иконки позиции в координатах канваса (CSS-пиксели).
 export const getPositionAnchor = (
     pos: Position,
@@ -13,12 +24,12 @@ export const getPositionAnchor = (
     const baseIconSize = 53 * 1.5;
     const iconSize = canvasWidth * (baseIconSize / baseWidth);
 
-    const isBottomPosition = pos.positionNumber.endsWith('.2') || pos.positionNumber.endsWith('.5');
+    const {hint, isBottomPosition} = parsePositionHint(pos.positionNumber);
 
     let adjustedX = pos.x;
-    if (pos.positionNumber.endsWith('.1') || pos.positionNumber.endsWith('.4')) {
+    if (hint === '1' || hint === '4') {
         adjustedX = pos.x - iconSize * 2;
-    } else if (pos.positionNumber.endsWith('.3') || pos.positionNumber.endsWith('.6')) {
+    } else if (hint === '3' || hint === '6') {
         adjustedX = pos.x + iconSize * 2;
     }
 
@@ -42,12 +53,12 @@ const getPositionBounds = (
 ) => {
     const lineHeight = labelFontSize * 1.4;
 
-    const isBottomPosition = pos.positionNumber.endsWith('.2') || pos.positionNumber.endsWith('.5');
+    const {hint, isBottomPosition} = parsePositionHint(pos.positionNumber);
 
     let adjustedX = pos.x;
-    if (pos.positionNumber.endsWith('.1') || pos.positionNumber.endsWith('.4')) {
+    if (hint === '1' || hint === '4') {
         adjustedX = pos.x - iconSize * 2;
-    } else if (pos.positionNumber.endsWith('.3') || pos.positionNumber.endsWith('.6')) {
+    } else if (hint === '3' || hint === '6') {
         adjustedX = pos.x + iconSize * 2;
     }
 

@@ -31,13 +31,18 @@ export const drawPositions = (
         // eslint-disable-next-line no-param-reassign
         ctx.globalAlpha = opacity;
 
-        const isBottomPosition =
-            pos.positionNumber.endsWith('.2') || pos.positionNumber.endsWith('.5');
+        // Разбираем positionNumber на сегменты. Формат — 'X.Y' или 'X.Y.Z'
+        // (например, '2.4', '2.4.2', '2.5.1'). Второй сегмент (parts[1])
+        // определяет горизонтальное смещение и «сторону» отрисовки подписи.
+        // 2.5.1 рендерится как 2.5 (bottom): verticalHint === '5'.
+        const parts = pos.positionNumber.split('.');
+        const verticalHint = parts[1]; // '1'..'7'
+        const isBottomPosition = verticalHint === '2' || verticalHint === '5';
 
         let adjustedX = pos.x;
-        if (pos.positionNumber.endsWith('.1') || pos.positionNumber.endsWith('.4')) {
+        if (verticalHint === '1' || verticalHint === '4') {
             adjustedX = pos.x - iconSize * 2;
-        } else if (pos.positionNumber.endsWith('.3') || pos.positionNumber.endsWith('.6')) {
+        } else if (verticalHint === '3' || verticalHint === '6') {
             adjustedX = pos.x + iconSize * 2;
         }
 
