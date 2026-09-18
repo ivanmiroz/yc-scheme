@@ -6,6 +6,10 @@
 import qrStackland from '@/assets/qr/stackland.png';
 import qrBareMetal from '@/assets/qr/bare-metal.png';
 import qrBareMetalExtend from '@/assets/qr/bare-metal-extend.png';
+import qrBareMetalKubernetes from '@/assets/qr/bare-metal-kuberbetes.png';
+import qrBareMetalGpu from '@/assets/qr/bare-metal-gpu.png';
+import qrComputeCloudGpu from '@/assets/qr/compute-cloud-gpu.png';
+import qrAlb from '@/assets/qr/alb.png';
 import qrVpc from '@/assets/qr/vpc.png';
 import qrVpcPe from '@/assets/qr/vpc-pe.png';
 import qrCloudRouter from '@/assets/qr/cloud-router.png';
@@ -77,10 +81,10 @@ export const DESCRIPTIONS: Record<string, DescriptionEntry> = {
 
     // BareMetal Extend в связке с Managed Service for Kubernetes.
     'BareMetal Extend Managed Service for Kubernetes': {
-        title: 'Yandex BareMetal Extend: Managed Service for Kubernetes',
+        title: 'BareMetal Extend: Managed Service for Kubernetes®',
         description:
-            'Кластеры Managed Service for Kubernetes® на выделенных серверах Yandex BareMetal — производительность физического железа с оркестрацией Kubernetes в изолированной среде.',
-        qr: qrBareMetalExtend.src,
+            'Готовая Kubernetes-инфраструктура на выделенных серверах: всё настроено для разработки и запуска контейнерных приложений — без самостоятельной настройки и поддержки Kubernetes, с полным контролем над кластером и приложениями.',
+        qr: qrBareMetalKubernetes.src,
     },
 
     // Короткая подпись «BareMetal» — используется, когда позиция помечена
@@ -96,8 +100,8 @@ export const DESCRIPTIONS: Record<string, DescriptionEntry> = {
     'BareMetal с GPU': {
         title: 'Yandex BareMetal с GPU',
         description:
-            'Сервис по аренде выделенного физического сервера с GPU, все ресурсы которого доступны для решения только ваших задач.',
-        qr: qrBareMetal.src,
+            'Выделенные физические серверы с графическими ускорителями для обучения и инференса ML-моделей, высокопроизводительных вычислений и рендеринга — без «шумных соседей» и конкуренции за вычислительные мощности.',
+        qr: qrBareMetalGpu.src,
     },
 
     'Сетевое оборудование': {
@@ -132,8 +136,8 @@ export const DESCRIPTIONS: Record<string, DescriptionEntry> = {
     'Cloud Compute с GPU': {
         title: 'Yandex Compute Cloud с GPU',
         description:
-            'Сервис предоставляет масштабируемые вычислительные мощности с GPU для размещения, тестирования и прототипирования ваших проектов, а также для задач машинного обучения и инференса.',
-        qr: qrComputeCloud.src,
+            'Виртуальные машины с графическими ускорителями для обучения и инференса ML-моделей, высокопроизводительных вычислений и обработки трёхмерной графики.',
+        qr: qrComputeCloudGpu.src,
     },
 
     'Object Storage': {
@@ -217,6 +221,14 @@ export const DESCRIPTIONS: Record<string, DescriptionEntry> = {
         description:
             'Сервис для логического переноса данных между СУБД, объектными хранилищами и брокерами сообщений.',
         qr: qrDataTransfer.src,
+    },
+
+    // ALB — Application Load Balancer (позиция 2.7 на 4-й схеме).
+    ALB: {
+        title: 'Yandex Application Load Balancer',
+        description:
+            'Сервис для распределения входящего трафика между разными компонентами ваших веб‑приложений.',
+        qr: qrAlb.src,
     },
 };
 
