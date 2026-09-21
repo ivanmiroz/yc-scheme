@@ -48,17 +48,17 @@ export const GuidePopup: React.FC<GuidePopupProps> = ({open, onClose, title, blo
                     </div>
 
                     {/* Блоки 2..N: карточки с пунктами и заметкой */}
-                    {blocks.map((block, index) => (
+                    {blocks.map((guideBlock, index) => (
                         <div key={index} className={b('block', {kind: 'card'})}>
-                            <h6 className={b('card-title')}>{block.cardTitle}</h6>
+                            <h6 className={b('card-title')}>{guideBlock.cardTitle}</h6>
                             <ul className={b('list')}>
-                                {block.items.map((item, itemIndex) => (
+                                {guideBlock.items.map((item, itemIndex) => (
                                     <li key={itemIndex} className={b('list-item')}>
                                         {item}
                                     </li>
                                 ))}
                             </ul>
-                            {block.note && <p className={b('note')}>{block.note}</p>}
+                            {guideBlock.note && <p className={b('note')}>{guideBlock.note}</p>}
                         </div>
                     ))}
                 </div>

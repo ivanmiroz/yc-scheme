@@ -214,7 +214,9 @@ export const getAnchorPoint = (
 
     if (anchor === 'text-top' || anchor === 'text-bottom') {
         const a = getPositionAnchor(pos, canvasWidth);
-        const labelFontSize = canvasWidth * 0.007;
+        // ВАЖНО: здесь та же формула, что и в drawPositions — иначе якоря
+        // text-top/text-bottom разъедутся с реальной высотой подписи.
+        const labelFontSize = canvasWidth * 0.00856;
         const {textBounds} = getPositionBounds(pos, config, a.iconSize, labelFontSize);
         if (!textBounds) return null;
 

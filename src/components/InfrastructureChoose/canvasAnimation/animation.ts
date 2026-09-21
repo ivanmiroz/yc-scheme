@@ -651,7 +651,7 @@ export const createPodiumAnimator = (
         const baseWidth = 1920;
         const baseIconSize = 53 * 1.5;
         const iconSize = canvasWidth * (baseIconSize / baseWidth);
-        const labelFontSize = canvasWidth * 0.007;
+        const labelFontSize = canvasWidth * 0.00856;
 
         const world = screenToWorld(mouseX, mouseY);
 
@@ -681,7 +681,7 @@ export const createPodiumAnimator = (
         const baseWidth = 1920;
         const baseIconSize = 53 * 1.5;
         const iconSize = canvasWidth * (baseIconSize / baseWidth);
-        const labelFontSize = canvasWidth * 0.007;
+        const labelFontSize = canvasWidth * 0.00856;
 
         const world = screenToWorld(mouseX, mouseY);
 

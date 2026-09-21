@@ -14,7 +14,7 @@ export const drawPositions = (
     const baseIconSize = 53 * 1.5;
     const iconSize = canvasWidth * (baseIconSize / baseWidth);
 
-    const labelFontSize = canvasWidth * 0.007;
+    const labelFontSize = canvasWidth * 0.00856;
     const lineHeight = labelFontSize * 1.4;
 
     // eslint-disable-next-line no-param-reassign
@@ -34,7 +34,6 @@ export const drawPositions = (
         // Разбираем positionNumber на сегменты. Формат — 'X.Y' или 'X.Y.Z'
         // (например, '2.4', '2.4.2', '2.5.1'). Второй сегмент (parts[1])
         // определяет горизонтальное смещение и «сторону» отрисовки подписи.
-        // 2.5.1 рендерится как 2.5 (bottom): verticalHint === '5'.
         const parts = pos.positionNumber.split('.');
         const verticalHint = parts[1]; // '1'..'7'
         const isBottomPosition = verticalHint === '2' || verticalHint === '5';

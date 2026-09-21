@@ -508,7 +508,7 @@ export const initCanvasAnimation = (
         // Нижняя граница лейбла объекта в координатах вьюпорта. Лейбл
         // всегда рисуется ПОД иконкой (см. drawPositions), поэтому
         // его низ = низ иконки + высота текста.
-        const labelFontSize = canvasWidth * 0.007;
+        const labelFontSize = canvasWidth * 0.00856;
         const lineHeight = labelFontSize * 1.4;
         const labelLines = config.label.split('\n').length;
         const labelHeight = labelFontSize + (labelLines - 1) * lineHeight;
