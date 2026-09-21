@@ -45,6 +45,7 @@
 
     &__title {
         color: var(--g-color-text-primary);
+        font-family: var(--font-ys-display), sans-serif;
         font-size: 1.5625vw; // 30px @ 1920
         font-weight: 900;
         letter-spacing: -0.02em;
@@ -54,6 +55,7 @@
 
     &__card-title {
         color: var(--g-color-text-primary);
+        font-family: var(--font-ys-display), sans-serif;
         font-size: 0.729vw; // 14px @ 1920
         font-weight: 900;
         line-height: 1.2;

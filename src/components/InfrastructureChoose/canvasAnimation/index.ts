@@ -165,22 +165,30 @@ export const initCanvasAnimation = (
     const popupDescription = document.createElement('p');
     popupDescription.className = 'scheme-popup__description';
 
+    // Блок QR слева от попапа.
     const popupAside = document.createElement('div');
     popupAside.className = 'scheme-popup__aside';
 
     const popupQr = document.createElement('div');
     popupQr.className = 'scheme-popup__qr';
+
     const popupQrImage = document.createElement('img');
     popupQrImage.alt = 'QR-код';
     popupQr.appendChild(popupQrImage);
 
+    const popupQrCaption = document.createElement('p');
+    popupQrCaption.className = 'scheme-popup__qr-caption';
+    // <br> через innerHTML — чтобы перенос был частью разметки.
+    popupQrCaption.innerHTML = 'Подробнее<br> о сервисе';
+    popupQr.appendChild(popupQrCaption);
+
+    popupAside.appendChild(popupQr);
+
+    // Кнопка закрытия — справа от попапа, отдельным абсолютным элементом.
     const popupClose = document.createElement('button');
     popupClose.className = 'scheme-popup__close';
     popupClose.type = 'button';
     popupClose.setAttribute('aria-label', 'Закрыть');
-
-    popupAside.appendChild(popupQr);
-    popupAside.appendChild(popupClose);
 
     const archShape = document.createElement('div');
     archShape.className = 'arch-shape';
@@ -188,6 +196,7 @@ export const initCanvasAnimation = (
     popup.appendChild(popupTitle);
     popup.appendChild(popupDescription);
     popup.appendChild(popupAside);
+    popup.appendChild(popupClose);
     popup.appendChild(archShape);
 
     popupContainer.appendChild(backdrop);
@@ -537,15 +546,26 @@ export const initCanvasAnimation = (
         const maxLeft = window.innerWidth - popupRectBase.width - POPUP_VIEWPORT_MARGIN;
         popupLeft = Math.max(POPUP_VIEWPORT_MARGIN, Math.min(popupLeft, maxLeft));
 
+        // QR-блок слева от popup: следим, чтобы его левый край не выходил
+        // за вьюпорт. Если выходит — сдвигаем popup вправо.
         popupAside.style.display = 'flex';
         const asideRect = popupAside.getBoundingClientRect();
         const asideOffsetFromPopupLeft = asideRect.left - popupRectBase.left;
-        const asideTotalWidth = asideRect.width;
+        const asideLeft = popupLeft + asideOffsetFromPopupLeft;
+        if (asideLeft < POPUP_VIEWPORT_MARGIN) {
+            popupLeft += POPUP_VIEWPORT_MARGIN - asideLeft;
+        }
 
-        const asideRight = popupLeft + asideOffsetFromPopupLeft + asideTotalWidth;
+        // Кнопка закрытия справа от popup: аналогичная проверка правого
+        // края. Кнопка позиционируется абсолютно (left: 100%), поэтому
+        // её правый край = popupLeft + popupWidth + gap + closeWidth.
+        const closeRect = popupClose.getBoundingClientRect();
+        const closeOffsetFromPopupRight =
+            popupRectBase.right - popupLeft - popupRectBase.width + closeRect.width;
+        const closeRight = popupLeft + popupRectBase.width + closeOffsetFromPopupRight;
         const maxRight = window.innerWidth - POPUP_VIEWPORT_MARGIN;
-        if (asideRight > maxRight) {
-            popupLeft = Math.max(POPUP_VIEWPORT_MARGIN, popupLeft - (asideRight - maxRight));
+        if (closeRight > maxRight) {
+            popupLeft -= closeRight - maxRight;
         }
 
         popup.style.left = `${popupLeft}px`;
