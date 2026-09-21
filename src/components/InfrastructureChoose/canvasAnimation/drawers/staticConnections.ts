@@ -6,8 +6,6 @@ import {
     CONNECTION_DOT_RADIUS_RATIO,
     CONNECTION_HIGHLIGHT_COLOR,
     CONNECTION_LINE_WIDTH_RATIO,
-    DASH_GAP_RATIO,
-    DASH_LENGTH_RATIO,
     MARKER_BOTTOM_OFFSET_RATIO,
     MARKER_COLOR,
     MARKER_DOT_RADIUS_RATIO,
@@ -32,9 +30,16 @@ const EXTRA_LINE_WIDTH_DIVISOR = 1.8;
 // Знак: отрицательное значение — влево.
 const EXTRA_LINE_SHIFT_RATIO = -0.005;
 
-// Сдвиг по X для вертикальных линий, соединяющих платформы
-// (от правого края к правому краю). Чуть левее края — как в схемах.
-const PLATFORM_TO_PLATFORM_SHIFT_X_RATIO = -0.005;
+// Подписи над маркером/доп. линией на нижней платформе.
+// Значения заданы в дизайнерских пикселях при ширине canvas 1920.
+const MARKER_LABEL_FONT_SIZE_RATIO = 10 / 1920;
+const MARKER_LABEL_MIN_FONT_SIZE = 8;
+const MARKER_LABEL_OFFSET_Y_RATIO = 4 / 1920;
+
+// Тексты подписей. Пишутся сразу в верхнем регистре — text-transform
+// в canvas недоступен, поэтому uppercase делается тут.
+const RESERVE_CONTOUR_LABEL = 'РЕЗЕРВНЫЙ КОНТУР';
+const MAIN_CONTOUR_LABEL = 'ОСНОВНОЙ КОНТУР';
 
 export const getConnectionsTotalDuration = (): number => CONNECTIONS_LINE_DURATION;
 
@@ -120,10 +125,10 @@ const drawPlatformToPlatformConnection = (
     const lineWidth = highlighted ? baseLineWidth * HIGHLIGHT_WIDTH_MULTIPLIER : baseLineWidth;
     const dotRadius = Math.max(2, canvasWidth * CONNECTION_DOT_RADIUS_RATIO);
 
-    const dash = Math.max(4, canvasWidth * DASH_LENGTH_RATIO);
-    const gap = Math.max(3, canvasWidth * DASH_GAP_RATIO);
+    const dash = Math.max(4, canvasWidth * 0.008);
+    const gap = Math.max(3, canvasWidth * 0.005);
 
-    const shiftX = fromPodium.scaledWidth * PLATFORM_TO_PLATFORM_SHIFT_X_RATIO;
+    const shiftX = fromPodium.scaledWidth * -0.005;
 
     const A = {
         x: fromPodium.currentX + fromPodium.scaledWidth + shiftX,
@@ -146,7 +151,6 @@ const drawPlatformToPlatformConnection = (
     ctx.lineTo(currentX, currentY);
     ctx.stroke();
 
-    // Точки на концах рисуем без пунктира.
     ctx.setLineDash([]);
 
     ctx.beginPath();
@@ -231,6 +235,35 @@ const drawPlatformMarker = (
         ctx.fill();
     }
 
+    // Подписи над линиями. Появляются, когда обе линии полностью
+    // отрисованы (progress >= 1).
+    //   • marker (длинная) → «РЕЗЕРВНЫЙ КОНТУР»
+    //   • extra (короткая) → «ОСНОВНОЙ КОНТУР»
+    if (progress >= 1) {
+        const labelFontSize = Math.max(
+            MARKER_LABEL_MIN_FONT_SIZE,
+            canvasWidth * MARKER_LABEL_FONT_SIZE_RATIO,
+        );
+        const labelOffsetY = canvasWidth * MARKER_LABEL_OFFSET_Y_RATIO;
+
+        ctx.save();
+        // eslint-disable-next-line no-param-reassign
+        ctx.font = `700 ${labelFontSize}px "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif`;
+        // eslint-disable-next-line no-param-reassign
+        ctx.textAlign = 'center';
+        // eslint-disable-next-line no-param-reassign
+        ctx.textBaseline = 'bottom';
+        // eslint-disable-next-line no-param-reassign
+        ctx.fillStyle = strokeColor;
+
+        // Надписи над своими линиями: длинная (marker) — «Резервный контур»,
+        // короткая (extra) — «Основной контур».
+        ctx.fillText(RESERVE_CONTOUR_LABEL, centerX, markerY - labelOffsetY);
+        ctx.fillText(MAIN_CONTOUR_LABEL, extraCenterX, extraLineY - labelOffsetY);
+
+        ctx.restore();
+    }
+
     ctx.restore();
 };
 
@@ -263,8 +296,7 @@ export const drawConnections = (
     const markerColor = resolveColor(activeLegend, 'straight', MARKER_COLOR);
 
     // Вертикальные прямые пунктирные линии между платформами
-    // (правый край → правый край). Общие для всех схем, больше не задаются
-    // в schemeN.ts. Подсвечиваются как 'dashed'.
+    // (правый край → правый край). Общие для всех схем.
     const verticalHighlighted = isKindHighlighted(activeLegend, 'dashed');
     const verticalColor = resolveColor(activeLegend, 'dashed', CONNECTION_COLOR);
 
