@@ -81,7 +81,15 @@ export const DESCRIPTIONS: Record<string, DescriptionEntry> = {
     },
 
     // BareMetal Extend в связке с Managed Service for Kubernetes.
+    // Держим два варианта ключа — с ® и двоеточием (для схем 1..3)
+    // и без них (для схемы 4).
     'BareMetal Extend: Managed Service for Kubernetes®': {
+        title: 'BareMetal Extend: Managed Service for Kubernetes®',
+        description:
+            'Готовая Kubernetes-инфраструктура на выделенных серверах: всё настроено для разработки и запуска контейнерных приложений — без самостоятельной настройки и поддержки Kubernetes, с полным контролем над кластером и приложениями.',
+        qr: qrBareMetalKubernetes.src,
+    },
+    'BareMetal Extend Managed Service for Kubernetes': {
         title: 'BareMetal Extend: Managed Service for Kubernetes®',
         description:
             'Готовая Kubernetes-инфраструктура на выделенных серверах: всё настроено для разработки и запуска контейнерных приложений — без самостоятельной настройки и поддержки Kubernetes, с полным контролем над кластером и приложениями.',
@@ -175,8 +183,6 @@ export const DESCRIPTIONS: Record<string, DescriptionEntry> = {
         qr: qrCloudDns.src,
     },
 
-    // Kubernetes — короткая подпись иконки. Используется на всех четырёх
-    // схемах (позиция 2.1).
     'Kubernetes®': {
         title: 'Yandex Managed Service for Kubernetes®',
         description:
@@ -235,7 +241,7 @@ export const DESCRIPTIONS: Record<string, DescriptionEntry> = {
     },
 
     // ALB/GWIN — та же связка с Gwin, что и у ALB, но с расширенным
-    // описанием и отдельным QR. Используется на 4-й схеме в позиции 2.7.
+    // описанием и отдельным QR. Используется на 4-й схеме в позиции 2.4.4.
     'ALB/GWIN': {
         title: 'Yandex Application Load Balancer',
         description:
