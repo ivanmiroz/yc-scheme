@@ -68,7 +68,7 @@
     &__description {
         color: var(--g-color-text-primary);
         font-size: var(--g-text-size-sm);
-        line-height: 1.4;
+        line-height: 1.1;
         margin: 0;
     }
 
@@ -149,7 +149,7 @@
     &__button-text {
         font-size: var(--g-text-size-sm);
         font-weight: 500;
-        line-height: 1.4;
+        line-height: 1.1;
         text-align: left;
         transition: color 0.2s ease;
     }
@@ -345,7 +345,7 @@
     &__architect-recommendation-text {
         color: var(--g-color-text-primary);
         font-size: var(--g-text-size-xs);
-        line-height: 1.4;
+        line-height: 1.1;
         margin: 0;
         // 0.417vw = 8px @ 1920. Из них 0.208vw (4px) — размер точки,
         // столько же — зазор до текста. Значение = «величина точки»,
@@ -370,7 +370,7 @@
     &__architect-scenario {
         color: var(--g-color-text-primary);
         font-size: var(--g-text-size-xs);
-        line-height: 1.4;
+        line-height: 1.1;
         margin: 0 0 0.417vw; // 8px @ 1920
     }
 
