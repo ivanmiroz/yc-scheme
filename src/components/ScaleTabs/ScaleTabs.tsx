@@ -41,7 +41,7 @@ export interface ScaleTabsTabData {
     title: string;
     /** Текст вкладки «Описание сценария». */
     scenarioDescription: string;
-    /** Абзацы вкладки «Рекомендации архитектора». */
+    /** Пункты вкладки «Рекомендации архитектора». */
     architectRecommendations: string[];
 }
 
@@ -455,18 +455,18 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
 
                         <div className="infrastructure-choose__architect-tabpanel" role="tabpanel">
                             {architectTab === 'comments' && (
-                                <div className="infrastructure-choose__architect-recommendation">
+                                <ul className="infrastructure-choose__architect-recommendation">
                                     {activeTab?.architectRecommendations?.map(
                                         (paragraph, index) => (
-                                            <p
+                                            <li
                                                 key={index}
                                                 className="infrastructure-choose__architect-recommendation-text"
                                             >
                                                 {paragraph}
-                                            </p>
+                                            </li>
                                         ),
                                     )}
-                                </div>
+                                </ul>
                             )}
                             {architectTab === 'scenario' && (
                                 <p className="infrastructure-choose__architect-scenario">

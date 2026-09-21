@@ -14,7 +14,12 @@ import {
     getConnectionsTotalDuration,
     isPointOverPosition,
 } from './drawers';
-import {LegendValue, getActiveSchemeLines, getPositionConfig} from './schemes';
+import {
+    LegendValue,
+    getActiveSchemeIndex,
+    getActiveSchemeLines,
+    getPositionConfig,
+} from './schemes';
 import {getIconBackground} from './iconBackgrounds';
 import {loadAllIcons} from './icons';
 
@@ -181,7 +186,10 @@ export const createPodiumAnimator = (
 
         positionsAnimationStarted = true;
         positionsStartTime = timestamp;
-        positions = calculatePositions(podiums);
+        // Передаём индекс активной схемы: на схеме 4 (индекс 3) позиции
+        // 2.4.2 и 2.4.3 меняются вертикальными рядами (см. positions.ts,
+        // SCHEMES_WITH_SWAPPED_42_43).
+        positions = calculatePositions(podiums, getActiveSchemeIndex());
         positionAnimParams = positions.map(() => {
             const randomDelay = Math.random() * POSITION_ANIMATION_CONFIG.MAX_RANDOM_DELAY;
             return {
@@ -595,7 +603,9 @@ export const createPodiumAnimator = (
     };
 
     const refreshScheme = () => {
-        positions = calculatePositions(podiums);
+        // Пересчитываем позиции с учётом активной схемы — на схеме 4
+        // 2.4.2 и 2.4.3 меняются вертикальными рядами.
+        positions = calculatePositions(podiums, getActiveSchemeIndex());
 
         positionAnimParams = positions.map(() => {
             const randomDelay = Math.random() * POSITION_ANIMATION_CONFIG.MAX_RANDOM_DELAY;

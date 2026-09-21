@@ -20,8 +20,8 @@ export const scheme1Platforms: PlatformScheme[] = [
             {positionNumber: '3.2'},
             {positionNumber: '3.3', iconKey: 'stackland', label: 'Yandex Cloud\n Stackland'},
             {positionNumber: '3.4'},
-            {positionNumber: '3.5', iconKey: 'storage', label: 'Object\n Storage'},
-            {positionNumber: '3.6'},
+            {positionNumber: '3.5'},
+            {positionNumber: '3.6', iconKey: 'storage', label: 'Object\n Storage'},
         ],
     },
     {
@@ -39,8 +39,8 @@ export const scheme1Platforms: PlatformScheme[] = [
                 iconKey: 'baremetal',
                 label: 'BareMetal\n Extend:\n Virtualization',
             },
-            {positionNumber: '2.5', iconKey: 'compute', label: 'Cloud\n Compute'},
-            {positionNumber: '2.6', iconKey: 'backup', label: 'Cloud\n Backup'},
+            {positionNumber: '2.5', iconKey: 'backup', label: 'Cloud\n Backup'},
+            {positionNumber: '2.6', iconKey: 'compute', label: 'Cloud\n Compute'},
         ],
     },
     {
@@ -57,10 +57,11 @@ export const scheme1Platforms: PlatformScheme[] = [
 ];
 
 export const scheme1Lines: SchemeLine[] = [
+    // Было 2.6 (left) → 3.5. Теперь цель — 3.6.
     {
-        from: '2.5',
-        fromAnchor: 'top',
-        to: '3.5',
+        from: '2.6',
+        fromAnchor: 'left',
+        to: '3.6',
         toAnchor: 'text-bottom',
         serpentine: true,
     },
@@ -79,10 +80,9 @@ export const scheme1Lines: SchemeLine[] = [
     },
     {
         from: '2.4',
-        fromAnchor: 'text-bottom',
+        fromAnchor: 'right',
         to: '2.5',
-        toAnchor: 'text-bottom',
-        arc: true,
+        toAnchor: 'left',
     },
     {
         from: '2.5',
@@ -93,10 +93,11 @@ export const scheme1Lines: SchemeLine[] = [
         arcFlip: true,
     },
     {
-        from: '2.6',
-        fromAnchor: 'left',
-        to: '2.4',
-        toAnchor: 'right',
-        dashed: true,
+        from: '2.4',
+        fromAnchor: 'right',
+        to: '2.6',
+        toAnchor: 'left',
+        arc: true,
+        arcFlip: true,
     },
 ];

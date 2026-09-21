@@ -39,18 +39,23 @@ export const scheme4Platforms: PlatformScheme[] = [
                 label: 'Гипервизор,\n виртуальные\n машины',
             },
             {positionNumber: '2.3'},
+            {positionNumber: '2.4'},
             {
-                positionNumber: '2.4',
-                iconKey: 'mfsk',
-                label: 'Managed Service\n for Kubernetes®',
-            },
-            {positionNumber: '2.5', iconKey: 'cloudcdn', label: 'Cloud CDN'},
-            {
-                positionNumber: '2.6',
+                positionNumber: '2.4.1',
                 iconKey: 'baremetal',
-                label: 'BareMetal Extend:\n Managed Service\n for Kubernetes®',
+                label: 'BareMetal\n Extend\n Managed\n Service for\n Kubernetes',
             },
-            {positionNumber: '2.7', iconKey: 'alb', label: 'ALB/GWIN'},
+            {
+                positionNumber: '2.4.2',
+                iconKey: 'mfsk',
+                label: 'Managed\n Service for\n Kubernetes®',
+            },
+            {positionNumber: '2.4.3', iconKey: 'cloudcdn', label: 'Cloud\n CDN'},
+            {positionNumber: '2.4.4', iconKey: 'alb', label: 'ALB/GWIN'},
+            {positionNumber: '2.5'},
+            {positionNumber: '2.5.1'},
+            {positionNumber: '2.6'},
+            {positionNumber: '2.6.1'},
         ],
     },
     {
@@ -68,13 +73,7 @@ export const scheme4Platforms: PlatformScheme[] = [
 
 export const scheme4Lines: SchemeLine[] = [
     {from: '1.4', fromAnchor: 'right', to: '1.6', toAnchor: 'left'},
-    {
-        from: '2.5',
-        fromAnchor: 'left',
-        to: '2.4',
-        toAnchor: 'right',
-        dashed: true,
-    },
+
     {
         from: '1.6',
         fromAnchor: 'right',
@@ -82,5 +81,29 @@ export const scheme4Lines: SchemeLine[] = [
         toPlatformAnchor: 'right',
         arc: true,
         platformAnchorShiftXRatio: -0.005,
+    },
+
+    // 2.4.2 (left) → 2.4.1 (right) — прямая.
+    {
+        from: '2.4.2',
+        fromAnchor: 'left',
+        to: '2.4.1',
+        toAnchor: 'right',
+    },
+
+    // 2.4.2 (right) → 2.4.3 (left) — пунктир.
+    {
+        from: '2.4.2',
+        fromAnchor: 'right',
+        to: '2.4.3',
+        toAnchor: 'left',
+        dashed: true,
+    },
+
+    {
+        from: '2.4.2',
+        fromAnchor: 'top',
+        to: '3.5',
+        toAnchor: 'text-bottom',
     },
 ];
