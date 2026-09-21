@@ -27,7 +27,7 @@ export const ICON_BACKGROUNDS: Record<string, string> = {
 
     // Сиреневая группа
     DataLens: 'rgba(202, 184, 255, 1)',
-    'Yandex Managed database': 'rgba(202, 184, 255, 1)',
+    'Yandex Managed Database': 'rgba(202, 184, 255, 1)',
 
     // Розовая группа
     'AI Studio': 'rgba(250, 189, 250, 1)',

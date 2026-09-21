@@ -6,7 +6,7 @@ import podium4Src from '@/assets/images/podium4.png';
 import {CanvasAnimationCleanup} from './types';
 import {getEffectiveDpr} from './constants';
 import {createPodiumAnimator} from './animation';
-import {LegendValue, getPositionConfig} from './schemes';
+import {LegendValue, getActiveSchemeIndex, getPositionConfig} from './schemes';
 import {getDescription, getQr, getTitle} from './descriptions';
 import {getPositionAnchor} from './drawers';
 import './popup.scss';
@@ -462,8 +462,10 @@ export const initCanvasAnimation = (
 
         // Заголовок попапа берём из словаря — там для сервисов записаны
         // полные названия. Если для позиции своего title нет — используется
-        // нормализованный label.
-        const title = getTitle(config.label);
+        // нормализованный label. Второй аргумент — индекс активной схемы,
+        // чтобы для отдельных схем можно было переопределить заголовок
+        // (см. TITLE_OVERRIDES_BY_SCHEME в descriptions.ts).
+        const title = getTitle(config.label, getActiveSchemeIndex());
         const description = getDescription(config.label);
         const qrSrc = getQr(config.label);
 

@@ -22,7 +22,7 @@ export const scheme3Platforms: PlatformScheme[] = [
             {
                 positionNumber: '3.4',
                 iconKeys: ['code', 'elephant', 'sticks'],
-                label: 'Yandex Managed\ndatabase',
+                label: 'Yandex Managed\nDatabase',
                 iconGapPx: 8,
             },
             {positionNumber: '3.5'},

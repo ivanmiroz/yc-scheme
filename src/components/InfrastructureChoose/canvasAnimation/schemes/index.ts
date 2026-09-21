@@ -31,6 +31,10 @@ export const setActiveScheme = (index: number) => {
 
 export const getActiveScheme = (): Scheme => schemes[activeSchemeIndex];
 
+// Индекс активной схемы (0..3). Нужен, например, для переопределения
+// заголовков попапа по конкретной схеме (см. descriptions.getTitle).
+export const getActiveSchemeIndex = (): number => activeSchemeIndex;
+
 export const getActiveSchemeLines = (): Scheme['lines'] => schemes[activeSchemeIndex]?.lines ?? [];
 
 export const getPositionConfig = (positionNumber: string): PositionConfig | null => {
@@ -53,13 +57,7 @@ export const getPositionConfig = (positionNumber: string): PositionConfig | null
 
 // Список значений легенды, релевантных для схемы с указанным индексом.
 // К базовым типам (STATIC_LEGEND_KINDS) добавляются те, что реально
-// встречаются в линиях самой схемы. Легенда показывается тогда и только
-// тогда, когда её LineKind есть в этом объединённом множестве.
-//
-// Пример: 'vps-pe' → 'rounded-serpentine'. Этот тип не входит в базовые,
-// поэтому кнопка появится только на схемах, где есть serpentine-линия
-// без sharpCorners (не «пунктирная змейка»). На 4-й схеме таких линий нет —
-// значит и кнопки VPC Private Endpoint там не будет.
+// встречаются в линиях самой схемы.
 export const getAvailableLegendValues = (schemeIndex: number): LegendValue[] => {
     const scheme = schemes[schemeIndex];
     if (!scheme) return [];

@@ -23,7 +23,7 @@ export const scheme4Platforms: PlatformScheme[] = [
             {
                 positionNumber: '3.5',
                 iconKeys: ['code', 'elephant', 'sticks'],
-                label: 'Yandex Managed\ndatabase',
+                label: 'Yandex Managed\nDatabase',
                 iconGapPx: 8,
             },
             {positionNumber: '3.6'},
@@ -44,11 +44,11 @@ export const scheme4Platforms: PlatformScheme[] = [
                 iconKey: 'mfsk',
                 label: 'Managed Service\n for Kubernetes®',
             },
-            {positionNumber: '2.5', iconKey: 'cloudcdn', label: 'Cloud Cdn'},
+            {positionNumber: '2.5', iconKey: 'cloudcdn', label: 'Cloud CDN'},
             {
                 positionNumber: '2.6',
                 iconKey: 'baremetal',
-                label: 'BareMetal Extend\n Managed Service\n for Kubernetes',
+                label: 'BareMetal Extend:\n Managed Service\n for Kubernetes®',
             },
             {positionNumber: '2.7', iconKey: 'alb', label: 'ALB/GWIN'},
         ],

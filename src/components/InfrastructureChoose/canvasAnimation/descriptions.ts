@@ -76,12 +76,12 @@ export const DESCRIPTIONS: Record<string, DescriptionEntry> = {
     'BareMetal Extend: Virtualization': {
         title: 'Yandex BareMetal Extend',
         description:
-            'Выделенные серверы Yandex BareMetal с расширенными возможностями для быстрого запуска корпоративных приложений в изолированной среде.',
+            'Готовая виртуальная инфраструктура на выделенных физических серверах — с полным контролем ресурсов, без необходимости покупать и настраивать физическое оборудование и гипервизор.',
         qr: qrBareMetalExtend.src,
     },
 
     // BareMetal Extend в связке с Managed Service for Kubernetes.
-    'BareMetal Extend Managed Service for Kubernetes': {
+    'BareMetal Extend: Managed Service for Kubernetes®': {
         title: 'BareMetal Extend: Managed Service for Kubernetes®',
         description:
             'Готовая Kubernetes-инфраструктура на выделенных серверах: всё настроено для разработки и запуска контейнерных приложений — без самостоятельной настройки и поддержки Kubernetes, с полным контролем над кластером и приложениями.',
@@ -191,8 +191,8 @@ export const DESCRIPTIONS: Record<string, DescriptionEntry> = {
         qr: qrKubernetes.src,
     },
 
-    'Yandex Managed database': {
-        title: 'Yandex Managed Databases',
+    'Yandex Managed Database': {
+        title: 'Yandex Managed Database',
         description:
             'Платформа данных Yandex Cloud. Фокусируйтесь на работе с данными и приносите ценность бизнесу, а мы возьмём на себя обслуживание вашей инфраструктуры и баз данных (PostgreSQL, MySQL®, ClickHouse® и другие).',
         qr: qrManagedDatabases.src,
@@ -212,7 +212,7 @@ export const DESCRIPTIONS: Record<string, DescriptionEntry> = {
         qr: qrAi.src,
     },
 
-    'Cloud Cdn': {
+    'Cloud CDN': {
         title: 'Yandex Cloud CDN',
         description:
             'Сервис доставки контента до конечных потребителей с помощью сети распространения контента (Content Delivery Network; CDN).',
@@ -244,13 +244,30 @@ export const DESCRIPTIONS: Record<string, DescriptionEntry> = {
     },
 };
 
+// Переопределения title для конкретных схем.
+// Ключ — индекс схемы (0..3), значение — карта {label → title}.
+// Нужно, когда один и тот же label на разных схемах должен открывать
+// попап с разным заголовком.
+const TITLE_OVERRIDES_BY_SCHEME: Record<number, Record<string, string>> = {
+    // 3-я схема (индекс 2) — Object Storage здесь показывает on-premises.
+    2: {
+        'Object Storage': 'Yandex Object Storage on-premises',
+    },
+};
+
 // Нормализация label: убираем переносы строк и схлопываем пробелы.
 const normalizeLabel = (label: string): string => label.replace(/\s+/g, ' ').trim();
 
-// Заголовок попапа: если в словаре задан `title` — берём его,
-// иначе возвращаем нормализованный label.
-export const getTitle = (label: string): string => {
+// Заголовок попапа: сначала ищем override для конкретной схемы, затем
+// общий `title` из словаря, иначе возвращаем нормализованный label.
+export const getTitle = (label: string, schemeIndex?: number): string => {
     const key = normalizeLabel(label);
+
+    if (typeof schemeIndex === 'number') {
+        const override = TITLE_OVERRIDES_BY_SCHEME[schemeIndex]?.[key];
+        if (override) return override;
+    }
+
     return DESCRIPTIONS[key]?.title ?? key;
 };
 
