@@ -476,6 +476,10 @@ export const initCanvasAnimation = (
             popupQr.style.display = 'none';
         }
 
+        // Показываем контейнер и сам popup (невидимо), чтобы можно было
+        // измерить его размеры. Флаг «перевёрнут» сбрасываем — все замеры
+        // делаем от базового состояния (стрелка снизу).
+        popup.classList.remove('scheme-popup_flipped');
         popup.style.visibility = 'hidden';
         popupContainer.style.display = 'block';
 
@@ -488,22 +492,54 @@ export const initCanvasAnimation = (
         const iconCenterYViewport = rect.top + view.y + anchor.centerY * view.scale;
         const iconHalfScreen = (anchor.iconSize / 2) * view.scale;
         const iconTopViewport = iconCenterYViewport - iconHalfScreen;
+        const iconBottomViewport = iconCenterYViewport + iconHalfScreen;
 
-        const popupRect = popup.getBoundingClientRect();
-        const archRect = archShape.getBoundingClientRect();
+        // Нижняя граница лейбла объекта в координатах вьюпорта. Лейбл
+        // всегда рисуется ПОД иконкой (см. drawPositions), поэтому
+        // его низ = низ иконки + высота текста.
+        const labelFontSize = canvasWidth * 0.007;
+        const lineHeight = labelFontSize * 1.4;
+        const labelLines = config.label.split('\n').length;
+        const labelHeight = labelFontSize + (labelLines - 1) * lineHeight;
+        const labelBottomViewport = iconBottomViewport + labelHeight * view.scale;
 
-        const archTipX = archRect.left - popupRect.left + archRect.width / 2;
-        const archHeight = archRect.bottom - popupRect.bottom;
+        const popupRectBase = popup.getBoundingClientRect();
+        const archRectBase = archShape.getBoundingClientRect();
 
+        // Расстояние от низа popup до кончика стрелки снизу.
+        const archHeightFromPopupBottom = archRectBase.bottom - popupRectBase.bottom;
+        // X кончика стрелки относительно левого края popup.
+        const archTipX = archRectBase.left - popupRectBase.left + archRectBase.width / 2;
+
+        // Пробуем поставить popup над иконкой.
+        const popupTopAbove =
+            iconTopViewport - archHeightFromPopupBottom - popupRectBase.height - POPUP_ICON_GAP;
+        const fitsAbove = popupTopAbove >= POPUP_VIEWPORT_MARGIN;
+
+        let popupTop: number;
         let popupLeft = iconCenterXViewport - archTipX;
-        const popupTop = iconTopViewport - archHeight - popupRect.height - POPUP_ICON_GAP;
 
-        const maxLeft = window.innerWidth - popupRect.width - POPUP_VIEWPORT_MARGIN;
+        if (fitsAbove) {
+            popupTop = popupTopAbove;
+        } else {
+            // Сверху не хватает места — переворачиваем popup: стрелка
+            // уходит наверх, popup встаёт под лейблом объекта.
+            popup.classList.add('scheme-popup_flipped');
+
+            // Пересчитываем геометрию после смены модификатора.
+            const popupRectFlipped = popup.getBoundingClientRect();
+            const archRectFlipped = archShape.getBoundingClientRect();
+            const archHeightFromPopupTop = popupRectFlipped.top - archRectFlipped.top;
+
+            popupTop = labelBottomViewport + archHeightFromPopupTop + POPUP_ICON_GAP;
+        }
+
+        const maxLeft = window.innerWidth - popupRectBase.width - POPUP_VIEWPORT_MARGIN;
         popupLeft = Math.max(POPUP_VIEWPORT_MARGIN, Math.min(popupLeft, maxLeft));
 
         popupAside.style.display = 'flex';
         const asideRect = popupAside.getBoundingClientRect();
-        const asideOffsetFromPopupLeft = asideRect.left - popupRect.left;
+        const asideOffsetFromPopupLeft = asideRect.left - popupRectBase.left;
         const asideTotalWidth = asideRect.width;
 
         const asideRight = popupLeft + asideOffsetFromPopupLeft + asideTotalWidth;

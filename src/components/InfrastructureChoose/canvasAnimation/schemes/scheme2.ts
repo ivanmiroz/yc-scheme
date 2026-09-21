@@ -27,7 +27,7 @@ export const scheme2Platforms: PlatformScheme[] = [
     {
         platformId: 2,
         positions: [
-            {positionNumber: '2.1', iconKey: 'kubernetes', label: 'Kubernetes'},
+            {positionNumber: '2.1', iconKey: 'kubernetes', label: 'Kubernetes®'},
             {
                 positionNumber: '2.2',
                 iconKey: 'hypervisor',
@@ -51,7 +51,7 @@ export const scheme2Platforms: PlatformScheme[] = [
             {positionNumber: '1.3'},
             {positionNumber: '1.4', iconKey: 'servers', label: 'Серверы\n и СХД'},
             {positionNumber: '1.5'},
-            {positionNumber: '1.6', iconKey: 'baremetal', label: 'BareMetal\n с GPU'},
+            {positionNumber: '1.6', iconKey: 'baremetal', label: 'BareMetal'},
         ],
     },
 ];

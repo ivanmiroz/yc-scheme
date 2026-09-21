@@ -33,6 +33,8 @@ export const ICON_BACKGROUNDS: Record<string, string> = {
     'AI Studio': 'rgba(250, 189, 250, 1)',
 
     // Зелёная группа
+    // Ключ в кавычках: символ ® недопустим в идентификаторе.
+    'Kubernetes®': 'rgba(157, 233, 175, 1)',
     'Managed Service for Kubernetes®': 'rgba(157, 233, 175, 1)',
 };
 

@@ -32,7 +32,7 @@ export const scheme3Platforms: PlatformScheme[] = [
     {
         platformId: 2,
         positions: [
-            {positionNumber: '2.1', iconKey: 'kubernetes', label: 'Kubernetes'},
+            {positionNumber: '2.1', iconKey: 'kubernetes', label: 'Kubernetes®'},
             {
                 positionNumber: '2.2',
                 iconKey: 'hypervisor',

@@ -29,7 +29,7 @@ const data: ScaleTabsData = {
 
     tabsHeader: {
         title: 'Выберите задачу:',
-        commentsTabLabel: 'Рекомендации архитектора',
+        commentsTabLabel: 'Рекомендации архитекторов',
         scenarioTabLabel: 'Описание сценария',
     },
 
@@ -39,8 +39,8 @@ const data: ScaleTabsData = {
             {
                 value: 'network',
                 icon: legend1Src.src,
-                alt: 'Связность в on-premises',
-                text: 'Связность в\non-premises',
+                alt: 'Сетевая связность',
+                text: 'Сетевая\nсвязность',
             },
             {
                 value: 'vps-pe',
@@ -51,8 +51,8 @@ const data: ScaleTabsData = {
             {
                 value: 'cloud-interconnect',
                 icon: legend3Src.src,
-                alt: 'Cloud interconnect',
-                text: 'Cloud\ninterconnect',
+                alt: 'Cloud Interconnect',
+                text: 'Cloud\nInterconnect',
             },
             {
                 value: 'vps',
@@ -114,14 +114,14 @@ const data: ScaleTabsData = {
         },
         {
             value: 'ttm',
-            actionLabel: 'Ускорение time-to-market',
+            actionLabel: 'Ускорение Time to Market',
             title: 'Ускорение\ntime-to-market',
             scenarioDescription:
                 'Выпускайте продукты быстрее: постоянные нагрузки держите on-premises на инфраструктуре Stackland, а под разработку и тесты подключайте за минуты облачные вычисления и выделенные серверы.',
             architectRecommendations: [
                 'Разверните Yandex Cloud Stackland в контуре компании и получите готовую инфраструктурную платформу со встроенными управляемыми сервисами для микросервисных приложений, кластеров баз данных и S3-хранилища — без месяцев на самостоятельную интеграцию.',
-                'Ускорьте вывод релизов: разворачивайте кластеры Managed Kubernetes в облаке с автомасштабированием групп узлов при росте нагрузки, не занимаясь ручным управлением инфраструктурой кластера.',
-                'Для требовательных к производительности нагрузок и нагрузочного тестирования разворачивайте группы узлов Managed Kubernetes на выделенных серверах BareMetal, сочетая производительность физического железа с оркестрацией Kubernetes.',
+                'Ускорьте вывод релизов: разворачивайте кластеры Managed Kubernetes® в облаке с автомасштабированием групп узлов при росте нагрузки, не занимаясь ручным управлением инфраструктурой кластера.',
+                'Для требовательных к производительности нагрузок и нагрузочного тестирования разворачивайте группы узлов Managed Kubernetes® на выделенных серверах BareMetal, сочетая производительность физического железа с оркестрацией Kubernetes®.',
             ],
         },
     ],

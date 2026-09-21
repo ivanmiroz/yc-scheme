@@ -175,7 +175,9 @@ export const DESCRIPTIONS: Record<string, DescriptionEntry> = {
         qr: qrCloudDns.src,
     },
 
-    Kubernetes: {
+    // Kubernetes — короткая подпись иконки. Используется на всех четырёх
+    // схемах (позиция 2.1).
+    'Kubernetes®': {
         title: 'Yandex Managed Service for Kubernetes®',
         description:
             'Сервис для управления кластерами Kubernetes® в Yandex Cloud. Масштабирование до 1000+ нод. Экономия затрат до 60%.',

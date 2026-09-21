@@ -27,7 +27,7 @@ export const scheme1Platforms: PlatformScheme[] = [
     {
         platformId: 2,
         positions: [
-            {positionNumber: '2.1', iconKey: 'kubernetes', label: 'Kubernetes'},
+            {positionNumber: '2.1', iconKey: 'kubernetes', label: 'Kubernetes®'},
             {
                 positionNumber: '2.2',
                 iconKey: 'hypervisor',
@@ -92,7 +92,6 @@ export const scheme1Lines: SchemeLine[] = [
         arc: true,
         arcFlip: true,
     },
-    // Прямая пунктирная линия между 2.6 и 2.4 — соединяет соседей по ряду.
     {
         from: '2.6',
         fromAnchor: 'left',

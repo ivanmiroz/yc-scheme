@@ -57,6 +57,7 @@
 
     &__title {
         color: var(--g-color-text-primary);
+        font-family: var(--font-ys-display), sans-serif;
         font-size: var(--g-text-size-xl);
         font-weight: 800;
         letter-spacing: -0.02em;
@@ -242,6 +243,7 @@
 
     &__title {
         color: var(--g-color-text-primary);
+        font-family: var(--font-ys-display), sans-serif;
         font-size: var(--g-text-size-xl);
         font-weight: 800;
         letter-spacing: -0.02em;
@@ -388,6 +390,7 @@
 
     &__section-title {
         color: var(--g-color-text-primary);
+        font-family: var(--font-ys-display), sans-serif;
         font-size: var(--g-text-size-sm);
         font-weight: 700;
         margin: 0;

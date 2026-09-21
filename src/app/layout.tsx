@@ -6,6 +6,15 @@ import '@gravity-ui/uikit/styles/fonts.css';
 import '@gravity-ui/uikit/styles/styles.css';
 import '../styles/globals.scss';
 
+// Шрифт для основного текста
+const ysText = localFont({
+    src: '../fonts/YS-Text-Regular.woff2',
+    weight: '400',
+    style: 'normal',
+    variable: '--font-ys-text',
+    display: 'swap',
+});
+
 const ysDisplay = localFont({
     src: [
         {
@@ -35,13 +44,13 @@ const ysDisplay = localFont({
 
 export const metadata: Metadata = {
     title: 'Масштабируйтесь безопасно',
-    description: 'Gravity UI – Next.js App Example',
+    description: 'Гибридная инфраструктура',
 };
 
 export default function RootLayout({children}: {children: React.ReactNode}) {
     return (
         <html lang="ru">
-            <body className={`g-root g-root_theme_light ${ysDisplay.variable}`}>
+            <body className={`g-root g-root_theme_light ${ysDisplay.variable} ${ysText.variable}`}>
                 <App>{children}</App>
             </body>
         </html>
