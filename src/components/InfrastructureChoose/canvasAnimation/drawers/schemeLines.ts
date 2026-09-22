@@ -23,10 +23,15 @@ import {
     drawPolylineWithProgress,
     smoothCorners,
 } from './paths';
+import {getPositionShiftX} from './positions';
 import {applyConnectionStroke} from './stroke';
 
 // Во сколько раз толще рисуется подсвеченная линия.
 const HIGHLIGHT_WIDTH_MULTIPLIER = 1.5;
+
+// Базовые размеры, по которым считается iconSize (должны совпадать с positions.ts).
+const BASE_CANVAS_WIDTH = 1920;
+const BASE_ICON_SIZE = 53 * 1.5;
 
 interface Point {
     x: number;
@@ -136,7 +141,16 @@ const resolveEndpoint = (
     if (positionNumber) {
         const pos = byNumber.get(positionNumber);
         if (!pos) return null;
-        return getAnchorPoint(pos, canvasWidth, (positionAnchor as never) ?? 'center');
+
+        const anchorPoint = getAnchorPoint(pos, canvasWidth, (positionAnchor as never) ?? 'center');
+        if (!anchorPoint) return null;
+
+        // Учитываем визуальный сдвиг объекта (например, 3.6 в схеме 1),
+        // чтобы линия сходилась с фактически нарисованной иконкой/подписью.
+        const iconSize = canvasWidth * (BASE_ICON_SIZE / BASE_CANVAS_WIDTH);
+        const shiftX = getPositionShiftX(positionNumber, iconSize);
+
+        return {x: anchorPoint.x + shiftX, y: anchorPoint.y};
     }
 
     return null;
