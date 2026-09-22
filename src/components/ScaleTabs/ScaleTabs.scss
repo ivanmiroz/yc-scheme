@@ -259,8 +259,8 @@
 
     &__tab {
         align-items: center;
-        background: var(--g-color-base-generic-light);
-        border: none;
+        background: none;
+        border: 1px solid rgba(176, 189, 217, 1);
         border-radius: 0.625vw;
         color: var(--g-color-text-primary);
         cursor: pointer;
@@ -276,6 +276,7 @@
 
         &_active {
             background: var(--g-color-base-generic-accent);
+            border: 1px solid rgba(0, 0, 0, 1);
             color: var(--g-color-text-primary-inverted);
         }
 
@@ -305,7 +306,7 @@
         background: transparent;
         border: none;
         border-bottom: 0.104vw solid transparent;
-        color: var(--g-color-text-secondary, #999999);
+        color: rgba(176, 189, 217, 1);
         cursor: pointer;
         font-size: var(--g-text-size-xs);
         font-weight: 500;
