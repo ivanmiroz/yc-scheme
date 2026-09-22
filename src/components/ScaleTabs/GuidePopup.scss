@@ -27,7 +27,7 @@
         display: flex;
         flex-direction: column;
         gap: 0.417vw; // 8px @ 1920
-        max-height: 90vh;
+        max-height: 99vh;
         scrollbar-gutter: stable;
     }
 
@@ -46,17 +46,18 @@
     &__title {
         color: var(--g-color-text-primary);
         font-family: var(--font-ys-display), sans-serif;
-        font-size: 1.5625vw; // 30px @ 1920
+        font-size: var(--g-text-size-xl);
         font-weight: 900;
         letter-spacing: -0.02em;
         line-height: 1.1;
         margin: 0;
+        max-width: 85%;
     }
 
     &__card-title {
         color: var(--g-color-text-primary);
         font-family: var(--font-ys-display), sans-serif;
-        font-size: 0.729vw; // 14px @ 1920
+        font-size: var(--g-text-size-xs);
         font-weight: 900;
         line-height: 1.2;
         margin: 0 0 0.625vw; // 12px @ 1920

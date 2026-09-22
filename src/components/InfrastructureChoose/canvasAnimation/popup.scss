@@ -13,14 +13,14 @@ $popup-font-size: max(12px, var(--g-text-size-xs, 0.9vw));
     position: absolute;
     background-color: var(--g-color-base-generic);
     // Радиус и паддинги в em — масштабируются вместе с font-size попапа
-    border-radius: 0.85em;
-    padding: 0.57em;
+    border-radius: 0.9vw;
+    padding: 0.8vw;
     z-index: 2;
     max-width: 21.5em;
     font-size: $popup-font-size;
 
     &__title {
-        margin: 0 0 4px;
+        margin: 0 0 0.4vw;
         font-size: 1em;
         font-weight: 800;
         color: var(--g-color-text-primary);
@@ -45,11 +45,12 @@ $popup-font-size: max(12px, var(--g-text-size-xs, 0.9vw));
 
     // QR-код — с подложкой, в которой снизу подпись.
     &__qr {
-        padding: 8px;
+        padding: 0.6vw;
         background-color: rgba(231, 235, 244, 1);
-        border-radius: 12px;
+        border-radius: 0.9vw;
 
         img {
+            border-radius: 0.8vw;
             display: block;
             // 112px @ 1920 = 5.83vw — размер строго на vw, без привязки к em попапа
             width: 5.83vw;
@@ -60,9 +61,9 @@ $popup-font-size: max(12px, var(--g-text-size-xs, 0.9vw));
 
     // Подпись под QR-кодом.
     &__qr-caption {
-        margin: 4px 0 0;
+        margin: 0.3vw 0 0;
         text-align: center;
-        font-size: 12px;
+        font-size: var(--g-text-size-xs);
         line-height: 1.1;
         color: var(--g-color-text-primary);
     }
