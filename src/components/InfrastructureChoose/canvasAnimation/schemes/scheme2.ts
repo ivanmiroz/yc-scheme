@@ -20,8 +20,8 @@ export const scheme2Platforms: PlatformScheme[] = [
             {positionNumber: '3.2', iconKey: 'dwn', label: 'DWH'},
             {positionNumber: '3.3', iconKey: 'stackland', label: 'Yandex Cloud\n Stackland'},
             {positionNumber: '3.4'},
-            {positionNumber: '3.5'},
-            {positionNumber: '3.6', iconKey: 'storage', label: 'Object\n Storage'},
+            {positionNumber: '3.5', iconKey: 'storage', label: 'Object\n Storage'},
+            {positionNumber: '3.6'},
         ],
     },
     {
@@ -59,10 +59,11 @@ export const scheme2Platforms: PlatformScheme[] = [
 export const scheme2Lines: SchemeLine[] = [
     {from: '1.4', fromAnchor: 'right', to: '1.6', toAnchor: 'left'},
     {from: '2.4', fromAnchor: 'right', to: '2.6', toAnchor: 'left', arc: true},
+    // Было 2.6 (top) → 3.6 (text-bottom). Стало → 3.5 (text-bottom).
     {
         from: '2.6',
-        fromAnchor: 'top',
-        to: '3.6',
+        fromAnchor: 'left',
+        to: '3.5',
         toAnchor: 'text-bottom',
         serpentine: true,
     },

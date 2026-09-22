@@ -68,7 +68,7 @@
     &__description {
         color: var(--g-color-text-primary);
         font-size: var(--g-text-size-sm);
-        line-height: 1.4;
+        line-height: 1.1;
         margin: 0;
     }
 
@@ -149,7 +149,7 @@
     &__button-text {
         font-size: var(--g-text-size-sm);
         font-weight: 500;
-        line-height: 1.4;
+        line-height: 1.1;
         text-align: left;
         transition: color 0.2s ease;
     }
@@ -330,20 +330,39 @@
         padding: 0.625vw 0.833vw;
     }
 
-    // Абзацы «Рекомендаций архитектора» — показываются только в табе
+    // Пункты «Рекомендаций архитектора» — показываются только в табе
     // «Рекомендации архитектора», над блоком QR-карточек.
+    // UL/LI со своей точкой-буллитом; padding-left = размер точки + отступ.
     &__architect-recommendation {
         display: flex;
         flex-direction: column;
         gap: 0.417vw; // 8px @ 1920
         margin: 0 0 0.417vw; // 8px @ 1920
+        padding: 0;
+        list-style: none;
     }
 
     &__architect-recommendation-text {
         color: var(--g-color-text-primary);
         font-size: var(--g-text-size-xs);
-        line-height: 1.4;
+        line-height: 1.1;
         margin: 0;
+        // 0.417vw = 8px @ 1920. Из них 0.208vw (4px) — размер точки,
+        // столько же — зазор до текста. Значение = «величина точки»,
+        // как ты и просил.
+        padding-left: 0.417vw;
+        position: relative;
+
+        &::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0.55em;
+            width: 0.208vw; // 4px @ 1920 — размер точки
+            height: 0.208vw;
+            border-radius: 50%;
+            background: var(--g-color-text-primary);
+        }
     }
 
     // Описание сценария — показывается только в табе «Описание сценария»,
@@ -351,7 +370,7 @@
     &__architect-scenario {
         color: var(--g-color-text-primary);
         font-size: var(--g-text-size-xs);
-        line-height: 1.4;
+        line-height: 1.1;
         margin: 0 0 0.417vw; // 8px @ 1920
     }
 

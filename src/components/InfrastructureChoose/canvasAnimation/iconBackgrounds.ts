@@ -19,7 +19,7 @@ export const ICON_BACKGROUNDS: Record<string, string> = {
     'Cloud Compute': 'rgba(148, 207, 255, 1)',
     // Cloud Compute с GPU — та же подложка, что у обычного Cloud Compute.
     'Cloud Compute с GPU': 'rgba(148, 207, 255, 1)',
-    'Cloud Cdn': 'rgba(148, 207, 255, 1)',
+    'Cloud CDN': 'rgba(148, 207, 255, 1)',
     // ALB — та же подложка, что у Cloud Cdn.
     ALB: 'rgba(148, 207, 255, 1)',
     // ALB/GWIN — для случая, когда подпись отображает связку с Gwin.
@@ -34,7 +34,6 @@ export const ICON_BACKGROUNDS: Record<string, string> = {
 
     // Зелёная группа
     // Ключ в кавычках: символ ® недопустим в идентификаторе.
-    'Kubernetes®': 'rgba(157, 233, 175, 1)',
     'Managed Service for Kubernetes®': 'rgba(157, 233, 175, 1)',
 };
 
