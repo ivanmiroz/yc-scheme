@@ -4,6 +4,30 @@ import {getPositionConfig} from '../schemes';
 import {Position} from '../types';
 import {drawIcon, drawIconBackground, getIconsRow} from './icons';
 
+/**
+ * Горизонтальный сдвиг отрисовки объекта относительно его «логического» x.
+ * Используется и при отрисовке иконок/подписи, и при вычислении точки
+ * подключения линий, чтобы линии сходились с визуальным положением объекта.
+ *
+ * @param positionNumber Номер позиции (например, '3.6').
+ * @param iconSize Размер иконки в пикселях для текущей ширины канваса.
+ * @returns Смещение по X в пикселях (0, если для позиции сдвиг не задан).
+ */
+export const getPositionShiftX = (positionNumber: string, iconSize: number): number => {
+    // Специальный случай для схемы 1: объект 3.6 сдвигаем влево
+    // на его полную ширину (ряд иконок + по половине иконки с боков).
+    if (positionNumber !== '3.6') return 0;
+
+    const config = getPositionConfig(positionNumber);
+    if (!config) return 0;
+
+    const {totalIcons, step} = getIconsRow(config, iconSize);
+    if (totalIcons <= 0) return 0;
+
+    const totalWidth = (totalIcons - 1) * step;
+    return -(totalWidth + iconSize);
+};
+
 export const drawPositions = (
     ctx: CanvasRenderingContext2D,
     positions: Position[],
@@ -45,6 +69,10 @@ export const drawPositions = (
             adjustedX = pos.x + iconSize * 2;
         }
 
+        // Применяем сдвиг для 3.6 (схема 1) — тот же, что используется
+        // при вычислении точки подключения линий.
+        adjustedX += getPositionShiftX(pos.positionNumber, iconSize);
+
         let iconCenterY: number;
         let labelY: number;
 
@@ -59,9 +87,9 @@ export const drawPositions = (
         }
 
         const {iconsToDraw, totalIcons, step} = getIconsRow(config, iconSize);
+        const totalWidth = totalIcons > 0 ? (totalIcons - 1) * step : 0;
 
         if (totalIcons > 0) {
-            const totalWidth = (totalIcons - 1) * step;
             const startX = adjustedX - totalWidth / 2;
 
             const bgColor = getIconBackground(config.label);
