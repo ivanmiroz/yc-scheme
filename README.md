@@ -28,6 +28,11 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
 
+## Static build with CSP
+
+Run `npm run build:static` to generate `out/` with a hash-based CSP meta tag on every
+page and matching integrity and `crossorigin="anonymous"` attributes on scripts and script preloads.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
