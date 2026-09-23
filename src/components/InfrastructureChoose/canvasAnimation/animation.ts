@@ -44,8 +44,6 @@ export interface InitPodiumsOptions {
 }
 
 const SKIP_INTRO_TIME_OFFSET = 100000;
-
-// Длительность фейдаута линий и объектов перед «схлопыванием» платформ.
 const REVERSE_FADE_DURATION_MS = 500;
 
 export const createPodiumAnimator = (
@@ -56,8 +54,6 @@ export const createPodiumAnimator = (
 ) => {
     let podiums: PodiumState[] = [];
     let animationFrameId: number | null = null;
-    // Отдельно от animationFrameId — это запланированная перерисовка
-    // вне основного цикла (после панорамирования/зума, когда цикл уже стоит).
     let pendingRedrawFrame: number | null = null;
     let startTime: number | null = null;
 
@@ -77,21 +73,11 @@ export const createPodiumAnimator = (
     let schemeLinesTotalDuration = 0;
 
     let activeLegend: LegendValue | null = null;
-
     let readyNotified = false;
 
-    // ---- Состояние обратной (reverse) анимации ----
-    // Сначала параллельный фейдаут линий/объектов/связей,
-    // затем платформы «схлопываются» в центр.
     let reverseStarted = false;
     let reverseStartTime = 0;
     let onReverseCompleteCallback: (() => void) | null = null;
-
-    // Offscreen-слой для fade-анимации. Нужен потому, что drawers.ts
-    // внутри себя присваивают ctx.globalAlpha под свой прогресс/opacity,
-    // полностью перезатирая внешний alpha. Поэтому fade-слои рисуются
-    // в отдельный canvas, а затем накладываются на основной ctx одним
-    // drawImage с нужной прозрачностью.
     let reverseOffscreen: HTMLCanvasElement | null = null;
 
     const view: ViewState = {scale: 1, x: 0, y: 0};
@@ -117,19 +103,12 @@ export const createPodiumAnimator = (
     const calcSchemeLinesTotal = (params: AnimationParams[]) =>
         params.reduce((max, p) => Math.max(max, p.delay + p.duration), 0);
 
-    // Точка старта платформы по вертикали — центр canvas.
-    // Все платформы одновременно «выезжают» из середины и расходятся:
-    // верхние — вверх, нижние — вниз.
     const getStartY = (scaledHeight: number): number => {
         const dpr = getEffectiveDpr();
         const canvasHeight = canvas.height / dpr;
         return canvasHeight / 2 - scaledHeight / 2;
     };
 
-    // Сброс всех «липких» состояний 2D-контекста к дефолтным.
-    // Используем Object.assign вместо последовательных ctx.<prop> = …,
-    // чтобы не триггерить ESLint no-param-reassign (props) — правило
-    // ругается на запись в свойства параметра функции.
     const resetCtxState = (c: CanvasRenderingContext2D) => {
         Object.assign(c, {
             globalAlpha: 1,
@@ -150,8 +129,6 @@ export const createPodiumAnimator = (
 
     const updatePodiums = (elapsed: number): boolean => {
         let allFinished = true;
-
-        // Прогресс одинаковый для всех платформ — они движутся синхронно.
         const progress = Math.min(elapsed / ANIMATION_CONFIG.PLATFORM_DURATION, 1);
         const easedProgress = easeOutCubic(progress);
 
@@ -159,15 +136,12 @@ export const createPodiumAnimator = (
             allFinished = false;
         }
 
-        // Платформы рисуем на чистом состоянии, чтобы «хвосты» от
-        // предыдущих слоёв не делали их полупрозрачными.
         ctx.save();
         resetContextState();
 
         for (let i = podiums.length - 1; i >= 0; i--) {
             const p = podiums[i];
             const startY = getStartY(p.scaledHeight);
-
             p.currentY = startY + (p.targetY - startY) * easedProgress;
 
             const img = podiumImages[p.id];
@@ -177,7 +151,6 @@ export const createPodiumAnimator = (
         }
 
         ctx.restore();
-
         return allFinished;
     };
 
@@ -186,9 +159,6 @@ export const createPodiumAnimator = (
 
         positionsAnimationStarted = true;
         positionsStartTime = timestamp;
-        // Передаём индекс активной схемы: на схеме 4 (индекс 3) позиции
-        // 2.4.2 и 2.4.3 меняются вертикальными рядами (см. positions.ts,
-        // SCHEMES_WITH_SWAPPED_42_43).
         positions = calculatePositions(podiums, getActiveSchemeIndex());
         positionAnimParams = positions.map(() => {
             const randomDelay = Math.random() * POSITION_ANIMATION_CONFIG.MAX_RANDOM_DELAY;
@@ -204,7 +174,6 @@ export const createPodiumAnimator = (
         if (!positionsAnimationStarted) return false;
 
         const positionElapsed = timestamp - positionsStartTime;
-
         positionOpacities = positions.map((_, index) => {
             const {delay, duration} = positionAnimParams[index];
             const localElapsed = Math.max(0, positionElapsed - delay);
@@ -239,9 +208,6 @@ export const createPodiumAnimator = (
     };
 
     const drawAllConnections = (timestamp: number, width: number) => {
-        // Каждый слой — в своём save/restore, чтобы drawers.ts не мог
-        // оставить после себя грязное состояние (globalAlpha, filter,
-        // composite, shadow, lineWidth) для следующих слоёв этого же кадра.
         if (connectionsAnimationStarted) {
             const connectionsElapsed = timestamp - connectionsStartTime;
             ctx.save();
@@ -259,8 +225,6 @@ export const createPodiumAnimator = (
             });
             ctx.save();
             resetContextState();
-            // podiums передаём, чтобы работали линии, крепящиеся к краю
-            // платформы (fromPlatform/toPlatform в SchemeLine).
             drawSchemeLines(ctx, positions, progresses, width, activeLegend, podiums);
             ctx.restore();
         }
@@ -278,16 +242,6 @@ export const createPodiumAnimator = (
         return allConnectionsFinished && allSchemeLinesFinished;
     };
 
-    // ---- Обратный кадр ----
-    //
-    //  Фаза 1 (fade, REVERSE_FADE_DURATION_MS): параллельно гаснут линии
-    //     схемы, объекты (иконки/подписи) и связи между платформами.
-    //     Чтобы drawers.ts не «пробили» наш fade своими ctx.globalAlpha,
-    //     fade-слои рисуются в offscreen-canvas, а затем накладываются
-    //     на основной ctx одним drawImage с globalAlpha = fadeAlpha.
-    //
-    //  Фаза 2 (collapse, PLATFORM_DURATION): платформы съезжаются в центр —
-    //     точная инверсия интро из updatePodiums.
     const renderReverseFrame = (timestamp: number): boolean => {
         const dpr = getEffectiveDpr();
         const width = canvas.width / dpr;
@@ -299,30 +253,20 @@ export const createPodiumAnimator = (
         ctx.setTransform(dpr * view.scale, 0, 0, dpr * view.scale, dpr * view.x, dpr * view.y);
 
         const elapsed = timestamp - reverseStartTime;
-
-        // --- Длительности фаз ---
         const fadeDuration = REVERSE_FADE_DURATION_MS;
         const collapseDuration = ANIMATION_CONFIG.PLATFORM_DURATION;
         const totalDuration = fadeDuration + collapseDuration;
 
         const fadeProgress = Math.min(elapsed / fadeDuration, 1);
         const moveProgress = Math.min(Math.max(elapsed - fadeDuration, 0) / collapseDuration, 1);
-
-        // Фейдаут: быстро в начале, медленно к концу.
         const fadeAlpha = 1 - easeOutCubic(fadeProgress);
-
-        // Движение платформ — точная инверсия интро.
-        // В фазе 1 moveProgress = 0 → moveEased = 1 → платформы стоят на targetY.
-        // В конце фазы 2 moveProgress = 1 → moveEased = 0 → платформы в центре.
         const moveEased = easeOutCubic(1 - moveProgress);
 
-        // --- Слой 1: платформы (не гаснут, съезжаются в центр) ---
         ctx.save();
         resetContextState();
         for (let i = podiums.length - 1; i >= 0; i--) {
             const p = podiums[i];
             const startY = getStartY(p.scaledHeight);
-
             p.currentY = startY + (p.targetY - startY) * moveEased;
 
             const img = podiumImages[p.id];
@@ -332,9 +276,6 @@ export const createPodiumAnimator = (
         }
         ctx.restore();
 
-        // --- Слой 2: fade-слои (линии / объекты / связи) ---
-        // Пока fadeAlpha > 0 рисуем их в offscreen и накладываем на основной ctx.
-        // Когда fadeAlpha дошёл до 0 — просто пропускаем, ничего не остаётся.
         if (fadeAlpha > 0) {
             if (!reverseOffscreen) {
                 reverseOffscreen = document.createElement('canvas');
@@ -358,7 +299,6 @@ export const createPodiumAnimator = (
                     dpr * view.y,
                 );
 
-                // Слой 2.1: объекты (иконки/подписи).
                 if (positions.length > 0 && positionOpacities.length === positions.length) {
                     offCtx.save();
                     resetCtxState(offCtx);
@@ -366,7 +306,6 @@ export const createPodiumAnimator = (
                     offCtx.restore();
                 }
 
-                // Слой 2.2: связи между платформами.
                 if (connectionsAnimationStarted) {
                     const connectionsElapsed = timestamp - connectionsStartTime;
                     offCtx.save();
@@ -375,7 +314,6 @@ export const createPodiumAnimator = (
                     offCtx.restore();
                 }
 
-                // Слой 2.3: линии схемы (progresses фиксированы в 1).
                 if (schemeLinesAnimationStarted) {
                     const progresses = schemeLineParams.map(() => 1);
                     offCtx.save();
@@ -384,12 +322,6 @@ export const createPodiumAnimator = (
                     offCtx.restore();
                 }
 
-                // Накладываем весь offscreen одним drawImage с нужной прозрачностью.
-                // Transform сбрасываем в identity, т.к. offscreen уже того же
-                // физического размера, что и основной canvas.
-                //
-                // globalAlpha выставляем через Object.assign, чтобы не триггерить
-                // ESLint no-param-reassign (ctx — параметр createPodiumAnimator).
                 ctx.setTransform(1, 0, 0, 1, 0, 0);
                 ctx.save();
                 Object.assign(ctx, {globalAlpha: fadeAlpha});
@@ -401,13 +333,9 @@ export const createPodiumAnimator = (
         if (elapsed >= totalDuration) {
             reverseStarted = false;
             animationFrameId = null;
-
-            // Имя переменной не cb/callback/next — иначе ESLint callback-return
-            // требует делать return при вызове колбэка.
             const onDone = onReverseCompleteCallback;
             onReverseCompleteCallback = null;
             onDone?.();
-
             return true;
         }
 
@@ -415,7 +343,6 @@ export const createPodiumAnimator = (
     };
 
     const renderFrame = (timestamp: number): boolean => {
-        // Во время reverse основной цикл не работает — рендерим обратный кадр.
         if (reverseStarted) {
             return renderReverseFrame(timestamp);
         }
@@ -429,12 +356,7 @@ export const createPodiumAnimator = (
 
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.clearRect(0, 0, width, height);
-
-        // Чистим состояние после предыдущего кадра. Даже если что-то
-        // протекло из drawers.ts и не восстановилось внутри save/restore,
-        // на новом кадре мы всё равно начинаем с дефолта.
         resetContextState();
-
         ctx.setTransform(dpr * view.scale, 0, 0, dpr * view.scale, dpr * view.x, dpr * view.y);
 
         const allPlatformsFinished = updatePodiums(elapsed);
@@ -450,7 +372,6 @@ export const createPodiumAnimator = (
         }
 
         ensureConnectionsStarted(timestamp, allPlatformsFinished, allPositionsFinished);
-
         drawAllConnections(timestamp, width);
 
         return (
@@ -463,10 +384,8 @@ export const createPodiumAnimator = (
 
     const animate = (timestamp: number) => {
         const allFinished = renderFrame(timestamp);
-
         if (allFinished) {
             animationFrameId = null;
-
             if (!readyNotified) {
                 readyNotified = true;
                 callbacks.onReady?.();
@@ -483,16 +402,12 @@ export const createPodiumAnimator = (
         }
     };
 
-    // Перерисовка одного кадра вне основного цикла (панорамирование/зум).
-    // Батчится через RAF: сколько бы pointermove ни приходило в кадре,
-    // renderFrame вызовется один раз.
     const requestRedraw = () => {
         if (animationFrameId) return;
         if (pendingRedrawFrame !== null) return;
 
         pendingRedrawFrame = requestAnimationFrame((ts) => {
             pendingRedrawFrame = null;
-            // За время между RAF основной цикл мог запуститься — не дублируем.
             if (animationFrameId) return;
             renderFrame(ts);
         });
@@ -531,27 +446,11 @@ export const createPodiumAnimator = (
         }
         cancelPendingRedraw();
 
-        // Сбрасываем reverse-состояние при переинициализации.
         reverseStarted = false;
         reverseStartTime = 0;
         onReverseCompleteCallback = null;
-
         readyNotified = false;
         callbacks.onStart?.();
-
-        positionsAnimationStarted = false;
-        positionsStartTime = 0;
-        positions = [];
-        positionAnimParams = [];
-        positionOpacities = [];
-
-        connectionsAnimationStarted = false;
-        connectionsStartTime = 0;
-
-        schemeLinesAnimationStarted = false;
-        schemeLinesStartTime = 0;
-        schemeLineParams = [];
-        schemeLinesTotalDuration = 0;
 
         const dpr = getEffectiveDpr();
         const width = canvas.width / dpr;
@@ -574,7 +473,6 @@ export const createPodiumAnimator = (
         }
 
         const targetX = (width - scaledWidth) / 2;
-
         const centerY = height / 2;
         const verticalOffset = height * 0.025;
 
@@ -587,9 +485,6 @@ export const createPodiumAnimator = (
             podiums.push({
                 id: i,
                 targetY,
-                // skipIntro — платформы сразу на своих местах.
-                // Иначе все стартуют из центра canvas (совпадает с getStartY),
-                // чтобы одновременно разойтись: верхние вверх, нижние вниз.
                 currentY: skipIntro ? targetY : centerY - scaledHeight / 2,
                 targetX,
                 currentX: targetX,
@@ -598,13 +493,49 @@ export const createPodiumAnimator = (
             });
         }
 
+        if (skipIntro) {
+            positions = calculatePositions(podiums, getActiveSchemeIndex());
+            positionAnimParams = positions.map(() => ({delay: 0, duration: 0}));
+            positionOpacities = new Array(positions.length).fill(1);
+            positionsAnimationStarted = true;
+            positionsStartTime = performance.now() - 100000;
+
+            connectionsAnimationStarted = true;
+            connectionsStartTime = performance.now() - 100000;
+
+            schemeLineParams = buildSchemeLineParams();
+            schemeLinesTotalDuration = calcSchemeLinesTotal(schemeLineParams);
+            schemeLinesAnimationStarted = true;
+            schemeLinesStartTime = performance.now() - 100000;
+
+            readyNotified = true;
+            callbacks.onReady?.();
+        } else {
+            positionsAnimationStarted = false;
+            positionsStartTime = 0;
+            positions = [];
+            positionAnimParams = [];
+            positionOpacities = [];
+
+            connectionsAnimationStarted = false;
+            connectionsStartTime = 0;
+
+            schemeLinesAnimationStarted = false;
+            schemeLinesStartTime = 0;
+            schemeLineParams = [];
+            schemeLinesTotalDuration = 0;
+        }
+
         startTime = skipIntro ? performance.now() - SKIP_INTRO_TIME_OFFSET : null;
         animationFrameId = requestAnimationFrame(animate);
     };
 
     const refreshScheme = () => {
-        // Пересчитываем позиции с учётом активной схемы — на схеме 4
-        // 2.4.2 и 2.4.3 меняются вертикальными рядами.
+        // КРИТИЧЕСКИ ВАЖНО: Если платформы ещё не инициализированы (первая загрузка,
+        // картинки ещё грузятся), выходим. Иначе мы заблокируем состояние пустым массивом,
+        // что и вызывает мерцание при первой загрузке.
+        if (podiums.length === 0) return;
+
         positions = calculatePositions(podiums, getActiveSchemeIndex());
 
         positionAnimParams = positions.map(() => {
@@ -614,21 +545,21 @@ export const createPodiumAnimator = (
                 duration: POSITION_ANIMATION_CONFIG.DURATION,
             };
         });
-        positionOpacities = new Array(positions.length).fill(0);
+
+        // Делаем позиции сразу полностью видимыми, чтобы избежать мерцания (fade-in)
+        positionOpacities = new Array(positions.length).fill(1);
         positionsAnimationStarted = true;
-        positionsStartTime = performance.now();
+        positionsStartTime = performance.now() - 100000;
 
         connectionsAnimationStarted = true;
-        connectionsStartTime = performance.now() - getConnectionsTotalDuration();
+        connectionsStartTime = performance.now() - 100000;
 
+        // Линии схемы анимируем заново для красивого эффекта переключения
         schemeLineParams = buildSchemeLineParams();
         schemeLinesTotalDuration = calcSchemeLinesTotal(schemeLineParams);
         schemeLinesAnimationStarted = true;
         schemeLinesStartTime = performance.now();
 
-        // Сбрасываем флаг, чтобы по завершении новой анимации снова
-        // сработал onReady — тогда index.ts откроет попап ровно
-        // через POPUP_DELAY_AFTER_ANIMATION после реального окончания линий.
         readyNotified = false;
 
         if (!animationFrameId) {
@@ -636,16 +567,12 @@ export const createPodiumAnimator = (
         }
     };
 
-    // ---- Публичный запуск обратной анимации ----
     const startReverse = (callback?: () => void) => {
         if (reverseStarted) return;
 
         reverseStarted = true;
         reverseStartTime = performance.now();
         onReverseCompleteCallback = callback ?? null;
-
-        // Во время reverse onReady не нужен — гасим флаг, чтобы не сработал
-        // в animate() по завершении обратного кадра.
         readyNotified = true;
 
         if (!animationFrameId) {
@@ -672,7 +599,6 @@ export const createPodiumAnimator = (
 
             const config = getPositionConfig(pos.positionNumber);
             if (!config || !config.label) continue;
-            // Наводим/кликаем только по иконкам с подложкой.
             if (!getIconBackground(config.label)) continue;
 
             if (isPointOverPosition(world.x, world.y, pos, config, iconSize, labelFontSize)) {
@@ -702,7 +628,6 @@ export const createPodiumAnimator = (
 
             const config = getPositionConfig(pos.positionNumber);
             if (!config || !config.label) continue;
-            // Попап открываем только у иконок с подложкой.
             if (!getIconBackground(config.label)) continue;
 
             if (isPointOverPosition(world.x, world.y, pos, config, iconSize, labelFontSize)) {
@@ -713,7 +638,6 @@ export const createPodiumAnimator = (
         return null;
     };
 
-    // Отменяет и основной цикл, и отложенную перерисовку.
     const dispose = () => {
         if (animationFrameId) {
             cancelAnimationFrame(animationFrameId);
