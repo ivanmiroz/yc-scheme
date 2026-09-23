@@ -1,13 +1,13 @@
+// src/components/InfrastructureChoose/canvasAnimation/drawers/geometry.ts
 import {getIconBackground} from '../iconBackgrounds';
 import {LineAnchor, PositionConfig, getPositionConfig} from '../schemes';
 import {Position} from '../types';
 import {CONNECTION_TEXT_ANCHOR_GAP_RATIO, ICON_DRAW_RATIO} from './config';
 import {getBackgroundSize, getIconsRow} from './icons';
+import {getPositionShiftX} from './positions'; // <-- ДОБАВЛЕНО
 
 // Вспомогательная функция: по positionNumber ('X.Y' или 'X.Y.Z')
 // возвращает средний сегмент ('1'..'7') и флаг «нижней» позиции.
-// Именно средний сегмент определяет горизонтальный сдвиг и сторону
-// отрисовки подписи — так же, как в drawPositions.
 const parsePositionHint = (positionNumber: string): {hint: string; isBottomPosition: boolean} => {
     const parts = positionNumber.split('.');
     const hint = parts[1] ?? '';
@@ -32,6 +32,9 @@ export const getPositionAnchor = (
     } else if (hint === '3' || hint === '6') {
         adjustedX = pos.x + iconSize * 2;
     }
+
+    // <-- ДОБАВЛЕНО: Применяем специальный сдвиг (например, для '3.6')
+    adjustedX += getPositionShiftX(pos.positionNumber, iconSize);
 
     const iconCenterY = isBottomPosition ? pos.y + iconSize / 2 : pos.y - iconSize / 2;
 
@@ -61,6 +64,9 @@ const getPositionBounds = (
     } else if (hint === '3' || hint === '6') {
         adjustedX = pos.x + iconSize * 2;
     }
+
+    // <-- ДОБАВЛЕНО: Применяем специальный сдвиг (например, для '3.6')
+    adjustedX += getPositionShiftX(pos.positionNumber, iconSize);
 
     let iconCenterY: number;
     let labelY: number;
@@ -214,8 +220,6 @@ export const getAnchorPoint = (
 
     if (anchor === 'text-top' || anchor === 'text-bottom') {
         const a = getPositionAnchor(pos, canvasWidth);
-        // ВАЖНО: здесь та же формула, что и в drawPositions — иначе якоря
-        // text-top/text-bottom разъедутся с реальной высотой подписи.
         const labelFontSize = canvasWidth * 0.00856;
         const {textBounds} = getPositionBounds(pos, config, a.iconSize, labelFontSize);
         if (!textBounds) return null;

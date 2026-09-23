@@ -19,7 +19,6 @@ const MIN_SCALE = 1;
 const MAX_SCALE = 5;
 const DRAG_THRESHOLD = 5;
 
-// Кэш и промис вынесены на уровень модуля
 let podiumImagesCache: HTMLImageElement[] | null = null;
 let podiumImagesPromise: Promise<HTMLImageElement[]> | null = null;
 let hasPlayedIntro = false;
@@ -46,9 +45,6 @@ const loadPodiumImages = (): Promise<HTMLImageElement[]> => {
     return podiumImagesPromise;
 };
 
-// КРИТИЧЕСКИ ВАЖНО: Запускаем загрузку немедленно при оценке модуля.
-// Это даёт браузеру фору в загрузке картинок до того, как компонент смонтируется,
-// что предотвращает мерцание "пустого canvas" при первой загрузке.
 loadPodiumImages().catch((err) => {
     // eslint-disable-next-line no-console
     console.error('Ошибка предварительной загрузки подиумов', err);
@@ -233,46 +229,26 @@ export const initCanvasAnimation = (
     const activePointers = new Map<number, {x: number; y: number}>();
 
     let isDragging = false;
-    let isPinching = false;
     let hasMoved = false;
     let dragStartX = 0;
     let dragStartY = 0;
     let dragStartOffsetX = 0;
     let dragStartOffsetY = 0;
 
-    let pinchStartDistance = 0;
-    let pinchStartScale = 1;
-    let pinchWorldX = 0;
-    let pinchWorldY = 0;
-
     const handlePointerDown = (e: PointerEvent) => {
         if (isPopupOpen()) return;
+
         // eslint-disable-next-line no-param-reassign
         canvas.setPointerCapture(e.pointerId);
         activePointers.set(e.pointerId, {x: e.clientX, y: e.clientY});
 
         if (activePointers.size === 1) {
             isDragging = true;
-            isPinching = false;
             hasMoved = false;
             dragStartX = e.clientX;
             dragStartY = e.clientY;
             dragStartOffsetX = currentOffsetX;
             dragStartOffsetY = currentOffsetY;
-        } else if (activePointers.size === 2) {
-            isDragging = false;
-            isPinching = true;
-            hasMoved = true;
-
-            const [p1, p2] = Array.from(activePointers.values());
-            pinchStartDistance = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-            pinchStartScale = currentScale;
-
-            const rect = canvas.getBoundingClientRect();
-            const localMidX = (p1.x + p2.x) / 2 - rect.left;
-            const localMidY = (p1.y + p2.y) / 2 - rect.top;
-            pinchWorldX = (localMidX - currentOffsetX) / currentScale;
-            pinchWorldY = (localMidY - currentOffsetY) / currentScale;
         }
     };
 
@@ -280,24 +256,6 @@ export const initCanvasAnimation = (
         if (!activePointers.has(e.pointerId)) return;
 
         activePointers.set(e.pointerId, {x: e.clientX, y: e.clientY});
-
-        if (isPinching && activePointers.size >= 2) {
-            const [p1, p2] = Array.from(activePointers.values());
-            const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-            const rect = canvas.getBoundingClientRect();
-            const localMidX = (p1.x + p2.x) / 2 - rect.left;
-            const localMidY = (p1.y + p2.y) / 2 - rect.top;
-
-            const ratio = pinchStartDistance > 0 ? dist / pinchStartDistance : 1;
-            const nextScale = clamp(pinchStartScale * ratio, MIN_SCALE, MAX_SCALE);
-
-            currentScale = nextScale;
-            currentOffsetX = localMidX - nextScale * pinchWorldX;
-            currentOffsetY = localMidY - nextScale * pinchWorldY;
-            clampOffsets();
-            applyView();
-            return;
-        }
 
         if (isDragging) {
             const dx = e.clientX - dragStartX;
@@ -318,24 +276,13 @@ export const initCanvasAnimation = (
 
     const handlePointerUp = (e: PointerEvent) => {
         activePointers.delete(e.pointerId);
-
-        if (activePointers.size === 1) {
-            isPinching = false;
-            isDragging = true;
-            const [p] = Array.from(activePointers.values());
-            dragStartX = p.x;
-            dragStartY = p.y;
-            dragStartOffsetX = currentOffsetX;
-            dragStartOffsetY = currentOffsetY;
-        } else if (activePointers.size === 0) {
+        if (activePointers.size === 0) {
             isDragging = false;
-            isPinching = false;
         }
     };
 
     const handlePointerCancel = (e: PointerEvent) => {
         activePointers.delete(e.pointerId);
-        if (activePointers.size < 2) isPinching = false;
         if (activePointers.size === 0) {
             isDragging = false;
         }

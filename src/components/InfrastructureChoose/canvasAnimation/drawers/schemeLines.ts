@@ -23,15 +23,10 @@ import {
     drawPolylineWithProgress,
     smoothCorners,
 } from './paths';
-import {getPositionShiftX} from './positions';
 import {applyConnectionStroke} from './stroke';
 
 // Во сколько раз толще рисуется подсвеченная линия.
 const HIGHLIGHT_WIDTH_MULTIPLIER = 1.5;
-
-// Базовые размеры, по которым считается iconSize (должны совпадать с positions.ts).
-const BASE_CANVAS_WIDTH = 1920;
-const BASE_ICON_SIZE = 53 * 1.5;
 
 interface Point {
     x: number;
@@ -39,8 +34,6 @@ interface Point {
 }
 
 // Поля линии, которые нужны для разрешения её концов.
-// Это подмножество SchemeLine — чтобы не тянуть сюда полный тип
-// и не плодить циклические импорты.
 interface EndpointSpec {
     fromPlatform?: number;
     fromPlatformAnchor?: string;
@@ -79,8 +72,6 @@ const findPodiumByPlatformNumber = (
 };
 
 // Точка крепления линии на платформе — по её границе/центру.
-// shiftXRatio — доп. сдвиг по X в долях ширины платформы.
-// shiftYRatio — доп. сдвиг по Y в долях высоты платформы.
 const getPlatformAnchorPoint = (
     podium: PodiumState,
     anchor: 'left' | 'right' | 'top' | 'bottom' | 'center',
@@ -112,7 +103,6 @@ const getPlatformAnchorPoint = (
 };
 
 // Разрешить точку привязки для одного конца линии.
-// Приоритет: платформенный якорь → якорь иконки → null.
 const resolveEndpoint = (
     line: EndpointSpec,
     podiums: PodiumState[],
@@ -142,15 +132,11 @@ const resolveEndpoint = (
         const pos = byNumber.get(positionNumber);
         if (!pos) return null;
 
+        // getAnchorPoint теперь сам учитывает getPositionShiftX (через getPositionAnchor/getPositionBounds).
         const anchorPoint = getAnchorPoint(pos, canvasWidth, (positionAnchor as never) ?? 'center');
         if (!anchorPoint) return null;
 
-        // Учитываем визуальный сдвиг объекта (например, 3.6 в схеме 1),
-        // чтобы линия сходилась с фактически нарисованной иконкой/подписью.
-        const iconSize = canvasWidth * (BASE_ICON_SIZE / BASE_CANVAS_WIDTH);
-        const shiftX = getPositionShiftX(positionNumber, iconSize);
-
-        return {x: anchorPoint.x + shiftX, y: anchorPoint.y};
+        return anchorPoint;
     }
 
     return null;
@@ -211,10 +197,6 @@ const drawLinePath = (
 };
 
 // Линии, специфичные для активной схемы.
-// progresses[i] — прогресс 0..1 для i-й линии (по порядку из getActiveSchemeLines()).
-// activeLegend — если задан, линии соответствующего типа рисуются цветом подсветки
-// и увеличенной толщиной.
-// podiums — нужны для линий, крепящихся к краю платформы (fromPlatform/toPlatform).
 export const drawSchemeLines = (
     ctx: CanvasRenderingContext2D,
     positions: Position[],
@@ -232,7 +214,6 @@ export const drawSchemeLines = (
     const baseLineWidth = Math.max(1, canvasWidth * CONNECTION_LINE_WIDTH_RATIO);
     const dotRadius = Math.max(2, canvasWidth * CONNECTION_DOT_RADIUS_RATIO);
 
-    // Какой тип линий сейчас подсвечиваем (null — не подсвечиваем ничего).
     const activeKind = activeLegend ? LEGEND_TO_LINE_KIND[activeLegend] : null;
 
     ctx.save();
