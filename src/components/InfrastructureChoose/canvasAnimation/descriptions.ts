@@ -1,3 +1,4 @@
+// src/components/InfrastructureChoose/canvasAnimation/descriptions.ts
 // Словарь описаний и QR-кодов для позиций.
 // Ключ — нормализованный label (без переносов строк и лишних пробелов).
 // Это позволяет не трогать сами схемы: подпись под иконкой остаётся
@@ -74,7 +75,7 @@ export const DESCRIPTIONS: Record<string, DescriptionEntry> = {
     },
 
     'BareMetal Extend: Virtualization': {
-        title: 'Yandex BareMetal Extend',
+        title: 'Yandex BareMetal Extend: Virtualization',
         description:
             'Готовая виртуальная инфраструктура на выделенных физических серверах — с полным контролем ресурсов, без необходимости покупать и настраивать физическое оборудование и гипервизор.',
         qr: qrBareMetalExtend.src,
@@ -261,13 +262,57 @@ const TITLE_OVERRIDES_BY_SCHEME: Record<number, Record<string, string>> = {
     },
 };
 
+// Переопределения ключа описания для конкретной схемы и НОМЕРА ПОЗИЦИИ.
+// Ключ — индекс схемы (0..3), значение — карта {positionNumber → descriptionKey}.
+// Нужно, когда на одной схеме две позиции с одинаковым label должны
+// открывать разные попапы. Имеет приоритет над TITLE_OVERRIDES_BY_SCHEME.
+const DESCRIPTION_KEY_OVERRIDES_BY_POSITION: Record<number, Record<string, string>> = {
+    // 3-я схема (индекс 2):
+    //  - 3.1   — Object Storage в on-premises-варианте (через TITLE_OVERRIDES_BY_SCHEME);
+    //  - 3.4.3 — облачный Yandex Object Storage, без on-premises.
+    2: {
+        '3.4.3': 'Object Storage',
+    },
+    // 4-я схема (индекс 3):
+    //  - 3.3 — Object Storage в on-premises-варианте;
+    //  - 3.4 — облачный Yandex Object Storage (без override, по умолчанию).
+    3: {
+        '3.3': 'Yandex Object Storage on-premises',
+    },
+};
+
 // Нормализация label: убираем переносы строк и схлопываем пробелы.
 const normalizeLabel = (label: string): string => label.replace(/\s+/g, ' ').trim();
 
-// Заголовок попапа: сначала ищем override для конкретной схемы, затем
-// общий `title` из словаря, иначе возвращаем нормализованный label.
-export const getTitle = (label: string, schemeIndex?: number): string => {
-    const key = normalizeLabel(label);
+// Ключ описания с учётом возможного override по позиции.
+const resolveDescriptionKey = (
+    label: string,
+    schemeIndex?: number,
+    positionNumber?: string,
+): string => {
+    if (typeof schemeIndex === 'number' && typeof positionNumber === 'string') {
+        const posKey = DESCRIPTION_KEY_OVERRIDES_BY_POSITION[schemeIndex]?.[positionNumber];
+        if (posKey) return posKey;
+    }
+
+    return normalizeLabel(label);
+};
+
+// Заголовок попапа: сначала ищем override по позиции, затем override
+// по label для конкретной схемы, затем общий `title` из словаря,
+// иначе возвращаем нормализованный label.
+export const getTitle = (label: string, schemeIndex?: number, positionNumber?: string): string => {
+    const key = resolveDescriptionKey(label, schemeIndex, positionNumber);
+
+    // Если сработал position-override — берём title прямо из словаря
+    // по этому ключу (без дальнейших scheme-переопределений).
+    if (
+        typeof schemeIndex === 'number' &&
+        typeof positionNumber === 'string' &&
+        DESCRIPTION_KEY_OVERRIDES_BY_POSITION[schemeIndex]?.[positionNumber]
+    ) {
+        return DESCRIPTIONS[key]?.title ?? key;
+    }
 
     if (typeof schemeIndex === 'number') {
         const override = TITLE_OVERRIDES_BY_SCHEME[schemeIndex]?.[key];
@@ -277,14 +322,22 @@ export const getTitle = (label: string, schemeIndex?: number): string => {
     return DESCRIPTIONS[key]?.title ?? key;
 };
 
-// Получить описание по label.
-export const getDescription = (label: string): string | undefined => {
-    const key = normalizeLabel(label);
+// Получить описание по label (с учётом position-override, если он задан).
+export const getDescription = (
+    label: string,
+    schemeIndex?: number,
+    positionNumber?: string,
+): string | undefined => {
+    const key = resolveDescriptionKey(label, schemeIndex, positionNumber);
     return DESCRIPTIONS[key]?.description;
 };
 
-// Получить путь к QR-коду по label.
-export const getQr = (label: string): string | undefined => {
-    const key = normalizeLabel(label);
+// Получить путь к QR-коду по label (с учётом position-override, если он задан).
+export const getQr = (
+    label: string,
+    schemeIndex?: number,
+    positionNumber?: string,
+): string | undefined => {
+    const key = resolveDescriptionKey(label, schemeIndex, positionNumber);
     return DESCRIPTIONS[key]?.qr;
 };

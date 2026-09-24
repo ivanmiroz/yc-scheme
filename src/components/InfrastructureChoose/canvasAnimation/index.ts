@@ -372,9 +372,17 @@ export const initCanvasAnimation = (
         const config = getPositionConfig(clickedPosition.positionNumber);
         if (!config || !config.label) return;
 
-        const title = getTitle(config.label, getActiveSchemeIndex());
-        const description = getDescription(config.label);
-        const qrSrc = getQr(config.label);
+        // Передаём номер позиции третьим аргументом — от него зависит
+        // position-override в descriptions.ts (например, 3.4.3 на 3-й схеме
+        // должен открывать облачный Object Storage, а 3.1 — on-premises).
+        const schemeIndex = getActiveSchemeIndex();
+        const title = getTitle(config.label, schemeIndex, clickedPosition.positionNumber);
+        const description = getDescription(
+            config.label,
+            schemeIndex,
+            clickedPosition.positionNumber,
+        );
+        const qrSrc = getQr(config.label, schemeIndex, clickedPosition.positionNumber);
 
         popupTitle.textContent = title;
 
