@@ -141,7 +141,8 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
     const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('closed');
     const [isOnboardingDone, setIsOnboardingDone] = useState(false);
 
-    const [architectTab, setArchitectTab] = useState<ArchitectTab>('comments');
+    // По умолчанию открыт таб «Описание сценария».
+    const [architectTab, setArchitectTab] = useState<ArchitectTab>('scenario');
 
     const hasShownOnboardingRef = useRef(false);
 
@@ -245,7 +246,7 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
         setActiveLegend(null);
         setPendingTabIndex(null);
         setIsCollapsing(false);
-        setArchitectTab('comments');
+        setArchitectTab('scenario');
 
         onActionClick?.(-1);
         setLocalActiveIndex(0);
@@ -256,6 +257,8 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
         if (isReversing) return;
         setLocalActiveIndex(index);
         setActiveScheme(index);
+        // При переключении схемы всегда открываем «Описание сценария».
+        setArchitectTab('scenario');
     };
 
     const handleButtonClick = (actionValue: string) => {
