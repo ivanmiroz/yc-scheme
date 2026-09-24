@@ -45,11 +45,6 @@ const loadPodiumImages = (): Promise<HTMLImageElement[]> => {
     return podiumImagesPromise;
 };
 
-loadPodiumImages().catch((err) => {
-    // eslint-disable-next-line no-console
-    console.error('Ошибка предварительной загрузки подиумов', err);
-});
-
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
 export interface InitCanvasAnimationOptions {
@@ -61,7 +56,10 @@ export const initCanvasAnimation = (
     canvas: HTMLCanvasElement,
     options: InitCanvasAnimationOptions = {},
 ): CanvasAnimationCleanup => {
-    const ctx = canvas.getContext('2d');
+    // alpha: false — непрозрачный буфер канваса. Это убирает мерцание
+    // в Chrome при перерисовке: композитор не может «просветить» между
+    // clearRect/fillRect и первым drawImage на прозрачных пикселях.
+    const ctx = canvas.getContext('2d', {alpha: false});
     if (!ctx) {
         // eslint-disable-next-line no-console
         console.warn('Не удалось получить 2D контекст для canvas');
@@ -103,6 +101,13 @@ export const initCanvasAnimation = (
             enableInteractionAfter(POPUP_DELAY_AFTER_ANIMATION);
             options.onReady?.();
         },
+    });
+
+    // Прогреваем кэш подиумов в фоне, чтобы при первом initPodiums
+    // картинки уже были готовы.
+    loadPodiumImages().catch((err) => {
+        // eslint-disable-next-line no-console
+        console.error('Ошибка предварительной загрузки подиумов', err);
     });
 
     if (podiumImagesCache) {
@@ -372,9 +377,6 @@ export const initCanvasAnimation = (
         const config = getPositionConfig(clickedPosition.positionNumber);
         if (!config || !config.label) return;
 
-        // Передаём номер позиции третьим аргументом — от него зависит
-        // position-override в descriptions.ts (например, 3.4.3 на 3-й схеме
-        // должен открывать облачный Object Storage, а 3.1 — on-premises).
         const schemeIndex = getActiveSchemeIndex();
         const title = getTitle(config.label, schemeIndex, clickedPosition.positionNumber);
         const description = getDescription(

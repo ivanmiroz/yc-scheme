@@ -46,6 +46,10 @@ export interface InitPodiumsOptions {
 const SKIP_INTRO_TIME_OFFSET = 100000;
 const REVERSE_FADE_DURATION_MS = 500;
 
+// Фон буфера канваса. Должен совпадать с CSS-фоном .network-singularity__canvas,
+// чтобы при alpha: false заливка не давала чёрных кадров.
+const CANVAS_BG_COLOR = '#e9ecf5';
+
 export const createPodiumAnimator = (
     canvas: HTMLCanvasElement,
     ctx: CanvasRenderingContext2D,
@@ -78,6 +82,25 @@ export const createPodiumAnimator = (
     let reverseStarted = false;
     let reverseStartTime = 0;
     let onReverseCompleteCallback: (() => void) | null = null;
+
+    // --- Двойная буферизация --------------------------------------------
+    // Все слои рисуются в offscreen-буфер, а в видимый канвас в конце
+    // каждого кадра идёт один атомарный drawImage. Chrome не может
+    // показать промежуточный (пустой/частичный) кадр.
+    const bufferCanvas = document.createElement('canvas');
+    let bufferCtx: CanvasRenderingContext2D | null = null;
+
+    const ensureBuffer = (): CanvasRenderingContext2D | null => {
+        if (bufferCanvas.width !== canvas.width) bufferCanvas.width = canvas.width;
+        if (bufferCanvas.height !== canvas.height) bufferCanvas.height = canvas.height;
+        if (!bufferCtx) {
+            bufferCtx = bufferCanvas.getContext('2d', {alpha: false});
+        }
+        return bufferCtx;
+    };
+    // --------------------------------------------------------------------
+
+    // Offscreen для fading-слоя в обратной анимации (позиции + линии).
     let reverseOffscreen: HTMLCanvasElement | null = null;
 
     const view: ViewState = {scale: 1, x: 0, y: 0};
@@ -125,9 +148,7 @@ export const createPodiumAnimator = (
         });
     };
 
-    const resetContextState = () => resetCtxState(ctx);
-
-    const updatePodiums = (elapsed: number): boolean => {
+    const updatePodiums = (drawCtx: CanvasRenderingContext2D, elapsed: number): boolean => {
         let allFinished = true;
         const progress = Math.min(elapsed / ANIMATION_CONFIG.PLATFORM_DURATION, 1);
         const easedProgress = easeOutCubic(progress);
@@ -136,8 +157,8 @@ export const createPodiumAnimator = (
             allFinished = false;
         }
 
-        ctx.save();
-        resetContextState();
+        drawCtx.save();
+        resetCtxState(drawCtx);
 
         for (let i = podiums.length - 1; i >= 0; i--) {
             const p = podiums[i];
@@ -146,11 +167,11 @@ export const createPodiumAnimator = (
 
             const img = podiumImages[p.id];
             if (img && img.complete && img.naturalWidth > 0) {
-                ctx.drawImage(img, p.currentX, p.currentY, p.scaledWidth, p.scaledHeight);
+                drawCtx.drawImage(img, p.currentX, p.currentY, p.scaledWidth, p.scaledHeight);
             }
         }
 
-        ctx.restore();
+        drawCtx.restore();
         return allFinished;
     };
 
@@ -207,13 +228,17 @@ export const createPodiumAnimator = (
         schemeLinesTotalDuration = calcSchemeLinesTotal(schemeLineParams);
     };
 
-    const drawAllConnections = (timestamp: number, width: number) => {
+    const drawAllConnections = (
+        drawCtx: CanvasRenderingContext2D,
+        timestamp: number,
+        width: number,
+    ) => {
         if (connectionsAnimationStarted) {
             const connectionsElapsed = timestamp - connectionsStartTime;
-            ctx.save();
-            resetContextState();
-            drawConnections(ctx, podiums, connectionsElapsed, width, activeLegend);
-            ctx.restore();
+            drawCtx.save();
+            resetCtxState(drawCtx);
+            drawConnections(drawCtx, podiums, connectionsElapsed, width, activeLegend);
+            drawCtx.restore();
         }
 
         if (schemeLinesAnimationStarted) {
@@ -223,10 +248,10 @@ export const createPodiumAnimator = (
                 const localProgress = Math.min(localElapsed / duration, 1);
                 return easeOutCubic(localProgress);
             });
-            ctx.save();
-            resetContextState();
-            drawSchemeLines(ctx, positions, progresses, width, activeLegend, podiums);
-            ctx.restore();
+            drawCtx.save();
+            resetCtxState(drawCtx);
+            drawSchemeLines(drawCtx, positions, progresses, width, activeLegend, podiums);
+            drawCtx.restore();
         }
     };
 
@@ -243,14 +268,19 @@ export const createPodiumAnimator = (
     };
 
     const renderReverseFrame = (timestamp: number): boolean => {
+        const bufCtx = ensureBuffer();
+        if (!bufCtx) return true;
+
         const dpr = getEffectiveDpr();
         const width = canvas.width / dpr;
         const height = canvas.height / dpr;
 
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        ctx.clearRect(0, 0, width, height);
-        resetContextState();
-        ctx.setTransform(dpr * view.scale, 0, 0, dpr * view.scale, dpr * view.x, dpr * view.y);
+        // 1. Фон в буфере.
+        bufCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        bufCtx.fillStyle = CANVAS_BG_COLOR;
+        bufCtx.fillRect(0, 0, width, height);
+        resetCtxState(bufCtx);
+        bufCtx.setTransform(dpr * view.scale, 0, 0, dpr * view.scale, dpr * view.x, dpr * view.y);
 
         const elapsed = timestamp - reverseStartTime;
         const fadeDuration = REVERSE_FADE_DURATION_MS;
@@ -262,8 +292,9 @@ export const createPodiumAnimator = (
         const fadeAlpha = 1 - easeOutCubic(fadeProgress);
         const moveEased = easeOutCubic(1 - moveProgress);
 
-        ctx.save();
-        resetContextState();
+        // 2. Подиумы — в буфер.
+        bufCtx.save();
+        resetCtxState(bufCtx);
         for (let i = podiums.length - 1; i >= 0; i--) {
             const p = podiums[i];
             const startY = getStartY(p.scaledHeight);
@@ -271,11 +302,13 @@ export const createPodiumAnimator = (
 
             const img = podiumImages[p.id];
             if (img && img.complete && img.naturalWidth > 0) {
-                ctx.drawImage(img, p.currentX, p.currentY, p.scaledWidth, p.scaledHeight);
+                bufCtx.drawImage(img, p.currentX, p.currentY, p.scaledWidth, p.scaledHeight);
             }
         }
-        ctx.restore();
+        bufCtx.restore();
 
+        // 3. Fading-слой (позиции + линии) — в отдельный offscreen,
+        //    затем накладываем его на буфер с прозрачностью fadeAlpha.
         if (fadeAlpha > 0) {
             if (!reverseOffscreen) {
                 reverseOffscreen = document.createElement('canvas');
@@ -286,10 +319,11 @@ export const createPodiumAnimator = (
             if (reverseOffscreen.width !== pw) reverseOffscreen.width = pw;
             if (reverseOffscreen.height !== ph) reverseOffscreen.height = ph;
 
-            const offCtx = reverseOffscreen.getContext('2d');
+            const offCtx = reverseOffscreen.getContext('2d', {alpha: false});
             if (offCtx) {
                 offCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-                offCtx.clearRect(0, 0, width, height);
+                offCtx.fillStyle = CANVAS_BG_COLOR;
+                offCtx.fillRect(0, 0, width, height);
                 offCtx.setTransform(
                     dpr * view.scale,
                     0,
@@ -322,13 +356,20 @@ export const createPodiumAnimator = (
                     offCtx.restore();
                 }
 
-                ctx.setTransform(1, 0, 0, 1, 0, 0);
-                ctx.save();
-                Object.assign(ctx, {globalAlpha: fadeAlpha});
-                ctx.drawImage(reverseOffscreen, 0, 0);
-                ctx.restore();
+                bufCtx.setTransform(1, 0, 0, 1, 0, 0);
+                bufCtx.save();
+                Object.assign(bufCtx, {globalAlpha: fadeAlpha});
+                bufCtx.drawImage(reverseOffscreen, 0, 0);
+                bufCtx.restore();
             }
         }
+
+        // 4. Атомарный вывод буфера в видимый канвас.
+        // eslint-disable-next-line no-param-reassign
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        // eslint-disable-next-line no-param-reassign
+        ctx.globalAlpha = 1;
+        ctx.drawImage(bufferCanvas, 0, 0);
 
         if (elapsed >= totalDuration) {
             reverseStarted = false;
@@ -347,6 +388,9 @@ export const createPodiumAnimator = (
             return renderReverseFrame(timestamp);
         }
 
+        const bufCtx = ensureBuffer();
+        if (!bufCtx) return true;
+
         if (!startTime) startTime = timestamp;
         const elapsed = timestamp - startTime;
 
@@ -354,25 +398,35 @@ export const createPodiumAnimator = (
         const width = canvas.width / dpr;
         const height = canvas.height / dpr;
 
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        ctx.clearRect(0, 0, width, height);
-        resetContextState();
-        ctx.setTransform(dpr * view.scale, 0, 0, dpr * view.scale, dpr * view.x, dpr * view.y);
+        // 1. Фон.
+        bufCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        bufCtx.fillStyle = CANVAS_BG_COLOR;
+        bufCtx.fillRect(0, 0, width, height);
+        resetCtxState(bufCtx);
+        bufCtx.setTransform(dpr * view.scale, 0, 0, dpr * view.scale, dpr * view.x, dpr * view.y);
 
-        const allPlatformsFinished = updatePodiums(elapsed);
+        // 2. Все слои — в буфер.
+        const allPlatformsFinished = updatePodiums(bufCtx, elapsed);
         ensurePositionsStarted(timestamp, allPlatformsFinished);
 
         const allPositionsFinished = updatePositionOpacities(timestamp);
 
         if (positions.length > 0 && positionOpacities.length === positions.length) {
-            ctx.save();
-            resetContextState();
-            drawPositions(ctx, positions, positionOpacities, width);
-            ctx.restore();
+            bufCtx.save();
+            resetCtxState(bufCtx);
+            drawPositions(bufCtx, positions, positionOpacities, width);
+            bufCtx.restore();
         }
 
         ensureConnectionsStarted(timestamp, allPlatformsFinished, allPositionsFinished);
-        drawAllConnections(timestamp, width);
+        drawAllConnections(bufCtx, timestamp, width);
+
+        // 3. Атомарный вывод буфера в видимый канвас.
+        // eslint-disable-next-line no-param-reassign
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        // eslint-disable-next-line no-param-reassign
+        ctx.globalAlpha = 1;
+        ctx.drawImage(bufferCanvas, 0, 0);
 
         return (
             allPlatformsFinished &&
@@ -531,13 +585,14 @@ export const createPodiumAnimator = (
     };
 
     const refreshScheme = () => {
-        // КРИТИЧЕСКИ ВАЖНО: Если платформы ещё не инициализированы (первая загрузка,
-        // картинки ещё грузятся), выходим. Иначе мы заблокируем состояние пустым массивом,
-        // что и вызывает мерцание при первой загрузке.
+        // Если платформы ещё не инициализированы (первая загрузка,
+        // картинки ещё грузятся), выходим. Иначе мы заблокируем состояние
+        // пустым массивом, что и вызывает мерцание при первой загрузке.
         if (podiums.length === 0) return;
 
         positions = calculatePositions(podiums, getActiveSchemeIndex());
 
+        // Случайные задержки — чтобы иконки проявлялись волной, а не все разом.
         positionAnimParams = positions.map(() => {
             const randomDelay = Math.random() * POSITION_ANIMATION_CONFIG.MAX_RANDOM_DELAY;
             return {
@@ -546,19 +601,21 @@ export const createPodiumAnimator = (
             };
         });
 
-        // Делаем позиции сразу полностью видимыми, чтобы избежать мерцания (fade-in)
-        positionOpacities = new Array(positions.length).fill(1);
+        // Иконки появляются заново через fade-in, как при первом показе.
+        positionOpacities = new Array(positions.length).fill(0);
         positionsAnimationStarted = true;
-        positionsStartTime = performance.now() - 100000;
+        positionsStartTime = performance.now();
 
-        connectionsAnimationStarted = true;
-        connectionsStartTime = performance.now() - 100000;
+        // Соединения и линии схемы стартуют после того, как проявятся
+        // позиции — поэтому их пока не запускаем: ensureConnectionsStarted
+        // в renderFrame сделает это сам.
+        connectionsAnimationStarted = false;
+        connectionsStartTime = 0;
 
-        // Линии схемы анимируем заново для красивого эффекта переключения
+        schemeLinesAnimationStarted = false;
+        schemeLinesStartTime = 0;
         schemeLineParams = buildSchemeLineParams();
         schemeLinesTotalDuration = calcSchemeLinesTotal(schemeLineParams);
-        schemeLinesAnimationStarted = true;
-        schemeLinesStartTime = performance.now();
 
         readyNotified = false;
 
@@ -648,6 +705,7 @@ export const createPodiumAnimator = (
         reverseStarted = false;
         onReverseCompleteCallback = null;
         reverseOffscreen = null;
+        bufferCtx = null;
     };
 
     loadAllIcons().then(() => {
