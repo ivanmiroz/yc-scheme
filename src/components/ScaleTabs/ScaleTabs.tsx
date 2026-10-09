@@ -1,4 +1,3 @@
-// src/components/ScaleTabs/ScaleTabs.tsx
 'use client';
 
 import React, {useCallback, useEffect, useRef, useState} from 'react';
@@ -19,11 +18,6 @@ import './ScaleTabs.scss';
 const b = block('scale-tabs');
 
 type OnboardingStep = 'closed' | 'guide' | 'zoom';
-type ArchitectTab = 'comments' | 'scenario';
-
-// ============================================================
-//  Публичный формат данных блока «Карта гибридной инфраструктуры»
-// ============================================================
 
 export interface ScaleTabsLegendItem {
     value: LegendValue;
@@ -33,29 +27,15 @@ export interface ScaleTabsLegendItem {
 }
 
 export interface ScaleTabsTabData {
-    /** Уникальный идентификатор (используется в state). */
     value: string;
-    /** Текст кнопки в левой колонке. */
     actionLabel: string;
-    /** Заголовок таба в правой колонке (может содержать \n). */
     title: string;
-    /** Текст вкладки «Описание сценария». */
-    scenarioDescription: string;
-    /** Пункты вкладки «Рекомендации архитектора». */
     architectRecommendations: string[];
 }
 
-export interface ScaleTabsArchitectCard {
-    text: string;
-    qr: string;
-    alt?: string;
-}
-
 export interface ScaleTabsOnboardingConfig {
-    /** Через сколько бездействия запускать обратную анимацию, мс. */
     inactivityDelayMs: number;
     guide: {
-        /** Задержка перед показом гайда после готовности канваса, мс. */
         showDelayMs: number;
         title: string;
         blocks: Array<{
@@ -67,7 +47,6 @@ export interface ScaleTabsOnboardingConfig {
     zoomHint: {
         text: string;
         icon?: string;
-        /** Сколько показывать подсказку, мс. */
         durationMs: number;
     };
 }
@@ -80,21 +59,18 @@ export interface ScaleTabsData {
     tabsHeader: {
         title: string;
         commentsTabLabel: string;
-        scenarioTabLabel: string;
     };
     network: {
         sectionTitle: string;
         legends: ScaleTabsLegendItem[];
     };
     tabs: ScaleTabsTabData[];
-    architectCards: ScaleTabsArchitectCard[];
     onboarding: ScaleTabsOnboardingConfig;
 }
 
 interface ScaleTabsProps {
     activeIndex?: number;
     onActionClick?: (index: number) => void;
-    /** Все тексты и данные блока — приходят извне (конфиг/админка). */
     data?: ScaleTabsData;
 }
 
@@ -107,14 +83,11 @@ const ACTIVITY_EVENTS: (keyof WindowEventMap)[] = [
     'touchstart',
 ];
 
-// Fallback на время рефакторинга: если родитель ещё не пробросил `data`,
-// рендерим пустую структуру, а не падаем на «Cannot read property … of undefined».
 const EMPTY_DATA: ScaleTabsData = {
     header: {title: '', text: ''},
-    tabsHeader: {title: '', commentsTabLabel: '', scenarioTabLabel: ''},
+    tabsHeader: {title: '', commentsTabLabel: ''},
     network: {sectionTitle: '', legends: []},
     tabs: [],
-    architectCards: [],
     onboarding: {
         inactivityDelayMs: 60000,
         guide: {showDelayMs: 1000, title: '', blocks: []},
@@ -128,31 +101,15 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
     const [localActiveIndex, setLocalActiveIndex] = useState(0);
     const [isCanvasReady, setIsCanvasReady] = useState(false);
     const [activeLegend, setActiveLegend] = useState<LegendValue | null>(null);
-
-    // Пока идёт анимация схлопывания — помним, какой таб нужно применить после.
     const [pendingTabIndex, setPendingTabIndex] = useState<number | null>(null);
-    // Флаг: анимация схлопывания запущена; блокирует повторные клики и
-    // позволяет менять .scale-tabs__sidebar только после её завершения.
     const [isCollapsing, setIsCollapsing] = useState(false);
-
-    // Флаг: идёт обратная анимация (фейдаут + разъезд платформ в центр).
     const [isReversing, setIsReversing] = useState(false);
-
     const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('closed');
     const [isOnboardingDone, setIsOnboardingDone] = useState(false);
 
-    // По умолчанию открыт таб «Описание сценария».
-    const [architectTab, setArchitectTab] = useState<ArchitectTab>('scenario');
-
     const hasShownOnboardingRef = useRef(false);
-
-    // Таймер отложенного показа GuidePopup (showDelayMs после onReady).
     const guideShowTimerRef = useRef<number | null>(null);
-
-    // Таймер автоскрытия подсказки «Увеличьте схему…».
     const zoomHintTimerRef = useRef<number | null>(null);
-
-    // Таймер бездействия: сбрасывается на любом событии активности.
     const inactivityTimeoutRef = useRef<number | null>(null);
 
     const availableLegendValues = getAvailableLegendValues(localActiveIndex);
@@ -160,17 +117,10 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
         availableLegendValues.includes(item.value),
     );
 
-    // Показываем infra sidebar сразу, как только применился таб.
     const isSidebarActive = activeIndex >= 0;
-
-    // isScattering для NetworkSingularity: либо идёт схлопывание, либо
-    // уже показан infra sidebar (тогда canvas занят infrastructure-анимацией).
     const isScattering = isCollapsing || isSidebarActive;
-
     const activeTabValue = safeData.tabs[activeIndex]?.value;
 
-    // Активная кнопка = уже применённый таб ИЛИ таб, который сейчас
-    // «в полёте» (клик уже сделан, но анимация схлопывания ещё идёт).
     const pendingTabValue =
         pendingTabIndex === null ? undefined : safeData.tabs[pendingTabIndex]?.value;
     const activeButtonValue = pendingTabValue ?? activeTabValue;
@@ -191,8 +141,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
 
     const handleCanvasStart = useCallback(() => {
         setIsCanvasReady(false);
-        // Перезапуск анимации (переключение схемы, ресайз и т. п.) —
-        // запланированный показ гайда больше не актуален.
         cancelGuideShowTimer();
     }, [cancelGuideShowTimer]);
 
@@ -201,7 +149,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
         if (hasShownOnboardingRef.current) return;
         hasShownOnboardingRef.current = true;
 
-        // Линии дорисованы — показываем GuidePopup через showDelayMs.
         cancelGuideShowTimer();
         guideShowTimerRef.current = window.setTimeout(() => {
             guideShowTimerRef.current = null;
@@ -209,8 +156,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
         }, safeData.onboarding.guide.showDelayMs);
     }, [cancelGuideShowTimer, safeData.onboarding.guide.showDelayMs]);
 
-    // Закрытие гайда: показываем подсказку в левом нижнем углу на durationMs,
-    // после чего онбординг считается завершённым и включается таймер бездействия.
     const handleGuideClose = useCallback(() => {
         setOnboardingStep('zoom');
         cancelZoomHintTimer();
@@ -221,8 +166,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
         }, safeData.onboarding.zoomHint.durationMs);
     }, [cancelZoomHintTimer, safeData.onboarding.zoomHint.durationMs]);
 
-    // Вызывается из NetworkSingularity после завершения ВСЕХ фаз анимации
-    // (ускорение → сматывание линий → полёт иконок к центру).
     const handleScatterComplete = useCallback(() => {
         if (pendingTabIndex !== null) {
             onActionClick?.(pendingTabIndex);
@@ -233,7 +176,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
         setIsCollapsing(false);
     }, [pendingTabIndex, onActionClick]);
 
-    // Вызывается из NetworkSingularity после завершения обратной анимации.
     const handleReverseComplete = useCallback(() => {
         cancelGuideShowTimer();
         cancelZoomHintTimer();
@@ -246,7 +188,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
         setActiveLegend(null);
         setPendingTabIndex(null);
         setIsCollapsing(false);
-        setArchitectTab('scenario');
 
         onActionClick?.(-1);
         setLocalActiveIndex(0);
@@ -257,8 +198,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
         if (isReversing) return;
         setLocalActiveIndex(index);
         setActiveScheme(index);
-        // При переключении схемы всегда открываем «Описание сценария».
-        setArchitectTab('scenario');
     };
 
     const handleButtonClick = (actionValue: string) => {
@@ -277,10 +216,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
         if (isReversing) return;
         setActiveLegend((prev) => (prev === value ? null : value));
     };
-
-    // ------------------------------------------------------------
-    //  Таймер без активности
-    // ------------------------------------------------------------
 
     const clearInactivityTimer = useCallback(() => {
         if (inactivityTimeoutRef.current !== null) {
@@ -322,7 +257,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
         };
     }, [isOnboardingDone, resetInactivity, clearInactivityTimer]);
 
-    // Отмена запланированных таймеров при размонтировании.
     useEffect(
         () => () => {
             cancelGuideShowTimer();
@@ -332,23 +266,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
     );
 
     const activeTab = safeData.tabs[localActiveIndex];
-
-    // Блок с QR-карточками — показывается в обоих табах.
-    const architectCards = (
-        <div className="infrastructure-choose__architect-cards">
-            {safeData.architectCards.map((card, index) => (
-                <div key={index} className="infrastructure-choose__architect-card">
-                    <p className="infrastructure-choose__architect-card-text">{card.text}</p>
-                    <img
-                        className="infrastructure-choose__architect-card-qr"
-                        src={card.qr}
-                        alt={card.alt ?? card.text}
-                    />
-                </div>
-            ))}
-        </div>
-    );
-
     const zoomHintIcon = safeData.onboarding.zoomHint.icon ?? zoomHintSrc.src;
 
     return (
@@ -365,6 +282,27 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
                         isReversing={isReversing}
                         onReverseComplete={handleReverseComplete}
                     />
+                </div>
+
+                <div className="chooser">
+                    <h2 className="infrastructure-choose__title">{safeData.tabsHeader.title}</h2>
+
+                    <div className="infrastructure-choose__tabs">
+                        {safeData.tabs.map((tab, index) => (
+                            <button
+                                key={tab.value}
+                                type="button"
+                                disabled={!isCanvasReady}
+                                className={`infrastructure-choose__tab ${localActiveIndex === index ? 'infrastructure-choose__tab_active' : ''}`}
+                                onClick={() => handleInfraTabClick(index)}
+                            >
+                                <span
+                                    className="infrastructure-choose__tab-text"
+                                    dangerouslySetInnerHTML={{__html: tab.title}}
+                                />
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
@@ -409,74 +347,22 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
                 </div>
 
                 <div className={`${b('sidebar-infra')} infrastructure-choose__sidebar`}>
-                    <h2 className="infrastructure-choose__title">{safeData.tabsHeader.title}</h2>
-
-                    <div className="infrastructure-choose__tabs">
-                        {safeData.tabs.map((tab, index) => (
-                            <button
-                                key={tab.value}
-                                type="button"
-                                disabled={!isCanvasReady}
-                                className={`infrastructure-choose__tab ${localActiveIndex === index ? 'infrastructure-choose__tab_active' : ''}`}
-                                onClick={() => handleInfraTabClick(index)}
-                            >
-                                {tab.title}
-                            </button>
-                        ))}
-                    </div>
-
                     <div className="infrastructure-choose__architect-tabs">
-                        <div className="infrastructure-choose__architect-tablist" role="tablist">
-                            <button
-                                type="button"
-                                role="tab"
-                                aria-selected={architectTab === 'comments'}
-                                className={`infrastructure-choose__architect-tab ${
-                                    architectTab === 'comments'
-                                        ? 'infrastructure-choose__architect-tab_active'
-                                        : ''
-                                }`}
-                                onClick={() => setArchitectTab('comments')}
-                            >
-                                {safeData.tabsHeader.commentsTabLabel}
-                            </button>
-
-                            <button
-                                type="button"
-                                role="tab"
-                                aria-selected={architectTab === 'scenario'}
-                                className={`infrastructure-choose__architect-tab ${
-                                    architectTab === 'scenario'
-                                        ? 'infrastructure-choose__architect-tab_active'
-                                        : ''
-                                }`}
-                                onClick={() => setArchitectTab('scenario')}
-                            >
-                                {safeData.tabsHeader.scenarioTabLabel}
-                            </button>
-                        </div>
-
                         <div className="infrastructure-choose__architect-tabpanel" role="tabpanel">
-                            {architectTab === 'comments' && (
-                                <ul className="infrastructure-choose__architect-recommendation">
-                                    {activeTab?.architectRecommendations?.map(
-                                        (paragraph, index) => (
-                                            <li
-                                                key={index}
-                                                className="infrastructure-choose__architect-recommendation-text"
-                                            >
-                                                {paragraph}
-                                            </li>
-                                        ),
-                                    )}
-                                </ul>
-                            )}
-                            {architectTab === 'scenario' && (
-                                <p className="infrastructure-choose__architect-scenario">
-                                    {activeTab?.scenarioDescription ?? ''}
-                                </p>
-                            )}
-                            {architectCards}
+                            <h3 className="infrastructure-choose__section-title">
+                                Рекомендации архитекторов
+                            </h3>
+
+                            <ul className="infrastructure-choose__architect-recommendation">
+                                {activeTab?.architectRecommendations?.map((paragraph, index) => (
+                                    <li
+                                        key={index}
+                                        className="infrastructure-choose__architect-recommendation-text"
+                                    >
+                                        {paragraph}
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
                     </div>
 
@@ -508,8 +394,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
                 </div>
             </div>
 
-            {/* Подсказка в левом нижнем углу: показывается после закрытия
-                гайда, потом исчезает сама. */}
             {onboardingStep === 'zoom' && (
                 <div className={b('zoom-hint')}>
                     <div className={b('zoom-hint-icon')}>

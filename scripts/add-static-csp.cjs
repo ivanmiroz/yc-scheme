@@ -110,7 +110,9 @@ async function collectScriptChanges(elements, html, htmlFilename, outputDirector
             scriptHashes.add(scriptHash);
             scriptAttributeEdits.push(createAttributeEdit(element, 'integrity', scriptHash, html));
             // Opaque-origin sandboxed frames need CORS for integrity-checked resources.
-            scriptAttributeEdits.push(createAttributeEdit(element, 'crossorigin', 'anonymous', html));
+            scriptAttributeEdits.push(
+                createAttributeEdit(element, 'crossorigin', 'anonymous', html),
+            );
         } else if (isScript) {
             const location = element.sourceCodeLocation;
 
