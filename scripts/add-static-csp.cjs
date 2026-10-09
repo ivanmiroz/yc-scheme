@@ -62,7 +62,7 @@ function resolveScriptFile(scriptSource, htmlFilename, outputDirectory) {
     return scriptFilename;
 }
 
-function createAttributeEdit(element, attributeName, attributeValue) {
+function createAttributeEdit(element, attributeName, attributeValue, html) {
     const location = element.sourceCodeLocation;
     const existingAttribute = location.attrs?.[attributeName];
     const attributeText = `${attributeName}="${attributeValue}"`;
@@ -76,7 +76,9 @@ function createAttributeEdit(element, attributeName, attributeValue) {
     }
 
     const openingTag = location.startTag || location;
-    const insertionOffset = openingTag.endOffset - 1;
+    // Keep attributes before the closing slash on tags ending in />.
+    const closingLength = html[openingTag.endOffset - 2] === '/' ? 2 : 1;
+    const insertionOffset = openingTag.endOffset - closingLength;
 
     return {
         start: insertionOffset,
@@ -106,9 +108,9 @@ async function collectScriptChanges(elements, html, htmlFilename, outputDirector
             const scriptHash = createScriptHash(scriptContent);
 
             scriptHashes.add(scriptHash);
-            scriptAttributeEdits.push(createAttributeEdit(element, 'integrity', scriptHash));
+            scriptAttributeEdits.push(createAttributeEdit(element, 'integrity', scriptHash, html));
             // Opaque-origin sandboxed frames need CORS for integrity-checked resources.
-            scriptAttributeEdits.push(createAttributeEdit(element, 'crossorigin', 'anonymous'));
+            scriptAttributeEdits.push(createAttributeEdit(element, 'crossorigin', 'anonymous', html));
         } else if (isScript) {
             const location = element.sourceCodeLocation;
 
