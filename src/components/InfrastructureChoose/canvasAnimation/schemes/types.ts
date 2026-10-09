@@ -19,7 +19,13 @@ export interface PlatformScheme {
 // left/right/top/bottom/center — по иконке (или её цветной подложке).
 // text-top/text-bottom — по текстовому блоку под иконкой.
 export type LineAnchor =
-    'left' | 'right' | 'top' | 'bottom' | 'center' | 'text-top' | 'text-bottom';
+    | 'left'
+    | 'right'
+    | 'top'
+    | 'bottom'
+    | 'center'
+    | 'text-top'
+    | 'text-bottom';
 
 // Точка крепления линии на платформе.
 // 'left' | 'right' | 'top' | 'bottom' | 'center' — по границе/центру прямоугольника платформы.
@@ -74,7 +80,12 @@ export interface Scheme {
 
 // Ключи кнопок легенды. Совпадают с value в listItems в ScaleTabs.
 export type LegendValue =
-    'network' | 'vps-pe' | 'cloud-interconnect' | 'vps' | 'cloud-router' | 'data-transfer';
+    | 'network'
+    | 'vps-pe'
+    | 'cloud-interconnect'
+    | 'vps'
+    | 'cloud-router'
+    | 'data-transfer';
 
 // Визуальный тип линии.
 export type LineKind =
