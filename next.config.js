@@ -1,14 +1,17 @@
 /** @type {import('next').NextConfig} */
 const repoName = 'yc-scheme';
 
+const isProd = process.env.NODE_ENV === 'production';
+const isGithubPages = process.env.GITHUB_PAGES === 'true' || isProd;
+
 const nextConfig = {
-    output: 'export', // статический экспорт в папку out/
-    basePath: `/${repoName}`, // путь до сайта на github.io
-    assetPrefix: `/${repoName}/`, // префикс для ассетов
+    output: 'export',
+    basePath: isGithubPages ? `/${repoName}` : '',
+    assetPrefix: isGithubPages ? `/${repoName}/` : '',
     images: {
-        unoptimized: true, // next/image не работает без сервера
+        unoptimized: true,
     },
-    trailingSlash: true, // помогает с роутингом на Pages
+    trailingSlash: true,
     webpack: (config) => {
         config.module.rules.push({
             test: /\.svg$/i,
