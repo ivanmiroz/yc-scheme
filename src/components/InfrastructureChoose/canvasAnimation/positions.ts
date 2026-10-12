@@ -35,6 +35,14 @@ const POSITION_Y_OVERRIDES: Record<string, number> = {
     '3.4.3': 0.5,
 };
 
+// Точечные сдвиги по X по полному positionNumber (в долях ширины pw).
+// Значение прибавляется к базовой X позиции. Нужно, например, чтобы
+// немного отодвинуть позицию 1.4 от центра второго ромба, не задевая
+// соседние позиции 1.5 и 1.6.
+const POSITION_X_SHIFTS: Record<string, number> = {
+    '1.4': 0.04,
+};
+
 export const calculatePositions = (podiums: PodiumState[], schemeIndex?: number): Position[] => {
     const positions: Position[] = [];
     const swapPositions42And43 =
@@ -63,8 +71,12 @@ export const calculatePositions = (podiums: PodiumState[], schemeIndex?: number)
             createPosition(rhomb1CenterX, rhomb1CenterY, platformNum, '3'),
         );
 
+        // Позиция 4 может иметь индивидуальный X-сдвиг (см.
+        // POSITION_X_SHIFTS), поэтому её считаем отдельно от 5 и 6.
+        const x4 = rhomb2CenterX + pw * (POSITION_X_SHIFTS[`${platformNum}.4`] ?? 0);
+        positions.push(createPosition(x4, rhomb2CenterY, platformNum, '4'));
+
         positions.push(
-            createPosition(rhomb2CenterX, rhomb2CenterY, platformNum, '4'),
             createPosition(rhomb2CenterX, rhomb2CenterY, platformNum, '5'),
             createPosition(rhomb2CenterX, rhomb2CenterY, platformNum, '6'),
         );
