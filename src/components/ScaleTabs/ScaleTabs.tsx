@@ -11,13 +11,11 @@ import {
 } from '../InfrastructureChoose/canvasAnimation/schemes';
 import {GuidePopup} from './GuidePopup';
 
-import zoomHintSrc from '@/assets/icons/zoom-hint.png';
-
 import './ScaleTabs.scss';
 
 const b = block('scale-tabs');
 
-type OnboardingStep = 'closed' | 'guide' | 'zoom';
+type OnboardingStep = 'closed' | 'guide';
 
 const sendYmGoal = (goal: string) => {
     if (
@@ -128,7 +126,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
 
     const hasShownOnboardingRef = useRef(false);
     const guideShowTimerRef = useRef<number | null>(null);
-    const zoomHintTimerRef = useRef<number | null>(null);
 
     const availableLegendValues = getAvailableLegendValues(localActiveIndex);
     const visibleLegendItems = safeData.network.legends.filter((item) =>
@@ -171,13 +168,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
         }
     }, []);
 
-    const cancelZoomHintTimer = useCallback(() => {
-        if (zoomHintTimerRef.current !== null) {
-            window.clearTimeout(zoomHintTimerRef.current);
-            zoomHintTimerRef.current = null;
-        }
-    }, []);
-
     const handleCanvasStart = useCallback(() => {
         setIsCanvasReady(false);
         cancelGuideShowTimer();
@@ -200,13 +190,8 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
     }, [cancelGuideShowTimer, safeData.onboarding.guide.showDelayMs]);
 
     const handleGuideClose = useCallback(() => {
-        setOnboardingStep('zoom');
-        cancelZoomHintTimer();
-        zoomHintTimerRef.current = window.setTimeout(() => {
-            zoomHintTimerRef.current = null;
-            setOnboardingStep('closed');
-        }, safeData.onboarding.zoomHint.durationMs);
-    }, [cancelZoomHintTimer, safeData.onboarding.zoomHint.durationMs]);
+        setOnboardingStep('closed');
+    }, []);
 
     const handleScatterComplete = useCallback(() => {
         if (pendingTabIndex !== null) {
@@ -220,7 +205,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
 
     const handleReverseComplete = useCallback(() => {
         cancelGuideShowTimer();
-        cancelZoomHintTimer();
 
         setIsReversing(false);
         setOnboardingStep('closed');
@@ -239,7 +223,7 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
         onActionClick?.(-1);
         setLocalActiveIndex(0);
         setActiveScheme(0);
-    }, [onActionClick, cancelGuideShowTimer, cancelZoomHintTimer, safeData.network.legends]);
+    }, [onActionClick, cancelGuideShowTimer, safeData.network.legends]);
 
     const handleInfraTabClick = (index: number) => {
         if (isReversing) return;
@@ -271,14 +255,12 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
     useEffect(
         () => () => {
             cancelGuideShowTimer();
-            cancelZoomHintTimer();
         },
-        [cancelGuideShowTimer, cancelZoomHintTimer],
+        [cancelGuideShowTimer],
     );
 
     const activeTab =
         activeIndex >= 0 ? safeData.tabs[activeIndex] : safeData.tabs[localActiveIndex];
-    const zoomHintIcon = safeData.onboarding.zoomHint.icon ?? zoomHintSrc.src;
 
     return (
         <div className={b()}>
@@ -429,15 +411,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
                     </div>
                 </div>
             </div>
-
-            {onboardingStep === 'zoom' && (
-                <div className={b('zoom-hint')}>
-                    <div className={b('zoom-hint-icon')}>
-                        <img src={zoomHintIcon} alt="" />
-                    </div>
-                    <p className={b('zoom-hint-text')}>{safeData.onboarding.zoomHint.text}</p>
-                </div>
-            )}
 
             <GuidePopup
                 open={onboardingStep === 'guide'}

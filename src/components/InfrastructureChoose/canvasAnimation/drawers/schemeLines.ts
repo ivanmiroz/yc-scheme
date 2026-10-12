@@ -27,7 +27,7 @@ import {
 import {applyConnectionStroke} from './stroke';
 
 // Во сколько раз толще рисуется подсвеченная линия.
-const HIGHLIGHT_WIDTH_MULTIPLIER = 1.5;
+const HIGHLIGHT_WIDTH_MULTIPLIER = 0.9;
 
 interface Point {
     x: number;
