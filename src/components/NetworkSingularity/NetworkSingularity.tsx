@@ -23,6 +23,11 @@ interface NetworkSingularityProps {
     /** Обратная анимация завершена. */
     onReverseComplete?: () => void;
     compact?: boolean;
+    /**
+     * Пропустить вступительную анимацию роста узлов и сразу показать
+     * «вторую форму» — разлетевшиеся платформы.
+     */
+    skipIntro?: boolean;
 }
 
 export const NetworkSingularity: React.FC<NetworkSingularityProps> = ({
@@ -35,9 +40,12 @@ export const NetworkSingularity: React.FC<NetworkSingularityProps> = ({
     isReversing = false,
     onReverseComplete,
     compact = false,
+    skipIntro = false,
 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const [startInfrastructure, setStartInfrastructure] = useState(false);
+    // Когда skipIntro — initCanvasAnimation монтируется сразу, и мы никогда
+    // не показываем рост узлов.
+    const [startInfrastructure, setStartInfrastructure] = useState(skipIntro);
     const cleanupRef = useRef<CanvasAnimationCleanup | void>(undefined);
 
     const onStartRef = useRef(onStart);
@@ -58,10 +66,17 @@ export const NetworkSingularity: React.FC<NetworkSingularityProps> = ({
         onReverseCompleteRef.current = onReverseComplete;
     }, [onReverseComplete]);
 
-    useNetworkAnimation(canvasRef, isScattering, () => {
-        setStartInfrastructure(true);
-        onScatterCompleteRef.current?.();
-    });
+    // При skipIntro хук сети полностью отключён — он не рисует рост узлов
+    // и не конфликтует с initCanvasAnimation на том же канвасе.
+    useNetworkAnimation(
+        canvasRef,
+        isScattering,
+        () => {
+            setStartInfrastructure(true);
+            onScatterCompleteRef.current?.();
+        },
+        skipIntro,
+    );
 
     useEffect(() => {
         if (!isScattering) {
@@ -69,6 +84,7 @@ export const NetworkSingularity: React.FC<NetworkSingularityProps> = ({
         }
     }, [isScattering]);
 
+    // initCanvasAnimation монтируется сразу, когда skipIntro === true.
     useEffect(() => {
         if (startInfrastructure && canvasRef.current) {
             if (cleanupRef.current) {

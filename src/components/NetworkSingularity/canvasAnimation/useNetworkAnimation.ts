@@ -463,12 +463,16 @@ interface FrameState {
  * @param canvasRef - Ref на HTML-элемент канваса.
  * @param isScattering - Запущена ли анимация схлопывания (ускорение → сжатие линий → полёт иконок).
  * @param onScatterComplete - Колбэк, вызываемый по завершении всех фаз схлопывания.
+ * @param disabled - Если true — хук не запускает анимацию вообще
+ *                   (используется, когда нужно пропустить интро и сразу
+ *                   отдать канвас под initCanvasAnimation).
  * @returns Ничего не возвращает; работает через побочные эффекты (requestAnimationFrame).
  */
 export const useNetworkAnimation = (
     canvasRef: React.RefObject<HTMLCanvasElement | null>,
     isScattering = false,
     onScatterComplete?: () => void,
+    disabled = false,
 ): void => {
     const animationRef = useRef<number>(0);
     const startTimeRef = useRef<number>(0);
@@ -498,6 +502,7 @@ export const useNetworkAnimation = (
     }, [onScatterComplete]);
 
     useEffect(() => {
+        if (disabled) return;
         if (isScattering && !isScatteringRef.current) {
             // Вход в схлопывание.
             collapseStartRealTimeRef.current = null;
@@ -547,9 +552,11 @@ export const useNetworkAnimation = (
             animationRef.current = requestAnimationFrame(animateRef.current);
         }
         isScatteringRef.current = isScattering;
-    }, [isScattering]);
+    }, [isScattering, disabled]);
 
     useEffect(() => {
+        if (disabled) return undefined;
+
         const canvas = canvasRef.current;
         if (canvas === null) return undefined;
 
@@ -783,5 +790,5 @@ export const useNetworkAnimation = (
                 clearTimeout(resizeTimeoutRef.current);
             }
         };
-    }, [canvasRef]);
+    }, [canvasRef, disabled]);
 };

@@ -286,6 +286,18 @@
     }
 }
 
+.scale-tabs_no-transition {
+    .scale-tabs__sidebar-scale,
+    .scale-tabs__sidebar-infra {
+        transition: none !important;
+    }
+
+    .chooser,
+    .scale-tabs__calculate-btn {
+        transition: none !important;
+    }
+}
+
 .infrastructure-choose__get-details-link {
     display: block;
     align-items: center;

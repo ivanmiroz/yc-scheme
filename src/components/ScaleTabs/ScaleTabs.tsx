@@ -97,15 +97,6 @@ interface ScaleTabsProps {
     data?: ScaleTabsData;
 }
 
-const ACTIVITY_EVENTS: (keyof WindowEventMap)[] = [
-    'mousemove',
-    'mousedown',
-    'pointerdown',
-    'keydown',
-    'wheel',
-    'touchstart',
-];
-
 const EMPTY_DATA: ScaleTabsData = {
     header: {title: '', text: ''},
     tabsHeader: {title: '', commentsTabLabel: ''},
@@ -127,17 +118,17 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
     const safeData = data ?? EMPTY_DATA;
 
     const [localActiveIndex, setLocalActiveIndex] = useState(0);
+    // СРАЗУ стартуем в «новой форме»: второй сайдбар, блоки, разлёт.
+    const [localSidebarActive, setLocalSidebarActive] = useState(true);
     const [isCanvasReady, setIsCanvasReady] = useState(false);
     const [pendingTabIndex, setPendingTabIndex] = useState<number | null>(null);
     const [isCollapsing, setIsCollapsing] = useState(false);
     const [isReversing, setIsReversing] = useState(false);
     const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('closed');
-    const [isOnboardingDone, setIsOnboardingDone] = useState(false);
 
     const hasShownOnboardingRef = useRef(false);
     const guideShowTimerRef = useRef<number | null>(null);
     const zoomHintTimerRef = useRef<number | null>(null);
-    const inactivityTimeoutRef = useRef<number | null>(null);
 
     const availableLegendValues = getAvailableLegendValues(localActiveIndex);
     const visibleLegendItems = safeData.network.legends.filter((item) =>
@@ -163,9 +154,11 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
         }
     }, [localActiveIndex, safeData.network.legends]);
 
-    const isSidebarActive = activeIndex >= 0;
+    const isSidebarActive = activeIndex >= 0 || localSidebarActive;
     const isScattering = isCollapsing || isSidebarActive;
-    const activeTabValue = safeData.tabs[activeIndex]?.value;
+
+    const effectiveActiveIndex = activeIndex >= 0 ? activeIndex : localActiveIndex;
+    const activeTabValue = safeData.tabs[effectiveActiveIndex]?.value;
 
     const pendingTabValue =
         pendingTabIndex === null ? undefined : safeData.tabs[pendingTabIndex]?.value;
@@ -190,8 +183,12 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
         cancelGuideShowTimer();
     }, [cancelGuideShowTimer]);
 
+    // Как только канвас готов — запускаем онбординг: через guide.showDelayMs
+    // показываем попап с инструкциями. При skipIntro канвас готов почти
+    // сразу, поэтому попап появляется сразу после загрузки страницы.
     const handleCanvasReady = useCallback(() => {
         setIsCanvasReady(true);
+
         if (hasShownOnboardingRef.current) return;
         hasShownOnboardingRef.current = true;
 
@@ -208,12 +205,13 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
         zoomHintTimerRef.current = window.setTimeout(() => {
             zoomHintTimerRef.current = null;
             setOnboardingStep('closed');
-            setIsOnboardingDone(true);
         }, safeData.onboarding.zoomHint.durationMs);
     }, [cancelZoomHintTimer, safeData.onboarding.zoomHint.durationMs]);
 
     const handleScatterComplete = useCallback(() => {
         if (pendingTabIndex !== null) {
+            setLocalActiveIndex(pendingTabIndex);
+            setLocalSidebarActive(true);
             onActionClick?.(pendingTabIndex);
             setPendingTabIndex(null);
         }
@@ -225,7 +223,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
         cancelZoomHintTimer();
 
         setIsReversing(false);
-        setIsOnboardingDone(false);
         setOnboardingStep('closed');
         hasShownOnboardingRef.current = false;
 
@@ -237,6 +234,7 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
 
         setPendingTabIndex(null);
         setIsCollapsing(false);
+        setLocalSidebarActive(false);
 
         onActionClick?.(-1);
         setLocalActiveIndex(0);
@@ -270,46 +268,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
         setActiveLegend((prev: LegendValue | null) => (prev === value ? null : value));
     };
 
-    const clearInactivityTimer = useCallback(() => {
-        if (inactivityTimeoutRef.current !== null) {
-            window.clearTimeout(inactivityTimeoutRef.current);
-            inactivityTimeoutRef.current = null;
-        }
-    }, []);
-
-    const resetInactivity = useCallback(() => {
-        clearInactivityTimer();
-
-        if (isOnboardingDone && !isReversing) {
-            inactivityTimeoutRef.current = window.setTimeout(() => {
-                inactivityTimeoutRef.current = null;
-                setIsReversing(true);
-            }, safeData.onboarding.inactivityDelayMs);
-        }
-    }, [
-        clearInactivityTimer,
-        isOnboardingDone,
-        isReversing,
-        safeData.onboarding.inactivityDelayMs,
-    ]);
-
-    useEffect(() => {
-        if (!isOnboardingDone) return undefined;
-
-        const handler = () => resetInactivity();
-
-        ACTIVITY_EVENTS.forEach((eventName) =>
-            window.addEventListener(eventName, handler, {passive: true}),
-        );
-
-        resetInactivity();
-
-        return () => {
-            ACTIVITY_EVENTS.forEach((eventName) => window.removeEventListener(eventName, handler));
-            clearInactivityTimer();
-        };
-    }, [isOnboardingDone, resetInactivity, clearInactivityTimer]);
-
     useEffect(
         () => () => {
             cancelGuideShowTimer();
@@ -335,7 +293,8 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
                         onScatterComplete={handleScatterComplete}
                         isReversing={isReversing}
                         onReverseComplete={handleReverseComplete}
-                        compact={activeIndex >= 0}
+                        compact={activeIndex >= 0 || localSidebarActive}
+                        skipIntro
                     />
                 </div>
 
