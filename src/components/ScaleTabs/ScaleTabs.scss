@@ -339,7 +339,7 @@
 
     &__tab {
         align-items: center;
-        background: none;
+        background: rgb(233, 236, 245);
         border: 1px solid rgba(176, 189, 217, 1);
         border-radius: 0.625vw;
         color: var(--g-color-text-primary);
@@ -358,10 +358,6 @@
             background: var(--g-color-base-generic-accent);
             border: 1px solid rgba(0, 0, 0, 1);
             color: var(--g-color-text-primary-inverted);
-        }
-
-        &:hover:not(&_active) {
-            background: var(--g-color-base-generic-hover);
         }
     }
 
@@ -433,7 +429,7 @@
         align-items: center;
         background: #ffffff;
         border: 1px solid rgba(176, 189, 217, 1);
-        border-radius: 42px;
+        border-radius: 2vw;
         color: var(--g-color-text-primary);
         cursor: pointer;
         display: flex;
@@ -463,7 +459,7 @@
 
     &__button-icon {
         align-items: center;
-        border-radius: 22px;
+        border-radius: 1vw;
         background: #fff;
         display: flex;
         flex-shrink: 0;
