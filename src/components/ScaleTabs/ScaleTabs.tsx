@@ -102,9 +102,9 @@ const EMPTY_DATA: ScaleTabsData = {
         guide: {showDelayMs: 1000, title: '', blocks: []},
         zoomHint: {text: '', durationMs: 30000},
     },
+    architectCards: [],
 };
 
-// Стало:
 export const ScaleTabs: React.FC<ScaleTabsProps> = ({
     activeIndex = -1,
     onActionClick,
@@ -125,18 +125,15 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
     const zoomHintTimerRef = useRef<number | null>(null);
     const inactivityTimeoutRef = useRef<number | null>(null);
 
-    // Вычисляем доступные легенды ДО инициализации стейта activeLegend
     const availableLegendValues = getAvailableLegendValues(localActiveIndex);
     const visibleLegendItems = safeData.network.legends.filter((item) =>
         availableLegendValues.includes(item.value),
     );
 
-    // <-- ИЗМЕНЕНО: Инициализируем стейт сразу первым доступным элементом
     const [activeLegend, setActiveLegend] = useState<LegendValue | null>(
         visibleLegendItems.length > 0 ? visibleLegendItems[0].value : null,
     );
 
-    // <-- ДОБАВЛЕНО: Следим за сменой схемы. Если текущая легенда не подходит для новой схемы, ставим первую доступную.
     useEffect(() => {
         const currentAvailable = getAvailableLegendValues(localActiveIndex);
         const currentVisible = safeData.network.legends.filter((item) =>
@@ -204,8 +201,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
     const handleScatterComplete = useCallback(() => {
         if (pendingTabIndex !== null) {
             onActionClick?.(pendingTabIndex);
-            setLocalActiveIndex(pendingTabIndex);
-            setActiveScheme(pendingTabIndex);
             setPendingTabIndex(null);
         }
         setIsCollapsing(false);
@@ -220,7 +215,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
         setOnboardingStep('closed');
         hasShownOnboardingRef.current = false;
 
-        // <-- ИЗМЕНЕНО: При сбросе ставим первую доступную легенду для схемы 0
         const availableForZero = getAvailableLegendValues(0);
         const firstLegend = safeData.network.legends.find((item) =>
             availableForZero.includes(item.value),
@@ -237,8 +231,13 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
 
     const handleInfraTabClick = (index: number) => {
         if (isReversing) return;
+
         setLocalActiveIndex(index);
         setActiveScheme(index);
+
+        if (isSidebarActive) {
+            onActionClick?.(index);
+        }
     };
 
     const handleButtonClick = (actionValue: string) => {
@@ -306,12 +305,13 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
         [cancelGuideShowTimer, cancelZoomHintTimer],
     );
 
-    const activeTab = safeData.tabs[localActiveIndex];
+    const activeTab =
+        activeIndex >= 0 ? safeData.tabs[activeIndex] : safeData.tabs[localActiveIndex];
     const zoomHintIcon = safeData.onboarding.zoomHint.icon ?? zoomHintSrc.src;
 
     return (
         <div className={b()}>
-            <div className={b('content')}>
+            <div className={b('content', {'sidebar-active': isSidebarActive})}>
                 <div className={b('panel')}>
                     <NetworkSingularity
                         activeSchemeIndex={localActiveIndex}
@@ -322,6 +322,7 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
                         onScatterComplete={handleScatterComplete}
                         isReversing={isReversing}
                         onReverseComplete={handleReverseComplete}
+                        compact={activeIndex >= 0}
                     />
                 </div>
 
@@ -347,6 +348,15 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
                         ))}
                     </div>
                 </div>
+
+                <a
+                    href="https://forms.yandex.ru/surveys/13893242.624b481765aa95c1a37b8fe8252fa626a02c7722"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={b('calculate-btn')}
+                >
+                    Рассчитать стоимость данной архитектуры
+                </a>
             </div>
 
             <div className={b('sidebar', {frozen: isSidebarActive})}>
@@ -408,6 +418,15 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
                             </ul>
                         </div>
                     </div>
+
+                    <a
+                        href="https://forms.yandex.ru/surveys/13892336.cbd4b74ef16dbc4abc393ae3c5a7e72631895536"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="infrastructure-choose__get-details-link"
+                    >
+                        Получить подробные рекомендации
+                    </a>
 
                     <h3 className="infrastructure-choose__section-title">
                         {safeData.network.sectionTitle}

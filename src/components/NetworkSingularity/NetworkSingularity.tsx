@@ -22,6 +22,7 @@ interface NetworkSingularityProps {
     isReversing?: boolean;
     /** Обратная анимация завершена. */
     onReverseComplete?: () => void;
+    compact?: boolean;
 }
 
 export const NetworkSingularity: React.FC<NetworkSingularityProps> = ({
@@ -33,6 +34,7 @@ export const NetworkSingularity: React.FC<NetworkSingularityProps> = ({
     onScatterComplete,
     isReversing = false,
     onReverseComplete,
+    compact = false,
 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [startInfrastructure, setStartInfrastructure] = useState(false);
@@ -73,7 +75,6 @@ export const NetworkSingularity: React.FC<NetworkSingularityProps> = ({
                 cleanupRef.current();
             }
 
-            // <-- ИЗМЕНЕНО: Передаём initialActiveLegend при инициализации
             cleanupRef.current = initCanvasAnimation(canvasRef.current, {
                 onStart: () => onStartRef.current?.(),
                 onReady: () => onReadyRef.current?.(),
@@ -114,7 +115,7 @@ export const NetworkSingularity: React.FC<NetworkSingularityProps> = ({
     }, [isReversing]);
 
     return (
-        <div className={b()}>
+        <div className={b({small: compact})}>
             <canvas ref={canvasRef} className={b('canvas')} />
         </div>
     );

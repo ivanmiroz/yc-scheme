@@ -7,7 +7,7 @@ import {CanvasAnimationCleanup} from './types';
 import {getEffectiveDpr} from './constants';
 import {createPodiumAnimator} from './animation';
 import {LegendValue, getActiveSchemeIndex, getPositionConfig} from './schemes';
-import {getDescription, getLink, getTitle} from './descriptions'; // <-- ДОБАВЛЕНО getLink
+import {getDescription, getLink, getTitle} from './descriptions';
 import {getPositionAnchor} from './drawers';
 import './popup.scss';
 
@@ -59,8 +59,6 @@ export const initCanvasAnimation = (
 ): CanvasAnimationCleanup => {
     const ctx = canvas.getContext('2d', {alpha: false});
     if (!ctx) {
-        // eslint-disable-next-line no-console
-        console.warn('Не удалось получить 2D контекст для canvas');
         const cleanup = () => {};
         cleanup.refreshScheme = () => {};
         cleanup.setActiveLegend = () => {};
@@ -101,32 +99,21 @@ export const initCanvasAnimation = (
         },
     });
 
-    loadPodiumImages().catch((err) => {
-        // eslint-disable-next-line no-console
-        console.error('Ошибка предварительной загрузки подиумов', err);
-    });
-
     if (podiumImagesCache) {
         podiumImages.push(...podiumImagesCache);
         isLoaded = true;
         animator.initPodiums({skipIntro: hasPlayedIntro});
         hasPlayedIntro = true;
     } else {
-        loadPodiumImages()
-            .then((images) => {
-                podiumImages.length = 0;
-                podiumImages.push(...images);
-                isLoaded = true;
-                animator.initPodiums({skipIntro: hasPlayedIntro});
-                hasPlayedIntro = true;
-            })
-            .catch((err) => {
-                // eslint-disable-next-line no-console
-                console.error('Ошибка загрузки подиумов', err);
-            });
+        loadPodiumImages().then((images) => {
+            podiumImages.length = 0;
+            podiumImages.push(...images);
+            isLoaded = true;
+            animator.initPodiums({skipIntro: hasPlayedIntro});
+            hasPlayedIntro = true;
+        });
     }
 
-    // eslint-disable-next-line no-param-reassign
     canvas.style.touchAction = 'none';
 
     const popupContainer = document.createElement('div');
@@ -151,7 +138,6 @@ export const initCanvasAnimation = (
     const popupDescription = document.createElement('p');
     popupDescription.className = 'scheme-popup__description';
 
-    // Кнопка-ссылка "Подробнее о сервисе"
     const popupLink = document.createElement('a');
     popupLink.className = 'scheme-popup__link';
     popupLink.textContent = 'Подробнее о сервисе';
@@ -166,7 +152,6 @@ export const initCanvasAnimation = (
     const archShape = document.createElement('div');
     archShape.className = 'arch-shape';
 
-    // Порядок добавления элементов (QR-блок удален)
     popup.appendChild(popupTitle);
     popup.appendChild(popupDescription);
     popup.appendChild(popupLink);
@@ -229,8 +214,6 @@ export const initCanvasAnimation = (
 
     const handlePointerDown = (e: PointerEvent) => {
         if (isPopupOpen()) return;
-
-        // eslint-disable-next-line no-param-reassign
         canvas.setPointerCapture(e.pointerId);
         activePointers.set(e.pointerId, {x: e.clientX, y: e.clientY});
 
@@ -246,7 +229,6 @@ export const initCanvasAnimation = (
 
     const handlePointerMove = (e: PointerEvent) => {
         if (!activePointers.has(e.pointerId)) return;
-
         activePointers.set(e.pointerId, {x: e.clientX, y: e.clientY});
 
         if (isDragging) {
@@ -320,13 +302,9 @@ export const initCanvasAnimation = (
             return;
         }
 
-        // eslint-disable-next-line no-param-reassign
         canvas.width = nextWidth;
-        // eslint-disable-next-line no-param-reassign
         canvas.height = nextHeight;
-        // eslint-disable-next-line no-param-reassign
         canvas.style.width = `${rect.width}px`;
-        // eslint-disable-next-line no-param-reassign
         canvas.style.height = `${rect.height}px`;
 
         ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -372,7 +350,6 @@ export const initCanvasAnimation = (
             clickedPosition.positionNumber,
         );
 
-        // <-- ПОЛУЧАЕМ РЕАЛЬНУЮ ССЫЛКУ НА СЕРВИС
         const serviceUrl = getLink(config.label, schemeIndex, clickedPosition.positionNumber);
 
         popupTitle.textContent = title;
@@ -385,7 +362,6 @@ export const initCanvasAnimation = (
             popupDescription.style.display = 'none';
         }
 
-        // <-- УСТАНАВЛИВАЕМ ССЫЛКУ В КНОПКУ И ПОКАЗЫВАЕМ ЕЁ
         if (serviceUrl) {
             popupLink.href = serviceUrl;
             popupLink.style.display = 'block';
@@ -464,6 +440,16 @@ export const initCanvasAnimation = (
     };
 
     resizeCanvas();
+
+    // <-- ДОБАВЛЕНО: ResizeObserver следит за изменением размера родителя (например, при добавлении класса _small)
+    const resizeObserver = new ResizeObserver(() => {
+        resizeCanvas();
+    });
+
+    if (canvas.parentElement) {
+        resizeObserver.observe(canvas.parentElement);
+    }
+
     window.addEventListener('resize', resizeCanvas);
     canvas.addEventListener('pointerdown', handlePointerDown);
     canvas.addEventListener('pointermove', handlePointerMove);
@@ -476,6 +462,8 @@ export const initCanvasAnimation = (
 
     const cleanup: CanvasAnimationCleanup = () => {
         window.removeEventListener('resize', resizeCanvas);
+        resizeObserver.disconnect(); // <-- ДОБАВЛЕНО: очистка observer
+
         canvas.removeEventListener('pointerdown', handlePointerDown);
         canvas.removeEventListener('pointermove', handlePointerMove);
         canvas.removeEventListener('pointerup', handlePointerUp);

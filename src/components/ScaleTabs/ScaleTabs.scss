@@ -221,15 +221,91 @@
         width: 14vw;
     }
 
+    // Скрытое состояние по умолчанию
+    .chooser,
+    &__calculate-btn {
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(10px);
+        pointer-events: none;
+        transition:
+            opacity 0.5s ease,
+            transform 0.5s ease,
+            visibility 0.5s;
+    }
+
     .chooser {
         position: absolute;
-        top: 3.5vw;
+        top: 1.5vw;
         left: 3.5vw;
         z-index: 20;
         display: flex;
         flex-direction: column;
         gap: 0.75vw;
         width: 21vw;
+    }
+
+    &__calculate-btn {
+        display: block;
+        margin: 1.2vw auto 3.5vw;
+        padding: 0.625vw 1.5vw;
+        background: #000000;
+        color: #ffffff;
+        border: none;
+        border-radius: 0.52vw;
+        font-size: 0.73vw;
+        font-weight: 500;
+        cursor: pointer;
+        text-decoration: none;
+        width: fit-content;
+        text-align: center;
+        transition:
+            opacity 0.2s ease,
+            background-color 0.2s ease,
+            transform 0.5s ease;
+
+        &:hover {
+            opacity: 0.85;
+            background-color: #1a1a1a;
+        }
+
+        &:active {
+            opacity: 0.7;
+        }
+    }
+
+    // Появление при активном сайдбаре (определено ПОСЛЕ скрытия, чтобы перезаписать)
+    &__content_sidebar-active {
+        .chooser,
+        .scale-tabs__calculate-btn {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+    }
+}
+
+.infrastructure-choose__get-details-link {
+    display: block;
+    align-items: center;
+    gap: 0.4vw;
+    margin-bottom: 0.8vw;
+    padding: 0.625vw 1vw;
+    background: #000000;
+    color: #ffffff;
+    border-radius: 0.52vw;
+    font-size: 0.73vw;
+    font-weight: 500;
+    text-decoration: none;
+    transition:
+        opacity 0.2s ease,
+        background-color 0.2s ease;
+    text-align: center;
+
+    &:hover {
+        opacity: 0.85;
+        background-color: #1a1a1a;
     }
 }
 
@@ -247,7 +323,7 @@
     &__title {
         color: var(--g-color-text-primary);
         font-family: var(--font-ys-display), sans-serif;
-        font-size: var(--g-text-size-xl);
+        font-size: var(--g-text-size-lg);
         font-weight: 800;
         letter-spacing: -0.02em;
         line-height: 1.1;
@@ -272,7 +348,7 @@
         font-size: var(--g-text-size-xs);
         font-weight: 500;
         justify-content: flex-start;
-        padding: 0.8vw 1vw;
+        padding: 0.6vw 1vw;
         text-align: left;
         transition:
             background-color 0.2s ease,
@@ -298,7 +374,7 @@
         border-radius: 0.625vw;
         display: flex;
         flex-direction: column;
-        overflow: hidden;
+        overflow: auto;
     }
 
     &__architect-tabpanel {
