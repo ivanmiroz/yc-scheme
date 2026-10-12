@@ -40,7 +40,7 @@ export const LEGEND_COLORS: Record<string, string> = {
     network: '#2A9FFF', // Сетевая связность
     'vps-pe': '#B43ACE', // VPC Private Endpoint
     'cloud-interconnect': '#FFA100', // Cloud Interconnect
-    vps: '#B43ACE', // Virtual Private Cloud
+    vps: '#2A9FFF', // Virtual Private Cloud
     'cloud-router': '#3AB935', // Cloud Router
     'data-transfer': '#2A9FFF', // Data Transfer
 };

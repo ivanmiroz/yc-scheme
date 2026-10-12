@@ -158,7 +158,7 @@ const drawLinePath = (
     const cornerRadius = canvasWidth * SCHEME_SERPENTINE_CORNER_RADIUS_RATIO;
     const arcBulge = canvasWidth * SCHEME_ARC_BULGE_RATIO;
 
-    if (line.dashed) {
+    if (line.dashed || line.arc) {
         ctx.setLineDash([dash, gap]);
     } else {
         ctx.setLineDash([]);
@@ -234,7 +234,6 @@ export const drawSchemeLines = (
 
         const isHighlighted = activeKind !== null && getLineKind(line) === activeKind;
 
-        // <-- ИЗМЕНЕНО: Используем специфичный цвет из LEGEND_COLORS вместо CONNECTION_HIGHLIGHT_COLOR
         const color =
             isHighlighted && activeLegend
                 ? (LEGEND_COLORS[activeLegend as string] ?? CONNECTION_HIGHLIGHT_COLOR)
