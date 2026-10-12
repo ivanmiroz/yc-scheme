@@ -7,7 +7,7 @@ import {CanvasAnimationCleanup} from './types';
 import {getEffectiveDpr} from './constants';
 import {createPodiumAnimator} from './animation';
 import {LegendValue, getActiveSchemeIndex, getPositionConfig} from './schemes';
-import {getDescription, getQr, getTitle} from './descriptions';
+import {getDescription, getLink, getTitle} from './descriptions'; // <-- ДОБАВЛЕНО getLink
 import {getPositionAnchor} from './drawers';
 import './popup.scss';
 
@@ -50,15 +50,13 @@ const clamp = (value: number, min: number, max: number) => Math.max(min, Math.mi
 export interface InitCanvasAnimationOptions {
     onStart?: () => void;
     onReady?: () => void;
+    initialActiveLegend?: LegendValue | null;
 }
 
 export const initCanvasAnimation = (
     canvas: HTMLCanvasElement,
     options: InitCanvasAnimationOptions = {},
 ): CanvasAnimationCleanup => {
-    // alpha: false — непрозрачный буфер канваса. Это убирает мерцание
-    // в Chrome при перерисовке: композитор не может «просветить» между
-    // clearRect/fillRect и первым drawImage на прозрачных пикселях.
     const ctx = canvas.getContext('2d', {alpha: false});
     if (!ctx) {
         // eslint-disable-next-line no-console
@@ -103,8 +101,6 @@ export const initCanvasAnimation = (
         },
     });
 
-    // Прогреваем кэш подиумов в фоне, чтобы при первом initPodiums
-    // картинки уже были готовы.
     loadPodiumImages().catch((err) => {
         // eslint-disable-next-line no-console
         console.error('Ошибка предварительной загрузки подиумов', err);
@@ -155,22 +151,12 @@ export const initCanvasAnimation = (
     const popupDescription = document.createElement('p');
     popupDescription.className = 'scheme-popup__description';
 
-    const popupAside = document.createElement('div');
-    popupAside.className = 'scheme-popup__aside';
-
-    const popupQr = document.createElement('div');
-    popupQr.className = 'scheme-popup__qr';
-
-    const popupQrImage = document.createElement('img');
-    popupQrImage.alt = 'QR-код';
-    popupQr.appendChild(popupQrImage);
-
-    const popupQrCaption = document.createElement('p');
-    popupQrCaption.className = 'scheme-popup__qr-caption';
-    popupQrCaption.innerHTML = 'Подробнее<br> о сервисе';
-    popupQr.appendChild(popupQrCaption);
-
-    popupAside.appendChild(popupQr);
+    // Кнопка-ссылка "Подробнее о сервисе"
+    const popupLink = document.createElement('a');
+    popupLink.className = 'scheme-popup__link';
+    popupLink.textContent = 'Подробнее о сервисе';
+    popupLink.target = '_blank';
+    popupLink.style.display = 'none';
 
     const popupClose = document.createElement('button');
     popupClose.className = 'scheme-popup__close';
@@ -180,9 +166,10 @@ export const initCanvasAnimation = (
     const archShape = document.createElement('div');
     archShape.className = 'arch-shape';
 
+    // Порядок добавления элементов (QR-блок удален)
     popup.appendChild(popupTitle);
     popup.appendChild(popupDescription);
-    popup.appendChild(popupAside);
+    popup.appendChild(popupLink);
     popup.appendChild(popupClose);
     popup.appendChild(archShape);
 
@@ -384,7 +371,9 @@ export const initCanvasAnimation = (
             schemeIndex,
             clickedPosition.positionNumber,
         );
-        const qrSrc = getQr(config.label, schemeIndex, clickedPosition.positionNumber);
+
+        // <-- ПОЛУЧАЕМ РЕАЛЬНУЮ ССЫЛКУ НА СЕРВИС
+        const serviceUrl = getLink(config.label, schemeIndex, clickedPosition.positionNumber);
 
         popupTitle.textContent = title;
 
@@ -396,12 +385,13 @@ export const initCanvasAnimation = (
             popupDescription.style.display = 'none';
         }
 
-        if (qrSrc) {
-            popupQrImage.src = qrSrc;
-            popupQr.style.display = 'block';
+        // <-- УСТАНАВЛИВАЕМ ССЫЛКУ В КНОПКУ И ПОКАЗЫВАЕМ ЕЁ
+        if (serviceUrl) {
+            popupLink.href = serviceUrl;
+            popupLink.style.display = 'block';
         } else {
-            popupQrImage.removeAttribute('src');
-            popupQr.style.display = 'none';
+            popupLink.removeAttribute('href');
+            popupLink.style.display = 'none';
         }
 
         popup.classList.remove('scheme-popup_flipped');
@@ -452,14 +442,6 @@ export const initCanvasAnimation = (
 
         const maxLeft = window.innerWidth - popupRectBase.width - POPUP_VIEWPORT_MARGIN;
         popupLeft = Math.max(POPUP_VIEWPORT_MARGIN, Math.min(popupLeft, maxLeft));
-
-        popupAside.style.display = 'flex';
-        const asideRect = popupAside.getBoundingClientRect();
-        const asideOffsetFromPopupLeft = asideRect.left - popupRectBase.left;
-        const asideLeft = popupLeft + asideOffsetFromPopupLeft;
-        if (asideLeft < POPUP_VIEWPORT_MARGIN) {
-            popupLeft += POPUP_VIEWPORT_MARGIN - asideLeft;
-        }
 
         const closeRect = popupClose.getBoundingClientRect();
         const closeOffsetFromPopupRight =
@@ -531,6 +513,10 @@ export const initCanvasAnimation = (
             onDone?.();
         });
     };
+
+    if (options.initialActiveLegend !== undefined) {
+        animator.setActiveLegend(options.initialActiveLegend);
+    }
 
     return cleanup;
 };

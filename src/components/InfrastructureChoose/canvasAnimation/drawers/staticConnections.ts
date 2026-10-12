@@ -6,6 +6,7 @@ import {
     CONNECTION_DOT_RADIUS_RATIO,
     CONNECTION_HIGHLIGHT_COLOR,
     CONNECTION_LINE_WIDTH_RATIO,
+    LEGEND_COLORS,
     MARKER_BOTTOM_OFFSET_RATIO,
     MARKER_COLOR,
     MARKER_DOT_RADIUS_RATIO,
@@ -49,14 +50,17 @@ const isKindHighlighted = (
     kind: 'sharp-serpentine' | 'rounded-serpentine' | 'straight' | 'dashed' | 'arc',
 ): boolean => activeLegend !== null && LEGEND_TO_LINE_KIND[activeLegend] === kind;
 
-// Цвет для конкретного типа линии с учётом активной легенды.
+// <-- ИЗМЕНЕНО: Возвращаем цвет из LEGEND_COLORS при совпадении типа линии
 const resolveColor = (
     activeLegend: LegendValue | null,
     kind: 'sharp-serpentine' | 'rounded-serpentine' | 'straight' | 'dashed' | 'arc',
     baseColor: string,
 ): string => {
     if (!activeLegend) return baseColor;
-    return LEGEND_TO_LINE_KIND[activeLegend] === kind ? CONNECTION_HIGHLIGHT_COLOR : baseColor;
+    if (LEGEND_TO_LINE_KIND[activeLegend] === kind) {
+        return LEGEND_COLORS[activeLegend as string] ?? CONNECTION_HIGHLIGHT_COLOR;
+    }
+    return baseColor;
 };
 
 const drawSerpentineConnection = (
@@ -291,7 +295,7 @@ export const drawConnections = (
     const serpentineHighlighted = isKindHighlighted(activeLegend, 'sharp-serpentine');
     const serpentineColor = resolveColor(activeLegend, 'sharp-serpentine', CONNECTION_COLOR);
 
-    // Короткий отрезок на платформе — прямая → cloud-interconnect
+    // Короткий отрезок на платформе — прямая → straight (например, Cloud Interconnect)
     const markerHighlighted = isKindHighlighted(activeLegend, 'straight');
     const markerColor = resolveColor(activeLegend, 'straight', MARKER_COLOR);
 

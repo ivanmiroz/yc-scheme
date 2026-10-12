@@ -33,3 +33,14 @@ export const {
     DOT_RADIUS_RATIO: MARKER_DOT_RADIUS_RATIO,
     COLOR: MARKER_COLOR,
 } = PLATFORM_MARKER_CONFIG;
+
+// Маппинг цветов для активной легенды.
+// Ключи в точности совпадают с типом LegendValue из schemes/types.ts
+export const LEGEND_COLORS: Record<string, string> = {
+    network: '#2A9FFF', // Сетевая связность
+    'vps-pe': '#B43ACE', // VPC Private Endpoint
+    'cloud-interconnect': '#FFA100', // Cloud Interconnect
+    vps: '#B43ACE', // Virtual Private Cloud
+    'cloud-router': '#3AB935', // Cloud Router
+    'data-transfer': '#2A9FFF', // Data Transfer
+};

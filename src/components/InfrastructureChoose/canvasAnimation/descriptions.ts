@@ -1,8 +1,6 @@
 // src/components/InfrastructureChoose/canvasAnimation/descriptions.ts
 // Словарь описаний и QR-кодов для позиций.
 // Ключ — нормализованный label (без переносов строк и лишних пробелов).
-// Это позволяет не трогать сами схемы: подпись под иконкой остаётся
-// короткой, а заголовок попапа берётся из поля `title`.
 
 import qrStackland from '@/assets/qr/stackland.png';
 import qrBareMetal from '@/assets/qr/bare-metal.png';
@@ -29,49 +27,43 @@ import qrCloudCdn from '@/assets/qr/cloud-cdn.png';
 import qrDataTransfer from '@/assets/qr/data-transfer.png';
 
 export interface DescriptionEntry {
-    // Полное название сервиса для заголовка попапа.
-    // Если не задано — заголовком станет сам label.
     title?: string;
     description: string;
     qr?: string;
+    link?: string; // <-- ДОБАВЛЕНО: поле для реальной ссылки на сервис
 }
 
 export const DESCRIPTIONS: Record<string, DescriptionEntry> = {
-    // ===== Позиции, которых нет в присланном списке — оставляем как было =====
     Приложения: {
         description:
             'Развертывание и управление приложениями в облачной инфраструктуре Yandex Cloud.',
         qr: qrStackland.src,
     },
-
     'Серверы и СХД': {
         description:
             'Физические серверы и системы хранения данных для размещения рабочих нагрузок.',
         qr: qrStackland.src,
     },
-
     DWN: {
         description: 'Распределенная веб-платформа для высоконагруженных сервисов.',
         qr: qrStackland.src,
     },
-
     DWH: {
         description: 'Распределенная веб-платформа для высоконагруженных сервисов.',
         qr: qrStackland.src,
     },
-
     'Гипервизор, виртуальные машины': {
         description:
             'Средства виртуализации и управления виртуальными машинами в облачной инфраструктуре.',
         qr: qrStackland.src,
     },
 
-    // ===== Обновлено по присланному списку =====
     'Yandex Cloud Stackland': {
         title: 'Yandex Cloud Stackland',
         description:
             'Платформа контейнеризации с интегрированными PaaS‑сервисами Yandex Cloud. Объединяет все необходимые компоненты для централизованного управления микросервисными и ИИ‑приложениями.',
         qr: qrStackland.src,
+        link: 'https://yandex.cloud/ru/services/stackland/?utm_source=scale&utm_medium=tachgibrid&utm_campaign=t:iaas;gl:awrn',
     },
 
     'BareMetal Extend: Virtualization': {
@@ -79,39 +71,38 @@ export const DESCRIPTIONS: Record<string, DescriptionEntry> = {
         description:
             'Готовая виртуальная инфраструктура на выделенных физических серверах — с полным контролем ресурсов, без необходимости покупать и настраивать физическое оборудование и гипервизор.',
         qr: qrBareMetalExtend.src,
+        link: 'https://yandex.cloud/ru/blog/yandex-baremetal-extend/?utm_source=scale&utm_medium=tachgibrid&utm_campaign=t:iaas;gl:awrn',
     },
 
-    // BareMetal Extend в связке с Managed Service for Kubernetes.
-    // Держим два варианта ключа — с ® и двоеточием (для схем 1..3)
-    // и без них (для схемы 4).
     'BareMetal Extend: Managed Service for Kubernetes®': {
         title: 'BareMetal Extend: Managed Service for Kubernetes®',
         description:
-            'Готовая Kubernetes-инфраструктура на выделенных серверах: всё настроено для разработки и запуска контейнерных приложений — без самостоятельной настройки и поддержки Kubernetes, с полным контролем над кластером и приложениями.',
+            'Готовая Kubernetes-инфраструктура на выделенных серверах: всё настроено для разработки и запуска контейнерных приложений.',
         qr: qrBareMetalKubernetes.src,
+        link: 'https://yandex.cloud/ru/services/managed-kubernetes/?utm_source=scale&utm_medium=tachgibrid&utm_campaign=t:iaas;gl:awrn',
     },
     'BareMetal Extend Managed Service for Kubernetes': {
         title: 'BareMetal Extend: Managed Service for Kubernetes®',
         description:
-            'Готовая Kubernetes-инфраструктура на выделенных серверах: всё настроено для разработки и запуска контейнерных приложений — без самостоятельной настройки и поддержки Kubernetes, с полным контролем над кластером и приложениями.',
+            'Готовая Kubernetes-инфраструктура на выделенных серверах: всё настроено для разработки и запуска контейнерных приложений.',
         qr: qrBareMetalKubernetes.src,
+        link: 'https://yandex.cloud/ru/services/managed-kubernetes/?utm_source=scale&utm_medium=tachgibrid&utm_campaign=t:iaas;gl:awrn',
     },
 
-    // Короткая подпись «BareMetal» — используется, когда позиция помечена
-    // одним словом (например, 1.4 в scheme1).
     BareMetal: {
         title: 'Yandex BareMetal',
         description:
             'Сервис по аренде выделенного физического сервера, все ресурсы которого доступны для решения только ваших задач.',
         qr: qrBareMetal.src,
+        link: 'https://yandex.cloud/ru/services/baremetal/?utm_source=scale&utm_medium=tachgibrid&utm_campaign=t:iaas;gl:awrn',
     },
 
-    // BareMetal с GPU — тот же сервис, но с GPU-конфигурацией.
     'BareMetal с GPU': {
         title: 'Yandex BareMetal с GPU',
         description:
-            'Выделенные физические серверы с графическими ускорителями для обучения и инференса ML-моделей, высокопроизводительных вычислений и рендеринга — без «шумных соседей» и конкуренции за вычислительные мощности.',
+            'Выделенные физические серверы с графическими ускорителями для обучения и инференса ML-моделей.',
         qr: qrBareMetalGpu.src,
+        link: 'https://yandex.cloud/ru/services/baremetal/?utm_source=scale&utm_medium=tachgibrid&utm_campaign=t:iaas;gl:awrn',
     },
 
     'Сетевое оборудование': {
@@ -119,19 +110,21 @@ export const DESCRIPTIONS: Record<string, DescriptionEntry> = {
         description:
             'Сервис для управления облачными сетями, обеспечивающий связность между ресурсами Yandex Cloud и доступ в интернет.',
         qr: qrVpc.src,
+        // Ссылка на VPC (добавлена стандартная, так как в списке её не было, но она логична)
+        link: 'https://yandex.cloud/ru/services/vpc/?utm_source=scale&utm_medium=tachgibrid&utm_campaign=t:iaas;gl:awrn',
     },
 
     'Yandex Cloud Router': {
         title: 'Yandex Cloud Router',
         description:
-            'Сервис для управления маршрутизацией трафика между облачными сетями, локальной инфраструктурой и выделенными серверами Yandex BareMetal. Сервис находится на стадии Preview.',
+            'Сервис для управления маршрутизацией трафика между облачными сетями, локальной инфраструктурой и выделенными серверами Yandex BareMetal.',
         qr: qrCloudRouter.src,
     },
 
     'VPC Private Endpoint (VPC PE)': {
         title: 'VPC Private Endpoint (VPC PE)',
         description:
-            'Функционал для подключения облачных ресурсов внутри VPC к сервисам Yandex Cloud по внутренней сети без использования публичных IP-адресов. Сервисы Yandex Cloud остаются доступными как через публичные IP-адреса, так и через сервисные подключения.',
+            'Функционал для подключения облачных ресурсов внутри VPC к сервисам Yandex Cloud по внутренней сети без использования публичных IP-адресов.',
         qr: qrVpcPe.src,
     },
 
@@ -140,28 +133,29 @@ export const DESCRIPTIONS: Record<string, DescriptionEntry> = {
         description:
             'Сервис предоставляет масштабируемые вычислительные мощности для размещения, тестирования и прототипирования ваших проектов.',
         qr: qrComputeCloud.src,
+        link: 'https://yandex.cloud/ru/services/compute/?utm_source=scale&utm_medium=tachgibrid&utm_campaign=t:iaas;gl:awrn',
     },
 
-    // Cloud Compute с GPU — тот же сервис, но с GPU-конфигурацией.
     'Cloud Compute с GPU': {
         title: 'Yandex Compute Cloud с GPU',
         description:
             'Виртуальные машины с графическими ускорителями для обучения и инференса ML-моделей, высокопроизводительных вычислений и обработки трёхмерной графики.',
         qr: qrComputeCloudGpu.src,
+        link: 'https://yandex.cloud/ru/services/compute?utm_source=scale&utm_medium=tachgibrid&utm_campaign=t:iaas;gl:awrn',
     },
 
     'Object Storage': {
         title: 'Yandex Object Storage',
-        description:
-            'Универсальное масштабируемое S3‑хранилище. Доступны три класса хранения в зависимости от частоты обращения к данным и объёма хранения, а также Intelligent Tiering — для случаев, когда паттерн использования заранее неизвестен.',
+        description: 'Универсальное масштабируемое S3‑хранилище.',
         qr: qrObjectStorage.src,
+        link: 'https://yandex.cloud/ru/services/storage/?utm_source=scale&utm_medium=tachgibrid&utm_campaign=t:iaas;gl:awrn',
     },
 
     'Yandex Object Storage on-premises': {
         title: 'Yandex Object Storage on-premises',
-        description:
-            'Универсальное масштабируемое S3‑хранилище развёрнутое в закрытом контуре (самостоятельно или в составе Stackland) — для данных, которые нельзя выносить за периметр.',
+        description: 'Универсальное масштабируемое S3‑хранилище развёрнутое в закрытом контуре.',
         qr: qrStoragePremises.src,
+        link: 'https://yandex.cloud/ru/services/storage/?utm_source=scale&utm_medium=tachgibrid&utm_campaign=t:iaas;gl:awrn',
     },
 
     'Cloud Interconnect': {
@@ -174,8 +168,9 @@ export const DESCRIPTIONS: Record<string, DescriptionEntry> = {
     'Cloud Backup': {
         title: 'Yandex Cloud Backup',
         description:
-            'Сервис для создания резервных копий и восстановления виртуальных машин и физических серверов из Yandex Cloud, локальной инфраструктуры и других площадок. Копии надёжно хранятся в хранилище бэкапов с размещением в трёх ЦОД, а восстановить их можно как в Yandex Cloud, так и в исходную среду.',
+            'Сервис для создания резервных копий и восстановления виртуальных машин и физических серверов.',
         qr: qrCloudBackup.src,
+        link: 'https://yandex.cloud/ru/services/backup/?utm_source=scale&utm_medium=tachgibrid&utm_campaign=t:iaas;gl:awrn',
     },
 
     'Yandex Cloud DNS': {
@@ -186,44 +181,47 @@ export const DESCRIPTIONS: Record<string, DescriptionEntry> = {
 
     'Kubernetes®': {
         title: 'Yandex Managed Service for Kubernetes®',
-        description:
-            'Сервис для управления кластерами Kubernetes® в Yandex Cloud. Масштабирование до 1000+ нод. Экономия затрат до 60%.',
+        description: 'Сервис для управления кластерами Kubernetes® в Yandex Cloud.',
         qr: qrKubernetes.src,
+        link: 'https://yandex.cloud/ru/services/managed-kubernetes/?utm_source=scale&utm_medium=tachgibrid&utm_campaign=t:iaas;gl:awrn',
     },
 
     'Managed Service for Kubernetes®': {
         title: 'Yandex Managed Service for Kubernetes®',
-        description:
-            'Сервис для управления кластерами Kubernetes® в Yandex Cloud. Масштабирование до 1000+ нод. Экономия затрат до 60%.',
+        description: 'Сервис для управления кластерами Kubernetes® в Yandex Cloud.',
         qr: qrKubernetes.src,
+        link: 'https://yandex.cloud/ru/services/managed-kubernetes/?utm_source=scale&utm_medium=tachgibrid&utm_campaign=t:iaas;gl:awrn',
     },
 
     'Yandex Managed Database': {
         title: 'Yandex Managed Database',
         description:
-            'Платформа данных Yandex Cloud. Фокусируйтесь на работе с данными и приносите ценность бизнесу, а мы возьмём на себя обслуживание вашей инфраструктуры и баз данных (PostgreSQL, MySQL®, ClickHouse® и другие).',
+            'Платформа данных Yandex Cloud. Фокусируйтесь на работе с данными и приносите ценность бизнесу.',
         qr: qrManagedDatabases.src,
+        link: 'https://yandex.cloud/ru/data-platform/?utm_source=scale&utm_medium=tachgibrid&utm_campaign=t:iaas;gl:awrn',
     },
 
     DataLens: {
         title: 'Yandex DataLens',
-        description:
-            'Визуализация и анализ данных — построение дашбордов и отчётов для бизнеса без дополнительных инструментов BI в облаке или On-premises.',
+        description: 'Визуализация и анализ данных — построение дашбордов и отчётов для бизнеса.',
         qr: qrDatalens.src,
+        link: 'https://datalens.ru/?utm_source=scale&utm_medium=tachgibrid&utm_campaign=t:iaas;gl:awrn',
     },
 
     'AI Studio': {
         title: 'Yandex AI Studio',
         description:
-            'Платформа, которая объединяет модели и инструменты Яндекса, чтобы вы могли создавать собственные ИИ-решения и внедрять их в бизнес‑процессы и продукты.',
+            'Платформа, которая объединяет модели и инструменты Яндекса, чтобы вы могли создавать собственные ИИ-решения.',
         qr: qrAi.src,
+        link: 'https://aistudio.yandex.ru/ru/?utm_source=scale&utm_medium=tachgibrid&utm_campaign=t:iaas;gl:awrn',
     },
 
     'Cloud CDN': {
         title: 'Yandex Cloud CDN',
         description:
-            'Сервис доставки контента до конечных потребителей с помощью сети распространения контента (Content Delivery Network; CDN).',
+            'Сервис доставки контента до конечных потребителей с помощью сети распространения контента (CDN).',
         qr: qrCloudCdn.src,
+        link: 'https://yandex.cloud/ru/services/cdn/?utm_source=scale&utm_medium=tachgibrid&utm_campaign=t:iaas;gl:awrn',
     },
 
     'Data Transfer': {
@@ -233,58 +231,40 @@ export const DESCRIPTIONS: Record<string, DescriptionEntry> = {
         qr: qrDataTransfer.src,
     },
 
-    // ALB — Application Load Balancer (позиция 2.4.1 на 3-й схеме).
     ALB: {
         title: 'Yandex Application Load Balancer',
         description:
             'Сервис для распределения входящего трафика между разными компонентами ваших веб‑приложений.',
         qr: qrAlb.src,
+        link: 'https://yandex.cloud/ru/services/application-load-balancer?utm_source=scale&utm_medium=tachgibrid&utm_campaign=t:iaas;gl:awrn',
     },
 
-    // ALB/GWIN — та же связка с Gwin, что и у ALB, но с расширенным
-    // описанием и отдельным QR. Используется на 4-й схеме в позиции 2.4.4.
     'ALB/GWIN': {
         title: 'Yandex Application Load Balancer',
         description:
-            'Инструмент для создания балансировщиков нагрузки и управления ими в кластерах Yandex Managed Service for Kubernetes — Gwin. Контроллер Gwin, установленный в кластер, автоматически разворачивает L7-балансировщики на основе конфигурации созданных вами ресурсов Kubernetes.',
+            'Инструмент для создания балансировщиков нагрузки и управления ими в кластерах Yandex Managed Service for Kubernetes — Gwin.',
         qr: qrAlbGwin.src,
+        link: 'https://yandex.cloud/ru/services/application-load-balancer?utm_source=scale&utm_medium=tachgibrid&utm_campaign=t:iaas;gl:awrn',
     },
 };
 
-// Переопределения title для конкретных схем.
-// Ключ — индекс схемы (0..3), значение — карта {label → title}.
-// Нужно, когда один и тот же label на разных схемах должен открывать
-// попап с разным заголовком.
 const TITLE_OVERRIDES_BY_SCHEME: Record<number, Record<string, string>> = {
-    // 3-я схема (индекс 2) — Object Storage здесь показывает on-premises.
     2: {
         'Object Storage': 'Yandex Object Storage on-premises',
     },
 };
 
-// Переопределения ключа описания для конкретной схемы и НОМЕРА ПОЗИЦИИ.
-// Ключ — индекс схемы (0..3), значение — карта {positionNumber → descriptionKey}.
-// Нужно, когда на одной схеме две позиции с одинаковым label должны
-// открывать разные попапы. Имеет приоритет над TITLE_OVERRIDES_BY_SCHEME.
 const DESCRIPTION_KEY_OVERRIDES_BY_POSITION: Record<number, Record<string, string>> = {
-    // 3-я схема (индекс 2):
-    //  - 3.1   — Object Storage в on-premises-варианте (через TITLE_OVERRIDES_BY_SCHEME);
-    //  - 3.4.3 — облачный Yandex Object Storage, без on-premises.
     2: {
         '3.4.3': 'Object Storage',
     },
-    // 4-я схема (индекс 3):
-    //  - 3.3 — Object Storage в on-premises-варианте;
-    //  - 3.4 — облачный Yandex Object Storage (без override, по умолчанию).
     3: {
         '3.3': 'Yandex Object Storage on-premises',
     },
 };
 
-// Нормализация label: убираем переносы строк и схлопываем пробелы.
 const normalizeLabel = (label: string): string => label.replace(/\s+/g, ' ').trim();
 
-// Ключ описания с учётом возможного override по позиции.
 const resolveDescriptionKey = (
     label: string,
     schemeIndex?: number,
@@ -294,18 +274,11 @@ const resolveDescriptionKey = (
         const posKey = DESCRIPTION_KEY_OVERRIDES_BY_POSITION[schemeIndex]?.[positionNumber];
         if (posKey) return posKey;
     }
-
     return normalizeLabel(label);
 };
 
-// Заголовок попапа: сначала ищем override по позиции, затем override
-// по label для конкретной схемы, затем общий `title` из словаря,
-// иначе возвращаем нормализованный label.
 export const getTitle = (label: string, schemeIndex?: number, positionNumber?: string): string => {
     const key = resolveDescriptionKey(label, schemeIndex, positionNumber);
-
-    // Если сработал position-override — берём title прямо из словаря
-    // по этому ключу (без дальнейших scheme-переопределений).
     if (
         typeof schemeIndex === 'number' &&
         typeof positionNumber === 'string' &&
@@ -313,16 +286,13 @@ export const getTitle = (label: string, schemeIndex?: number, positionNumber?: s
     ) {
         return DESCRIPTIONS[key]?.title ?? key;
     }
-
     if (typeof schemeIndex === 'number') {
         const override = TITLE_OVERRIDES_BY_SCHEME[schemeIndex]?.[key];
         if (override) return override;
     }
-
     return DESCRIPTIONS[key]?.title ?? key;
 };
 
-// Получить описание по label (с учётом position-override, если он задан).
 export const getDescription = (
     label: string,
     schemeIndex?: number,
@@ -332,7 +302,6 @@ export const getDescription = (
     return DESCRIPTIONS[key]?.description;
 };
 
-// Получить путь к QR-коду по label (с учётом position-override, если он задан).
 export const getQr = (
     label: string,
     schemeIndex?: number,
@@ -340,4 +309,14 @@ export const getQr = (
 ): string | undefined => {
     const key = resolveDescriptionKey(label, schemeIndex, positionNumber);
     return DESCRIPTIONS[key]?.qr;
+};
+
+// <-- ДОБАВЛЕНО: Функция получения ссылки, которая использует ту же логику переопределений, что и getQr
+export const getLink = (
+    label: string,
+    schemeIndex?: number,
+    positionNumber?: string,
+): string | undefined => {
+    const key = resolveDescriptionKey(label, schemeIndex, positionNumber);
+    return DESCRIPTIONS[key]?.link;
 };

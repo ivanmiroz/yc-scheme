@@ -12,7 +12,6 @@ $popup-font-size: max(12px, var(--g-text-size-xs, 0.9vw));
 .scheme-popup {
     position: absolute;
     background-color: var(--g-color-base-generic);
-    // Радиус и паддинги в em — масштабируются вместе с font-size попапа
     border-radius: 0.9vw;
     padding: 0.8vw;
     z-index: 2;
@@ -27,49 +26,46 @@ $popup-font-size: max(12px, var(--g-text-size-xs, 0.9vw));
     }
 
     &__description {
-        margin: 0;
+        margin: 0 0 0.6vw;
         font-size: 1em;
         line-height: 1.1;
         color: var(--g-color-text-primary);
     }
 
-    // Блок QR слева от попапа.
-    &__aside {
-        position: absolute;
-        top: 0;
-        right: 100%;
-        margin-right: 0.57em;
-        display: flex;
-        align-items: flex-start;
-    }
+    // <-- Кнопка-ссылка "Подробнее о сервисе"
+    &__link {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
 
-    // QR-код — с подложкой, в которой снизу подпись.
-    &__qr {
-        padding: 0.6vw;
-        background-color: rgba(231, 235, 244, 1);
-        border-radius: 0.9vw;
+        background: #000000;
+        color: #ffffff;
 
-        img {
-            border-radius: 0.8vw;
-            display: block;
-            // 112px @ 1920 = 5.83vw — размер строго на vw, без привязки к em попапа
-            width: 5.83vw;
-            height: 5.83vw;
-            object-fit: contain;
+        // Перевод в vw (база 1920px)
+        padding: 0.625vw; // 12px
+        border-radius: 0.52vw; // 10px
+
+        text-align: center;
+        text-decoration: none;
+        margin-bottom: 0.8vw; // Отступ снизу до кнопки закрытия или края
+        font-size: 0.73vw; // ~14px
+        font-weight: 500;
+        transition:
+            opacity 0.2s ease,
+            background-color 0.2s ease;
+
+        &:hover {
+            opacity: 0.85;
+            background-color: #1a1a1a;
+        }
+
+        &:active {
+            opacity: 0.7;
         }
     }
 
-    // Подпись под QR-кодом.
-    &__qr-caption {
-        margin: 0.3vw 0 0;
-        text-align: center;
-        font-size: var(--g-text-size-xs);
-        line-height: 1.1;
-        color: var(--g-color-text-primary);
-    }
+    // <-- УДАЛЕНО: &__aside, &__qr, &__qr-caption
 
-    // Кнопка закрытия — справа сверху от попапа.
-    // Белый круг 32px @ 1920 = 1.67vw.
     &__close {
         position: absolute;
         top: 0;
@@ -83,11 +79,9 @@ $popup-font-size: max(12px, var(--g-text-size-xs, 0.9vw));
         border: none;
         padding: 0;
         cursor: pointer;
-        // Та же тень, что у попапа и QR
         box-shadow: 0 0.28em 0.85em
             color-mix(in sRGB, var(--g-color-base-generic-accent) 15%, transparent);
 
-        // Крестик из двух перекрещенных линий
         &::before,
         &::after {
             content: '';
@@ -109,9 +103,6 @@ $popup-font-size: max(12px, var(--g-text-size-xs, 0.9vw));
         }
     }
 
-    // Стрелка-треугольник с закруглённым кончиком.
-    // Размер 24×17 px @ 1920 → 1.39em × 0.98em при font-size попапа.
-    // Центр элемента (и кончик) остаётся на той же X, что и раньше.
     .arch-shape {
         position: absolute;
         top: 98%;
@@ -119,24 +110,15 @@ $popup-font-size: max(12px, var(--g-text-size-xs, 0.9vw));
         width: 1.39em;
         height: 0.98em;
         background: var(--g-color-base-generic);
-        // Маска-треугольник, направленный вниз. preserveAspectRatio="none"
-        // — SVG растягивается на весь размер элемента, кончик остаётся
-        // в ~50% ширины.
         mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 17' preserveAspectRatio='none'%3E%3Cpath d='M0 0L24 0L13.5 12Q12 17 10.5 12Z' fill='black'/%3E%3C/svg%3E")
             no-repeat center / 100% 100%;
         pointer-events: none;
     }
 
-    // Перевёрнутое состояние: попап стоит ПОД объектом, стрелка уходит
-    // наверх и разворачивается вертикально. Горизонтальное положение
-    // (left) оставляем тем же, чтобы стрелка продолжала указывать на ту же
-    // точку по X — JS выравнивает popup по кончику арки.
     &_flipped {
         .arch-shape {
             top: auto;
             bottom: 98%;
-            // Зеркалим по вертикали — кончик, который был снизу,
-            // оказывается сверху.
             transform: scaleY(-1);
         }
     }

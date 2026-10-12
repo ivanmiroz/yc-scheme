@@ -8,6 +8,7 @@ import {
     CONNECTION_LINE_WIDTH_RATIO,
     DASH_GAP_RATIO,
     DASH_LENGTH_RATIO,
+    LEGEND_COLORS,
     SCHEME_ARC_BULGE_RATIO,
     SCHEME_ARC_SEGMENTS,
     SCHEME_SERPENTINE_AMPLITUDE_RATIO,
@@ -232,7 +233,13 @@ export const drawSchemeLines = (
         if (!B) return;
 
         const isHighlighted = activeKind !== null && getLineKind(line) === activeKind;
-        const color = isHighlighted ? CONNECTION_HIGHLIGHT_COLOR : CONNECTION_COLOR;
+
+        // <-- ИЗМЕНЕНО: Используем специфичный цвет из LEGEND_COLORS вместо CONNECTION_HIGHLIGHT_COLOR
+        const color =
+            isHighlighted && activeLegend
+                ? (LEGEND_COLORS[activeLegend as string] ?? CONNECTION_HIGHLIGHT_COLOR)
+                : CONNECTION_COLOR;
+
         const lineWidth = isHighlighted
             ? baseLineWidth * HIGHLIGHT_WIDTH_MULTIPLIER
             : baseLineWidth;

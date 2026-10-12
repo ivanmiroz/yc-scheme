@@ -30,6 +30,7 @@ export interface ScaleTabsTabData {
     value: string;
     actionLabel: string;
     title: string;
+    scenarioDescription?: string;
     architectRecommendations: string[];
 }
 
@@ -51,6 +52,12 @@ export interface ScaleTabsOnboardingConfig {
     };
 }
 
+export interface ScaleTabsArchitectCard {
+    text: string;
+    qr: string;
+    alt: string;
+}
+
 export interface ScaleTabsData {
     header: {
         title: string;
@@ -59,6 +66,7 @@ export interface ScaleTabsData {
     tabsHeader: {
         title: string;
         commentsTabLabel: string;
+        scenarioTabLabel?: string;
     };
     network: {
         sectionTitle: string;
@@ -66,6 +74,7 @@ export interface ScaleTabsData {
     };
     tabs: ScaleTabsTabData[];
     onboarding: ScaleTabsOnboardingConfig;
+    architectCards?: ScaleTabsArchitectCard[];
 }
 
 interface ScaleTabsProps {
@@ -95,12 +104,16 @@ const EMPTY_DATA: ScaleTabsData = {
     },
 };
 
-export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionClick, data}) => {
+// Стало:
+export const ScaleTabs: React.FC<ScaleTabsProps> = ({
+    activeIndex = -1,
+    onActionClick,
+    data,
+}: ScaleTabsProps) => {
     const safeData = data ?? EMPTY_DATA;
 
     const [localActiveIndex, setLocalActiveIndex] = useState(0);
     const [isCanvasReady, setIsCanvasReady] = useState(false);
-    const [activeLegend, setActiveLegend] = useState<LegendValue | null>(null);
     const [pendingTabIndex, setPendingTabIndex] = useState<number | null>(null);
     const [isCollapsing, setIsCollapsing] = useState(false);
     const [isReversing, setIsReversing] = useState(false);
@@ -112,10 +125,32 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
     const zoomHintTimerRef = useRef<number | null>(null);
     const inactivityTimeoutRef = useRef<number | null>(null);
 
+    // Вычисляем доступные легенды ДО инициализации стейта activeLegend
     const availableLegendValues = getAvailableLegendValues(localActiveIndex);
     const visibleLegendItems = safeData.network.legends.filter((item) =>
         availableLegendValues.includes(item.value),
     );
+
+    // <-- ИЗМЕНЕНО: Инициализируем стейт сразу первым доступным элементом
+    const [activeLegend, setActiveLegend] = useState<LegendValue | null>(
+        visibleLegendItems.length > 0 ? visibleLegendItems[0].value : null,
+    );
+
+    // <-- ДОБАВЛЕНО: Следим за сменой схемы. Если текущая легенда не подходит для новой схемы, ставим первую доступную.
+    useEffect(() => {
+        const currentAvailable = getAvailableLegendValues(localActiveIndex);
+        const currentVisible = safeData.network.legends.filter((item) =>
+            currentAvailable.includes(item.value),
+        );
+
+        if (currentVisible.length > 0) {
+            if (!activeLegend || !currentVisible.some((item) => item.value === activeLegend)) {
+                setActiveLegend(currentVisible[0].value);
+            }
+        } else {
+            setActiveLegend(null);
+        }
+    }, [localActiveIndex, safeData.network.legends]);
 
     const isSidebarActive = activeIndex >= 0;
     const isScattering = isCollapsing || isSidebarActive;
@@ -185,14 +220,20 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
         setOnboardingStep('closed');
         hasShownOnboardingRef.current = false;
 
-        setActiveLegend(null);
+        // <-- ИЗМЕНЕНО: При сбросе ставим первую доступную легенду для схемы 0
+        const availableForZero = getAvailableLegendValues(0);
+        const firstLegend = safeData.network.legends.find((item) =>
+            availableForZero.includes(item.value),
+        );
+        setActiveLegend(firstLegend ? firstLegend.value : null);
+
         setPendingTabIndex(null);
         setIsCollapsing(false);
 
         onActionClick?.(-1);
         setLocalActiveIndex(0);
         setActiveScheme(0);
-    }, [onActionClick, cancelGuideShowTimer, cancelZoomHintTimer]);
+    }, [onActionClick, cancelGuideShowTimer, cancelZoomHintTimer, safeData.network.legends]);
 
     const handleInfraTabClick = (index: number) => {
         if (isReversing) return;
@@ -214,7 +255,7 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
 
     const handleLegendClick = (value: LegendValue) => {
         if (isReversing) return;
-        setActiveLegend((prev) => (prev === value ? null : value));
+        setActiveLegend((prev: LegendValue | null) => (prev === value ? null : value));
     };
 
     const clearInactivityTimer = useCallback(() => {
@@ -298,7 +339,9 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({activeIndex = -1, onActionC
                             >
                                 <span
                                     className="infrastructure-choose__tab-text"
-                                    dangerouslySetInnerHTML={{__html: tab.title}}
+                                    dangerouslySetInnerHTML={{
+                                        __html: tab.title.replace(/\n/g, '<br />'),
+                                    }}
                                 />
                             </button>
                         ))}

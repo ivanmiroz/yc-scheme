@@ -379,10 +379,6 @@
                 color: #ffffff;
             }
 
-            .infrastructure-choose__button-icon img {
-                filter: brightness(0) invert(1);
-            }
-
             &:hover {
                 background: #000000;
             }
@@ -391,15 +387,17 @@
 
     &__button-icon {
         align-items: center;
+        border-radius: 22px;
+        background: #fff;
         display: flex;
         flex-shrink: 0;
         height: 2.25vw;
         justify-content: center;
-        width: 3vw;
+        width: 3.2vw;
 
         img {
-            max-width: 75%;
-            max-height: 75%;
+            max-width: 65%;
+            max-height: 65%;
             object-fit: contain;
         }
     }

@@ -72,9 +72,12 @@ export const NetworkSingularity: React.FC<NetworkSingularityProps> = ({
             if (cleanupRef.current) {
                 cleanupRef.current();
             }
+
+            // <-- ИЗМЕНЕНО: Передаём initialActiveLegend при инициализации
             cleanupRef.current = initCanvasAnimation(canvasRef.current, {
                 onStart: () => onStartRef.current?.(),
                 onReady: () => onReadyRef.current?.(),
+                initialActiveLegend: activeLegend,
             });
         }
 
@@ -83,7 +86,7 @@ export const NetworkSingularity: React.FC<NetworkSingularityProps> = ({
                 cleanupRef.current();
             }
         };
-    }, [startInfrastructure]);
+    }, [startInfrastructure]); // Заметьте: activeLegend здесь НЕТ, чтобы не пересоздавать канвас при кликах
 
     useEffect(() => {
         if (cleanupRef.current && cleanupRef.current.refreshScheme) {
