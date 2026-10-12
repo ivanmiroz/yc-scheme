@@ -472,8 +472,11 @@ export const initCanvasAnimation = (
 
     resizeCanvas();
 
-    const resizeObserver = new ResizeObserver(() => {
-        resizeCanvas();
+    const resizeObserver = new ResizeObserver((entries) => {
+        window.requestAnimationFrame(() => {
+            if (!entries[0]?.contentRect) return;
+            resizeCanvas();
+        });
     });
 
     if (canvas.parentElement) {
