@@ -19,6 +19,20 @@ const b = block('scale-tabs');
 
 type OnboardingStep = 'closed' | 'guide' | 'zoom';
 
+const sendYmGoal = (goal: string) => {
+    if (
+        typeof window !== 'undefined' &&
+        typeof (window as unknown as {ym?: (id: number, action: string, goal: string) => void})
+            .ym === 'function'
+    ) {
+        (window as unknown as {ym: (id: number, action: string, goal: string) => void}).ym(
+            50027884,
+            'reachGoal',
+            goal,
+        );
+    }
+};
+
 export interface ScaleTabsLegendItem {
     value: LegendValue;
     icon: string;
@@ -231,13 +245,12 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
 
     const handleInfraTabClick = (index: number) => {
         if (isReversing) return;
-
         setLocalActiveIndex(index);
         setActiveScheme(index);
-
         if (isSidebarActive) {
             onActionClick?.(index);
         }
+        sendYmGoal('HYBRIDINFRA_CHOOSE-SCENARIO_CLICK');
     };
 
     const handleButtonClick = (actionValue: string) => {
@@ -354,6 +367,7 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
                     target="_blank"
                     rel="noopener noreferrer"
                     className={b('calculate-btn')}
+                    onClick={() => sendYmGoal('HYBRIDINFRA_INTERACT-FORM_CLICK')}
                 >
                     Рассчитать стоимость данной архитектуры
                 </a>
@@ -402,6 +416,16 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
                 <div className={`${b('sidebar-infra')} infrastructure-choose__sidebar`}>
                     <div className="infrastructure-choose__architect-tabs">
                         <div className="infrastructure-choose__architect-tabpanel" role="tabpanel">
+                            <a
+                                href="https://forms.yandex.ru/surveys/13892336.cbd4b74ef16dbc4abc393ae3c5a7e72631895536"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="infrastructure-choose__get-details-link"
+                                onClick={() => sendYmGoal('HYBRIDINFRA_INTERACT-RECO-FORM_CLICK')}
+                            >
+                                Получить подробные рекомендации
+                            </a>
+
                             <h3 className="infrastructure-choose__section-title">
                                 Рекомендации архитекторов
                             </h3>
@@ -418,15 +442,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
                             </ul>
                         </div>
                     </div>
-
-                    <a
-                        href="https://forms.yandex.ru/surveys/13892336.cbd4b74ef16dbc4abc393ae3c5a7e72631895536"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="infrastructure-choose__get-details-link"
-                    >
-                        Получить подробные рекомендации
-                    </a>
 
                     <h3 className="infrastructure-choose__section-title">
                         {safeData.network.sectionTitle}

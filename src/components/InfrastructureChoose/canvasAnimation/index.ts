@@ -1,4 +1,3 @@
-// src/components/InfrastructureChoose/canvasAnimation/index.ts
 import podium1Src from '@/assets/images/podium1.png';
 import podium2Src from '@/assets/images/podium2.png';
 import podium3Src from '@/assets/images/podium3.png';
@@ -10,6 +9,20 @@ import {LegendValue, getActiveSchemeIndex, getPositionConfig} from './schemes';
 import {getDescription, getLink, getTitle} from './descriptions';
 import {getPositionAnchor} from './drawers';
 import './popup.scss';
+
+const sendYmGoal = (goal: string) => {
+    if (
+        typeof window !== 'undefined' &&
+        typeof (window as unknown as {ym?: (id: number, action: string, goal: string) => void})
+            .ym === 'function'
+    ) {
+        (window as unknown as {ym: (id: number, action: string, goal: string) => void}).ym(
+            50027884,
+            'reachGoal',
+            goal,
+        );
+    }
+};
 
 const POPUP_ICON_GAP = 4;
 const POPUP_VIEWPORT_MARGIN = 8;
@@ -59,6 +72,8 @@ export const initCanvasAnimation = (
 ): CanvasAnimationCleanup => {
     const ctx = canvas.getContext('2d', {alpha: false});
     if (!ctx) {
+        // eslint-disable-next-line no-console
+        console.warn('Не удалось получить 2D контекст для canvas');
         const cleanup = () => {};
         cleanup.refreshScheme = () => {};
         cleanup.setActiveLegend = () => {};
@@ -99,21 +114,32 @@ export const initCanvasAnimation = (
         },
     });
 
+    loadPodiumImages().catch((err) => {
+        // eslint-disable-next-line no-console
+        console.error('Ошибка предварительной загрузки подиумов', err);
+    });
+
     if (podiumImagesCache) {
         podiumImages.push(...podiumImagesCache);
         isLoaded = true;
         animator.initPodiums({skipIntro: hasPlayedIntro});
         hasPlayedIntro = true;
     } else {
-        loadPodiumImages().then((images) => {
-            podiumImages.length = 0;
-            podiumImages.push(...images);
-            isLoaded = true;
-            animator.initPodiums({skipIntro: hasPlayedIntro});
-            hasPlayedIntro = true;
-        });
+        loadPodiumImages()
+            .then((images) => {
+                podiumImages.length = 0;
+                podiumImages.push(...images);
+                isLoaded = true;
+                animator.initPodiums({skipIntro: hasPlayedIntro});
+                hasPlayedIntro = true;
+            })
+            .catch((err) => {
+                // eslint-disable-next-line no-console
+                console.error('Ошибка загрузки подиумов', err);
+            });
     }
 
+    // eslint-disable-next-line no-param-reassign
     canvas.style.touchAction = 'none';
 
     const popupContainer = document.createElement('div');
@@ -302,9 +328,13 @@ export const initCanvasAnimation = (
             return;
         }
 
+        // eslint-disable-next-line no-param-reassign
         canvas.width = nextWidth;
+        // eslint-disable-next-line no-param-reassign
         canvas.height = nextHeight;
+        // eslint-disable-next-line no-param-reassign
         canvas.style.width = `${rect.width}px`;
+        // eslint-disable-next-line no-param-reassign
         canvas.style.height = `${rect.height}px`;
 
         ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -430,6 +460,7 @@ export const initCanvasAnimation = (
 
         popup.style.left = `${popupLeft}px`;
         popup.style.top = `${popupTop}px`;
+        sendYmGoal('HYBRIDINFRA_INTERACT-BLOCK_CLICK');
         popup.style.visibility = 'visible';
 
         e.stopPropagation();
@@ -441,7 +472,6 @@ export const initCanvasAnimation = (
 
     resizeCanvas();
 
-    // <-- ДОБАВЛЕНО: ResizeObserver следит за изменением размера родителя (например, при добавлении класса _small)
     const resizeObserver = new ResizeObserver(() => {
         resizeCanvas();
     });
@@ -462,7 +492,7 @@ export const initCanvasAnimation = (
 
     const cleanup: CanvasAnimationCleanup = () => {
         window.removeEventListener('resize', resizeCanvas);
-        resizeObserver.disconnect(); // <-- ДОБАВЛЕНО: очистка observer
+        resizeObserver.disconnect();
 
         canvas.removeEventListener('pointerdown', handlePointerDown);
         canvas.removeEventListener('pointermove', handlePointerMove);
