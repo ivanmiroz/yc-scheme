@@ -12,22 +12,22 @@ $popup-font-size: max(12px, var(--g-text-size-xs, 0.9vw));
 .scheme-popup {
     position: absolute;
     background-color: var(--g-color-base-generic);
-    border-radius: 0.9vw;
-    padding: 0.8vw;
+    border-radius: 12px;
+    padding: 12px;
     z-index: 2;
     max-width: 21.5em;
     font-size: $popup-font-size;
 
     &__title {
         margin: 0 0 0.4vw;
-        font-size: 1em;
-        font-weight: 800;
+        font-size: 14px;
+        font-weight: 900;
         color: var(--g-color-text-primary);
     }
 
     &__description {
         margin: 0 0 0.6vw;
-        font-size: 1em;
+        font-size: 13px;
         line-height: 1.1;
         color: var(--g-color-text-primary);
     }
@@ -43,12 +43,11 @@ $popup-font-size: max(12px, var(--g-text-size-xs, 0.9vw));
 
         // Перевод в vw (база 1920px)
         padding: 0.625vw; // 12px
-        border-radius: 0.52vw; // 10px
+        border-radius: 11px; // 10px
 
         text-align: center;
         text-decoration: none;
-        margin-bottom: 0.8vw; // Отступ снизу до кнопки закрытия или края
-        font-size: 0.73vw; // ~14px
+        font-size: 12px; // ~14px
         font-weight: 500;
         transition:
             opacity 0.2s ease,
