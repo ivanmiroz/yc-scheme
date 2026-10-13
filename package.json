@@ -6,7 +6,7 @@
     "prepare": "husky",
     "dev": "next dev",
     "build": "next build",
-    "build:static": "STATIC_EXPORT=true next build && node scripts/add-static-csp.cjs",
+    "build:static": "set STATIC_EXPORT=true next build && node scripts/add-static-csp.cjs",
     "start": "next start",
     "lint:js": "eslint --ext .js,.jsx,.ts,.tsx .",
     "lint:styles": "stylelint '{styles,src}/**/*.scss'",

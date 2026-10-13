@@ -1,6 +1,6 @@
 'use client';
 
-import React, {useCallback, useEffect, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import block from 'bem-cn-lite';
 
 import {NetworkSingularity} from '../NetworkSingularity/NetworkSingularity';
@@ -9,13 +9,10 @@ import {
     getAvailableLegendValues,
     setActiveScheme,
 } from '../InfrastructureChoose/canvasAnimation/schemes';
-import {GuidePopup} from './GuidePopup';
 
 import './ScaleTabs.scss';
 
 const b = block('scale-tabs');
-
-type OnboardingStep = 'closed' | 'guide';
 
 const sendYmGoal = (goal: string) => {
     if (
@@ -122,10 +119,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
     const [pendingTabIndex, setPendingTabIndex] = useState<number | null>(null);
     const [isCollapsing, setIsCollapsing] = useState(false);
     const [isReversing, setIsReversing] = useState(false);
-    const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('closed');
-
-    const hasShownOnboardingRef = useRef(false);
-    const guideShowTimerRef = useRef<number | null>(null);
 
     const availableLegendValues = getAvailableLegendValues(localActiveIndex);
     const visibleLegendItems = safeData.network.legends.filter((item) =>
@@ -161,36 +154,12 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
         pendingTabIndex === null ? undefined : safeData.tabs[pendingTabIndex]?.value;
     const activeButtonValue = pendingTabValue ?? activeTabValue;
 
-    const cancelGuideShowTimer = useCallback(() => {
-        if (guideShowTimerRef.current !== null) {
-            window.clearTimeout(guideShowTimerRef.current);
-            guideShowTimerRef.current = null;
-        }
-    }, []);
-
     const handleCanvasStart = useCallback(() => {
         setIsCanvasReady(false);
-        cancelGuideShowTimer();
-    }, [cancelGuideShowTimer]);
+    }, []);
 
-    // Как только канвас готов — запускаем онбординг: через guide.showDelayMs
-    // показываем попап с инструкциями. При skipIntro канвас готов почти
-    // сразу, поэтому попап появляется сразу после загрузки страницы.
     const handleCanvasReady = useCallback(() => {
         setIsCanvasReady(true);
-
-        if (hasShownOnboardingRef.current) return;
-        hasShownOnboardingRef.current = true;
-
-        cancelGuideShowTimer();
-        guideShowTimerRef.current = window.setTimeout(() => {
-            guideShowTimerRef.current = null;
-            setOnboardingStep('guide');
-        }, safeData.onboarding.guide.showDelayMs);
-    }, [cancelGuideShowTimer, safeData.onboarding.guide.showDelayMs]);
-
-    const handleGuideClose = useCallback(() => {
-        setOnboardingStep('closed');
     }, []);
 
     const handleScatterComplete = useCallback(() => {
@@ -204,11 +173,7 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
     }, [pendingTabIndex, onActionClick]);
 
     const handleReverseComplete = useCallback(() => {
-        cancelGuideShowTimer();
-
         setIsReversing(false);
-        setOnboardingStep('closed');
-        hasShownOnboardingRef.current = false;
 
         const availableForZero = getAvailableLegendValues(0);
         const firstLegend = safeData.network.legends.find((item) =>
@@ -223,7 +188,7 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
         onActionClick?.(-1);
         setLocalActiveIndex(0);
         setActiveScheme(0);
-    }, [onActionClick, cancelGuideShowTimer, safeData.network.legends]);
+    }, [onActionClick, safeData.network.legends]);
 
     const handleInfraTabClick = (index: number) => {
         if (isReversing) return;
@@ -251,13 +216,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
         if (isReversing) return;
         setActiveLegend((prev: LegendValue | null) => (prev === value ? null : value));
     };
-
-    useEffect(
-        () => () => {
-            cancelGuideShowTimer();
-        },
-        [cancelGuideShowTimer],
-    );
 
     const activeTab =
         activeIndex >= 0 ? safeData.tabs[activeIndex] : safeData.tabs[localActiveIndex];
@@ -411,13 +369,6 @@ export const ScaleTabs: React.FC<ScaleTabsProps> = ({
                     </div>
                 </div>
             </div>
-
-            <GuidePopup
-                open={onboardingStep === 'guide'}
-                onClose={handleGuideClose}
-                title={safeData.onboarding.guide.title}
-                blocks={safeData.onboarding.guide.blocks}
-            />
         </div>
     );
 };
